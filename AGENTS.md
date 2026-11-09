@@ -52,7 +52,7 @@ Según la elección, invocar el recurso correspondiente antes de continuar:
 ## 4. Reglas de Oro Globales (Invariantes del Sistema)
 
 1. **Gobernanza de Git:** Ningún subagente ni skill ejecuta commits directamente. Solo el orquestador principal interactúa con Git, y **siempre tras confirmación explícita del usuario**.
-2. **Validación Humana Obligatoria:** Nunca avanzar de etapa ni sobrescribir acuerdos sin confirmación del usuario (respetar rigurosamente las pausas `⏸️`).
+2. **Validación Humana Obligatoria:** Nunca avanzar de etapa ni sobrescribir acuerdos sin confirmación del usuario (respetar rigurosamente las pausas `⏸️` y `🛑`).
 3. **Separación Estricta de Responsabilidades:**
    - `agents/<nombre>.md`: Contiene la personalidad, modelo mental y restricciones ontológicas del agente (quién es y qué tiene prohibido hacer).
    - `_skills/<nombre>/SKILL.md`: Contiene el flujo de trabajo procedural (cuándo se le invoca, qué insumos se le entregan y cómo se procesa la salida).
@@ -63,6 +63,12 @@ Según la elección, invocar el recurso correspondiente antes de continuar:
 5. **Criterio Proactivo:** Proponer siempre con sustento funcional/técnico. Si una elección del usuario presenta riesgos conocidos, dependencias críticas o deuda técnica, advertirlo antes de continuar.
 6. **Grounding en Disco:** Cuando un paso indique leer archivos persistidos, leer siempre desde disco; no confiar en la memoria volátil de la conversación.
 7. **Única Fuente de Verdad para Agentes (SSOT):** La definición canónica de cada subagente (rol, guardrails estrictos y contratos) reside exclusivamente en `agents/<nombre>.md`. Cualquier integración de plataforma externa debe actuar como un puntero o referencia directa al archivo canónico en `agents/`. Queda prohibido duplicar el contenido de los prompts para evitar desfasajes y costos de mantenimiento.
+8. **Límite Duro de Turno en Pausas (Hard Turn Boundaries):** Toda pausa `⏸️` o `🛑` en cualquier skill u orquestador es un **LÍMITE ESTRICTO DE FIN DE TURNO**. Al emitir el entregable, las preguntas o la propuesta del paso actual, el agente DEBE finalizar inmediatamente su turno de respuesta.
+   - **QUEDA TERMINANTEMENTE PROHIBIDO:**
+     1. Ejecutar más de un paso en el mismo turno o mensaje.
+     2. Simular, asumir, autocompletar o responder por cuenta propia preguntas dirigidas al usuario.
+     3. Invocar al siguiente subagente o continuar al siguiente paso sin haber recibido un nuevo mensaje explícito del usuario en la conversación.
+     4. Escribir archivos de pasos posteriores antes de que los pasos previos hayan sido aprobados individualmente por el usuario.
 
 ---
 

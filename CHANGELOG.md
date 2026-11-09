@@ -6,6 +6,18 @@ Versionado siguiendo [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [0.1.1] — 2026-11-09
+
+### Corregido
+- **Límites duros de turno (Hard Turn Boundaries):**
+  - Se sustituyeron todas las pausas ambiguas (`⏸ PAUSA: Continuar al Paso X`) por directivas taxativas `🛑 FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO` en todos los pasos de `_skills/product-discovery/SKILL.md` (Pasos 0c–8) y `_skills/stories-to-tickets/SKILL.md` (Pasos 9–14).
+  - Se incorporó la **Regla de Oro 8** en `AGENTS.md` prohibiendo estrictamente la ejecución multi-paso en un solo turno ("runaway execution" o sesgo de autocompletado), la simulación de respuestas de usuario y el avance sin mensaje explícito.
+  - Se reforzó `orchestrator/ORCHESTRATOR.md` con prohibición explícita de ejecución en lote (`BATCH EXECUTION FORBIDDEN`).
+- **Compatibilidad con Antigravity:**
+  - Registro canónico de plugin en `plugin.json` y skill maestro en `_skills/it-project-orchestrator/SKILL.md`.
+
+---
+
 ## [0.1.0] — 2026-11-09
 
 ### Añadido

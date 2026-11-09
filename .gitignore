@@ -9,6 +9,9 @@ Thumbs.db
 # Logs y Temporales
 *.log
 
+# Local plugin symlink
+skills
+
 # Entorno y Secretos
 .env
 .env.*
