@@ -1,0 +1,71 @@
+name: Ticket técnico
+description: Ticket técnico derivado de una historia de usuario
+title: "[TICKET] US-XX-TN — "
+labels: ["ticket"]
+body:
+  - type: input
+    id: parent-story
+    attributes:
+      label: Historia padre
+      description: Número del issue de la historia que genera este ticket
+      placeholder: "#42"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: ticket-type
+    attributes:
+      label: Tipo
+      options:
+        - migración
+        - modelo
+        - endpoint
+        - servicio
+        - UI
+        - test
+        - config
+        - docs
+    validations:
+      required: true
+
+  - type: input
+    id: layer
+    attributes:
+      label: Capa
+      placeholder: "Nombre de la capa que toca (sin diseñar el interior)"
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: dod
+    attributes:
+      label: Definition of Done
+      options:
+        - label: Tests escritos y pasando
+        - label: Manejo de error cubierto
+        - label: Convenciones del equipo aplicadas
+        - label: Revisado por al menos un par
+
+  - type: input
+    id: size
+    attributes:
+      label: Talla
+      placeholder: "S / M / L"
+
+  - type: input
+    id: risk
+    attributes:
+      label: Riesgo
+      placeholder: "bajo / medio / alto"
+
+  - type: input
+    id: blocks
+    attributes:
+      label: Bloquea
+      placeholder: "ID de ticket o —"
+
+  - type: input
+    id: blocked-by
+    attributes:
+      label: Bloqueado por
+      placeholder: "ID de ticket o —"
