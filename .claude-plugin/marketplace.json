@@ -1,0 +1,5 @@
+{
+  "name": "it-project-orchestrator",
+  "owner": { "name": "Nindiri Armenta G.", "email": "nindiri.armentag@gmail.com" },
+  "plugins": [{ "name": "it-project-orchestrator", "source": "./" }]
+}
