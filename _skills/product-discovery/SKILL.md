@@ -38,7 +38,9 @@ briefing generado por el tech lead.
 
 ## REGLAS GENERALES
 
-1. **Nunca avanzar al siguiente paso sin confirmación explícita del usuario.**
+1. **Límite Estricto de Fin de Turno (Un Solo Paso por Mensaje):**
+   Cada paso con pausa `🛑` marca el FIN OBLIGATORIO DE TU RESPUESTA.
+   QUEDA TERMINANTEMENTE PROHIBIDO encadenar múltiples pasos en el mismo turno, simular o responder por cuenta propia preguntas del usuario, o avanzar al paso siguiente sin que el usuario haya respondido en la conversación. Al terminar las preguntas o el entregable de un paso, DETÉN TU RESPUESTA INMEDIATAMENTE y cede el turno al usuario.
 2. **Nunca hacer commits.** El orquestador es el único responsable de git.
    Cuando un paso produce un archivo listo para commitear, avisar al orquestador
    con el mensaje: `[LISTO PARA COMMIT] <ruta del archivo> — confirmar antes de continuar.`
@@ -93,11 +95,12 @@ Guardar en memoria de sesión:
 **Si `tiene_repositorio = true`:**
 Generar la carpeta `docs/config-project-orchestrator/` y dentro el archivo `tool-config.md` a partir del template `templates/tool-config.template.md` (con opciones comentadas de fácil selección y remoción).
 
-**⏸ PAUSA:** Indicar al usuario:
+**🛑 FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:**
+Indicar al usuario:
 
 > "📄 Generé `docs/config-project-orchestrator/tool-config.md` con opciones predefinidas. Deja activa solo la opción deseada por campo cuando puedas. No hace falta completarlo ahora — podemos continuar con el discovery y volver a él antes de la fase de tickets."
 
-Esperar confirmación para continuar.
+DETÉN tu respuesta inmediatamente aquí. PROHIBIDO ejecutar el Paso 1 en este mismo turno. Espera a que el usuario confirme o responda en el chat.
 
 **Si `tiene_repositorio = false`:**
 NO generar ningún archivo en disco. Las preferencias de herramientas se consultarán directamente en la conversación cuando sea necesario (Paso 14). Continuar directamente al Paso 1.
@@ -141,9 +144,9 @@ erDiagram
 ```
 ```
 
-**⏸ PAUSA:** Mostrar el mapa al usuario y preguntar:
-`"¿El mapa es completo? ¿Hay rutas adicionales que explorar?"`
-Incorporar ajustes si los hay. Continuar al Paso 2.
+**🛑 FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:**
+1. Muestra el mapa y pregunta: `"¿El mapa es completo? ¿Hay rutas adicionales que explorar?"`
+2. DETÉN tu respuesta inmediatamente aquí. PROHIBIDO ejecutar el Paso 2 en este mismo turno. Espera confirmación o ajustes del usuario.
 
 ---
 
@@ -161,7 +164,8 @@ Verificar si `docs/tech-briefing.md` existe.
   ```
   Esperar confirmación. Luego leer el archivo.
 
-**⏸ PAUSA:** Continuar al Paso 2 solo tras confirmación.
+**🛑 FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:**
+DETÉN tu respuesta inmediatamente aquí. NO continúes al Paso 2 sin confirmación explícita del usuario en el chat.
 
 ---
 
@@ -180,7 +184,8 @@ Verificar si `docs/kickoff-brief.md` existe.
   ```
   Esperar respuesta. Si elige arrancar directo, registrar que no hay briefing y continuar.
 
-**⏸ PAUSA:** Continuar al Paso 2 tras confirmación.
+**🛑 FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:**
+DETÉN tu respuesta inmediatamente aquí. PROHIBIDO pasar al Paso 2 en este mismo turno. Espera la respuesta del usuario.
 
 ---
 
@@ -194,7 +199,12 @@ Si el usuario ya proporcionó su idea, pitch o requerimiento (producto nuevo, nu
 - **Contexto:** Idea o pitch del usuario + Mapa de capabilities del Paso 1 (si hubo exploración previa de código).
 - **Tarea:** Ejecutar Fase A (reducción de incertidumbre): formular entre 5 y 10 preguntas clave sobre problema, usuarios y alcance, con nota al margen inferior de opciones (responder directo, "Fuera de scope", "Resolver como [SUPUESTO]", agregar detalles).
 
-**⏸ PAUSA:** Esperar respuestas del usuario. Continuar al Paso 3.
+**🛑 FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:**
+1. Muestra la lista de preguntas formuladas por el subagente con su guía de opciones.
+2. DETÉN tu respuesta inmediatamente aquí.
+3. QUEDA TERMINANTEMENTE PROHIBIDO responder o asumir respuestas por tu cuenta.
+4. NO invoques ningún otro subagente ni herramienta.
+5. Espera a que el usuario responda en su siguiente mensaje para continuar al Paso 3.
 
 ---
 
@@ -206,9 +216,12 @@ Si el usuario ya proporcionó su idea, pitch o requerimiento (producto nuevo, nu
 - **Input:** Respuestas del usuario del Paso 2.
 - **Tarea:** Ejecutar Fase B (propuesta de alcance en 5 bloques): estructurar Problema, Usuarios, Propuesta de valor, Alcance (IN) y NO-alcance (OUT) justificado, aplicando fuente cerrada, nivel no técnico y mapeo directo de supuestos/exclusiones.
 
-**⏸ PAUSA:** Mostrar la propuesta al usuario y preguntar:
-`"¿Acotamos o ajustamos algo antes de consolidar?"`
-Incorporar cambios. Continuar al Paso 4 solo tras confirmación.
+**🛑 FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:**
+1. Muestra la propuesta de alcance en los 5 bloques.
+2. Pregunta: `"¿Acotamos o ajustamos algo antes de consolidar?"`
+3. DETÉN tu respuesta inmediatamente aquí.
+4. QUEDA TERMINANTEMENTE PROHIBIDO crear archivos o avanzar al Paso 4 en este mismo turno.
+5. Espera la confirmación o ajustes del usuario en su siguiente mensaje.
 
 ---
 
@@ -261,7 +274,10 @@ Generar `docs/prd/alcance-<sufijo>.md`:
 **Si `tiene_repositorio = false`:** mostrar el contenido completo en la conversación.
 No escribir a disco. Las correcciones se hacen en el chat.
 
-**⏸ PAUSA:** Confirmar con el usuario que el contenido está correcto antes de continuar al Paso 5.
+**🛑 FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:**
+1. Confirma con el usuario que el contenido y archivo de alcance están correctos.
+2. DETÉN tu respuesta inmediatamente aquí. PROHIBIDO generar el PRD o pasar al Paso 5 en este mismo turno.
+3. Espera la confirmación del usuario para avanzar.
 
 ---
 
@@ -333,7 +349,10 @@ Generar el PRD para la iniciativa (MVP, nueva feature o mejora) en `docs/prd/<pr
 **Si `tiene_repositorio = false`:** mostrar el PRD completo en la conversación.
 No escribir a disco. Las correcciones se hacen en el chat.
 
-**⏸ PAUSA:** Mostrar el PRD al usuario. Esperar revisión y ajustes antes de continuar.
+**🛑 FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:**
+1. Muestra el PRD generado.
+2. DETÉN tu respuesta inmediatamente aquí. PROHIBIDO invocar al revisor adversarial o pasar al Paso 6 en este mismo turno.
+3. Espera la revisión y confirmación del usuario para avanzar.
 
 ---
 
@@ -347,9 +366,12 @@ No escribir a disco. Las correcciones se hacen en el chat.
   - Si `tiene_repositorio = false`: usar el PRD consensuado en la conversación (Paso 5).
 - **Tarea:** Atacar el PRD evaluando supuestos asesinos, ambigüedades funcionales, scope creep oculto y métricas de vanidad, emitiendo el informe de hallazgos clasificados por riesgo (🔴 Alto, 🟡 Medio, 🟢 Menor) y preguntas clave para consolidar la v0.2.
 
-**⏸ PAUSA:** Esperar respuesta del usuario. Incorporar cambios al PRD si los hay.
+**🛑 FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:**
+1. Muestra el informe de hallazgos y preguntas clave del revisor adversarial.
+2. DETÉN tu respuesta inmediatamente aquí. PROHIBIDO responder las preguntas por tu cuenta o generar historias.
+3. Espera la respuesta del usuario para incorporar los cambios y consolidar la v0.2.
 
-Tras confirmación explícita:
+Tras confirmación explícita del usuario:
 - Si `tiene_repositorio = true`: actualizar el archivo en disco.
   `[LISTO PARA COMMIT] docs/prd/<proyecto>-<sufijo>.md (v0.2)`
 - Si `tiene_repositorio = false`: mostrar el PRD actualizado completo en la conversación para que el usuario confirme antes de avanzar al Paso 7.
@@ -366,9 +388,11 @@ Tras confirmación explícita:
   - Si `tiene_repositorio = false`: usar el PRD confirmado en la conversación (Paso 5/6).
 - **Tarea:** Descomponer las épicas en historias de usuario formato INVEST (`"Como <rol>, quiero <acción> para <beneficio>"`), auto-validando contra el alcance y marcando explícitamente `[FUERA DE ALCANCE]` las que no correspondan.
 
-**⏸ PAUSA:** Mostrar el listado al usuario y preguntar:
-`"¿Querés reorganizar alguna historia o ajustar la descomposición antes de continuar?"`
-Esperar confirmación. Continuar al Paso 8.
+**🛑 FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:**
+1. Muestra el listado de historias INVEST y pregunta:
+   `"¿Querés reorganizar alguna historia o ajustar la descomposición antes de continuar?"`
+2. DETÉN tu respuesta inmediatamente aquí. PROHIBIDO generar criterios Given/When/Then o pasar al Paso 8 en este mismo turno.
+3. Espera la confirmación del usuario.
 
 ---
 
@@ -384,7 +408,10 @@ Esperar confirmación. Continuar al Paso 8.
     `[LISTO PARA REVISIÓN] Historias guardadas en docs/backlog/. Pedir al usuario que las revise en los archivos o indique cambios en el chat.`
   - **Si `tiene_repositorio = false`:** mostrar cada historia completa en la conversación. No escribir a disco. Las correcciones se hacen en el chat. Una vez que el usuario confirme todas las historias, continuar al HANDOFF.
 
-**⏸ PAUSA:** Esperar revisión y confirmación del usuario.
+**🛑 FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:**
+1. Muestra las historias con sus criterios o avisa que están listas en disco para revisión.
+2. DETÉN tu respuesta inmediatamente aquí.
+3. Espera la revisión y confirmación explícita del usuario.
 
 Tras confirmación explícita:
 - Si `tiene_repositorio = true`: `[LISTO PARA COMMIT] docs/backlog/ — el orquestador debe hacer el commit.`
