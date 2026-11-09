@@ -1,0 +1,239 @@
+---
+name: stories-to-tickets
+version: 0.1.0
+description: Descompone historias en tickets técnicos y los materializa en GitHub o Linear
+trigger: "cuando el tech lead o dev quiera convertir historias en tickets ejecutables"
+tools_required:
+  - Read
+  - Write
+  - bash (gh CLI o MCP de Linear para materialización)
+  - bash (git — solo el orquestador; nunca este skill directamente)
+subagents:
+  - tickets-agent
+  - issue-materializer-agent
+inputs:
+  - docs/backlog/<E-nombre-epica>/us-<nombre-historia>.md  # output del Skill 1
+  - docs/config-project-orchestrator/tool-config.md        # configuración de herramienta (opcional — se solicita al usuario si no existe)
+outputs:
+  - docs/backlog/<E-nombre-epica>/tickets-<historia>.md    # tickets por historia
+  - docs/backlog/backlog-priorizado.md                     # grafo + sizing + matriz
+  - issues creados en GitHub o Linear
+commits:
+  - "El orquestador (nunca este skill ni sus subagentes) hace todos los commits,
+     siempre tras confirmación explícita del usuario."
+---
+
+# stories-to-tickets
+
+Skill 2 del ciclo `it-project-orchestrator`.
+
+Toma las historias enriquecidas del Skill 1 y produce tickets técnicos con DoD,
+un grafo de dependencias, t-shirt sizing, una matriz de priorización, y los crea
+en la herramienta de issues configurada.
+
+---
+
+## VARIABLES DE SESIÓN HEREDADAS
+
+Este skill recibe del Skill 1 (product-discovery) las siguientes variables en memoria de sesión:
+
+| Variable | Valores | Uso en este skill |
+|---|---|---|
+| `tiene_repositorio` | `true` / `false` | Determina si se escribe a disco o se trabaja en conversación |
+| `sufijo` | ej: `registro-ventas-mvp` | Nombre de archivos generados |
+| `tipo_proyecto` | `greenfield` / `brownfield` | Contexto para tickets |
+
+Si alguna de estas variables no está en memoria de sesión (usuario entró directo al Skill 2),
+preguntar al inicio:
+```
+1. Repositorio de destino:
+   a) Sí (escribir archivos en el repositorio del proyecto)
+   b) No (trabajar solo en la conversación)
+
+2. Sufijo del proyecto: (ej: registro-ventas-mvp)
+
+3. Origen de las historias:
+   a) En esta sesión (misma conversación)
+   b) Externas (pegar contenido aquí)
+```
+
+---
+
+## REGLAS GENERALES
+
+1. **Nunca avanzar al siguiente paso sin confirmación explícita del usuario.**
+2. **Nunca hacer commits.** El orquestador es el único responsable de git.
+   Cuando un paso produce un archivo listo para commitear, avisar con:
+   `[LISTO PARA COMMIT] <ruta> — confirmar antes de continuar.`
+3. **Fuente de datos:** Si `tiene_repositorio = true`, leer siempre desde disco.
+   Si `tiene_repositorio = false`, usar el contenido de la conversación (las historias
+   generadas en el Skill 1 están en el chat).
+4. Los tickets **heredan** los criterios de las historias. No agregan criterios nuevos.
+5. Los tickets **nombran la capa** que tocan (migración, modelo, endpoint, UI, test),
+   pero **no diseñan**: sin tipos de columna, índices, nombres de ruta ni status codes.
+   Esas decisiones son de la implementación.
+6. **Idioma:** detectar leyendo archivos existentes en `docs/`. Si no hay archivos previos, preguntar al usuario:
+   `"¿En qué idioma generamos los tickets y archivos? (español / inglés / otro)"`
+   El idioma queda en memoria de sesión — no se escribe en ningún archivo de config.
+
+---
+
+## PASO 9 — De historias a tickets
+
+**Subagente:** `it-project-orchestrator:tickets-agent` (Fase A)
+
+**Invocación del subagente:**
+- **Fuente de historias:**
+  - Si `tiene_repositorio = true`: leer desde disco `docs/backlog/<E-nombre-epica>/us-*.md`
+  - Si `tiene_repositorio = false`: usar las historias del Skill 1 disponibles en la conversación
+- **Tarea:** Descomponer cada historia en tickets atómicos de media jornada (`US-<XX>-T<N>`), nombrando la capa que tocan (sin diseñar el esquema) y con Definition of Done (DoD) como checklist de entrega (sin horas ni criterios inventados).
+
+**⏸ PAUSA:** Mostrar los tickets al usuario. Esperar validación. Continuar al Paso 10.
+
+---
+
+## PASO 10 — Grafo de dependencias
+
+**Subagente:** `it-project-orchestrator:tickets-agent` (Fase B)
+
+**Invocación del subagente:**
+- **Input:** Tickets validados en el Paso 9.
+- **Tarea:** Generar el grafo de dependencias en Mermaid (`graph TD`) indicando qué bloquea a qué, junto con el orden de implementación por fases (distinguiendo qué tickets pueden realizarse en paralelo).
+
+**⏸ PAUSA:** Mostrar el grafo y el orden al usuario. Esperar validación. Continuar al Paso 11.
+
+---
+
+## PASO 11 — T-shirt sizing
+
+**Subagente:** `it-project-orchestrator:tickets-agent` (Fase C)
+
+**Invocación del subagente:**
+- **Input:** Tickets secuenciados en el Paso 10.
+- **Tarea:** Estimar cada ticket en T-shirt sizing (S / M / L) con su nivel de riesgo (bajo / medio / alto) y fundamento técnico en una línea (sin inventar horas exactas ni story points arbitrarios).
+
+**⏸ PAUSA:** Mostrar la tabla al usuario. Esperar validación. Continuar al Paso 12.
+
+---
+
+## PASO 12 — Matriz impacto/complejidad
+
+**Subagente:** `it-project-orchestrator:tickets-agent` (Fase D)
+
+**Invocación del subagente:**
+- **Input:** Historias del backlog (incluyendo aquellas marcadas `[FUERA DE ALCANCE]`).
+- **Tarea:** Ubicar las historias en matriz impacto vs. complejidad, identificar y destacar los Quick Wins (⭐) y proponer el orden de abordaje del backlog.
+
+**⏸ PAUSA:** Mostrar la matriz al usuario. Esperar validación del orden propuesto. Continuar al Paso 13.
+
+---
+
+## PASO 13 — Escribir backlog completo o emitir en conversación
+
+**Subagente:** `it-project-orchestrator:tickets-agent` (Fase E)
+
+**Invocación del subagente:**
+- **Input:** Todo el backlog consensuado en los Pasos 9 al 12.
+- **Tarea:**
+  - **Si `tiene_repositorio = true`:** Escribir en disco:
+    1. `docs/backlog/<E-nombre-epica>/tickets-<nombre-historia>.md`: Un archivo por cada historia con sus tickets, DoD, talla y riesgo.
+    2. `docs/backlog/backlog-priorizado.md`: Grafo Mermaid, orden de implementación, matriz impacto/complejidad y orden priorizado.
+    Avisar al orquestador con: `[LISTO PARA COMMIT] docs/backlog/ completo.`
+  - **Si `tiene_repositorio = false`:** Mostrar en conversación los dos bloques markdown listos para cuando el usuario cree el repositorio:
+    1. `tickets-<sufijo>.md`: Todos los tickets por historia.
+    2. `backlog-priorizado-<sufijo>.md`: Grafo, orden de implementación, matriz y orden priorizado.
+    Avisar al orquestador con: `[LISTO PARA REVISIÓN] Backlog completo en conversación — confirmá para continuar al Paso 14.`
+
+**⏸ PAUSA:** Esperar revisión y confirmación explícita del usuario.
+- Si `tiene_repositorio = true`: `[LISTO PARA COMMIT] docs/backlog/ — el orquestador hace el commit tras confirmación.`
+- Si `tiene_repositorio = false`: Continuar al Paso 14 sin commit.
+
+---
+
+## PASO 14 — Materializar en GitHub / Linear
+
+**Subagente:** `it-project-orchestrator:issue-materializer-agent`
+
+**Obtener configuración de herramienta:**
+- Si `tiene_repositorio = true`: verificar si `docs/config-project-orchestrator/tool-config.md` existe y tiene los campos `herramienta_issues`, `metodo_issues` y `metodologia_equipo` completos. Si está completo, leer desde allí.
+- Si `tiene_repositorio = false` o si el archivo no existe / tiene campos vacíos: preguntar al usuario:
+  ```
+  Para materializar los issues necesito saber:
+  1. ¿Qué herramienta usás? (GitHub Issues / Linear / otra)
+  2. ¿Cómo la tenés configurada? (gh CLI / MCP / ninguna aún)
+  3. ¿Metodología del equipo? (Scrum / Kanban)
+  ```
+
+**Invocación del subagente:**
+- **Fuente de datos:** Configuración de herramienta + historias + tickets.
+- **Tarea:**
+  - Ejecutar la creación de forma estrictamente SECUENCIAL (primero padres, luego hijos).
+  - Si es GitHub, verificar si existen `.github/ISSUE_TEMPLATE/story.yml` y `ticket.yml` en el proyecto; si faltan, copiarlos desde `<raíz del plugin>/templates/github/`. Al invocar al subagente, sustituir `<raíz del plugin>` por la ruta absoluta: el subagente no la conoce.
+  - Aplicar milestones y labels según Scrum o Kanban.
+  - Generar y devolver el reporte consolidado con tabla de issues creados, sus IDs y URLs.
+
+**⏸ PAUSA:** Confirmar con el usuario antes de crear los issues:
+`"¿Creo los issues en <herramienta>? Esto creará <N> items. Confirmar para continuar."`
+
+---
+
+## CIERRE DEL CICLO
+
+Al completar el Paso 14, emitir:
+
+--- SI tiene_repositorio = true ---
+
+```
+✅ stories-to-tickets completado. Ciclo idea-to-backlog finalizado.
+
+Resumen:
+- Épicas: <N>
+- Historias: <N> (+ <N> fuera de alcance documentadas)
+- Tickets: <N>
+- Quick wins identificados: <N>
+- Issues creados en <herramienta>: <N>
+
+Archivos en el repo:
+- docs/prd/                   → PRD y alcance
+- docs/backlog/               → historias, tickets y backlog priorizado
+
+Próximos pasos sugeridos:
+1. Commitear docs/backlog/ si aún no se hizo (el orquestador lo hace)
+2. Asignar tickets en <herramienta>
+3. Definir el primer sprint/ciclo según el orden de backlog propuesto
+```
+
+--- SI tiene_repositorio = false ---
+
+Mostrar en la conversación el markdown completo listo para usar:
+
+```
+## tickets-<sufijo>.md
+[todos los tickets por historia, con DoD, talla y riesgo — formato del Paso 9]
+
+---
+## backlog-priorizado-<sufijo>.md
+[grafo de dependencias, orden de implementación, matriz impacto/complejidad, orden de backlog]
+```
+
+```
+✅ stories-to-tickets completado. Ciclo idea-to-backlog finalizado.
+
+Resumen:
+- Épicas: <N>
+- Historias: <N> (+ <N> fuera de alcance documentadas)
+- Tickets: <N>
+- Quick wins identificados: <N>
+- Issues creados en <herramienta>: <N>
+
+Los archivos están listos en la conversación.
+Cuando crees el repositorio del proyecto, guardá estos archivos en:
+  docs/backlog/<E-epica>/tickets-<historia>.md
+  docs/backlog/backlog-priorizado.md
+
+Próximos pasos sugeridos:
+1. Crear el repositorio del proyecto y versionar los archivos generados
+2. Asignar tickets en <herramienta>
+3. Definir el primer sprint/ciclo según el orden de backlog propuesto
+```
+

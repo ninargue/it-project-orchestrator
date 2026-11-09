@@ -6,7 +6,10 @@ Thumbs.db
 .vscode/
 .idea/
 
-# Entorno
+# Logs y Temporales
+*.log
+
+# Entorno y Secretos
 .env
 .env.*
 !.env.example
