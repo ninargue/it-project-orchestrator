@@ -61,7 +61,11 @@ preguntar al inicio:
 
 ## REGLAS GENERALES
 
-1. **Nunca avanzar al siguiente paso sin confirmación explícita del usuario.**
+1. **Límite Estricto de Fin de Turno (Hard Turn Boundary):** Cada paso con pausa (`🛑 FIN DE TURNO OBLIGATORIO`) marca el fin absoluto de tu turno de respuesta.
+   - Presenta únicamente el resultado o preguntas del paso actual.
+   - **DETÉN tu respuesta inmediatamente.** No agregues texto anticipando el paso siguiente.
+   - **QUEDA TERMINANTEMENTE PROHIBIDO** ejecutar múltiples pasos en un solo turno, asumir o simular respuestas del usuario, o invocar herramientas/subagentes para pasos posteriores.
+   - Espera siempre el mensaje explícito del usuario antes de pasar al paso siguiente.
 2. **Nunca hacer commits.** El orquestador es el único responsable de git.
    Cuando un paso produce un archivo listo para commitear, avisar con:
    `[LISTO PARA COMMIT] <ruta> — confirmar antes de continuar.`
@@ -88,7 +92,11 @@ preguntar al inicio:
   - Si `tiene_repositorio = false`: usar las historias del Skill 1 disponibles en la conversación
 - **Tarea:** Descomponer cada historia en tickets atómicos de media jornada (`US-<XX>-T<N>`), nombrando la capa que tocan (sin diseñar el esquema) y con Definition of Done (DoD) como checklist de entrega (sin horas ni criterios inventados).
 
-**⏸ PAUSA:** Mostrar los tickets al usuario. Esperar validación. Continuar al Paso 10.
+**🛑 FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:**
+1. Muestra los tickets técnicos al usuario.
+2. DETÉN tu respuesta inmediatamente aquí.
+3. QUEDA TERMINANTEMENTE PROHIBIDO generar el grafo de dependencias o pasar al Paso 10 en este mismo turno.
+4. Espera la validación o ajustes del usuario antes de continuar.
 
 ---
 
@@ -100,7 +108,11 @@ preguntar al inicio:
 - **Input:** Tickets validados en el Paso 9.
 - **Tarea:** Generar el grafo de dependencias en Mermaid (`graph TD`) indicando qué bloquea a qué, junto con el orden de implementación por fases (distinguiendo qué tickets pueden realizarse en paralelo).
 
-**⏸ PAUSA:** Mostrar el grafo y el orden al usuario. Esperar validación. Continuar al Paso 11.
+**🛑 FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:**
+1. Muestra el grafo Mermaid y el orden de fases propuesto.
+2. DETÉN tu respuesta inmediatamente aquí.
+3. QUEDA TERMINANTEMENTE PROHIBIDO estimar el sizing o pasar al Paso 11 en este mismo turno.
+4. Espera la validación o ajustes del usuario antes de continuar.
 
 ---
 
@@ -112,7 +124,11 @@ preguntar al inicio:
 - **Input:** Tickets secuenciados en el Paso 10.
 - **Tarea:** Estimar cada ticket en T-shirt sizing (S / M / L) con su nivel de riesgo (bajo / medio / alto) y fundamento técnico en una línea (sin inventar horas exactas ni story points arbitrarios).
 
-**⏸ PAUSA:** Mostrar la tabla al usuario. Esperar validación. Continuar al Paso 12.
+**🛑 FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:**
+1. Muestra la tabla de sizing y riesgos al usuario.
+2. DETÉN tu respuesta inmediatamente aquí.
+3. QUEDA TERMINANTEMENTE PROHIBIDO armar la matriz de impacto/complejidad o pasar al Paso 12 en este mismo turno.
+4. Espera la validación o ajustes del usuario antes de continuar.
 
 ---
 
@@ -124,7 +140,11 @@ preguntar al inicio:
 - **Input:** Historias del backlog (incluyendo aquellas marcadas `[FUERA DE ALCANCE]`).
 - **Tarea:** Ubicar las historias en matriz impacto vs. complejidad, identificar y destacar los Quick Wins (⭐) y proponer el orden de abordaje del backlog.
 
-**⏸ PAUSA:** Mostrar la matriz al usuario. Esperar validación del orden propuesto. Continuar al Paso 13.
+**🛑 FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:**
+1. Muestra la matriz de impacto vs complejidad y el orden de abordaje propuesto.
+2. DETÉN tu respuesta inmediatamente aquí.
+3. QUEDA TERMINANTEMENTE PROHIBIDO persistir archivos o pasar al Paso 13 en este mismo turno.
+4. Espera la validación o ajustes del usuario antes de continuar.
 
 ---
 
@@ -144,7 +164,11 @@ preguntar al inicio:
     2. `backlog-priorizado-<sufijo>.md`: Grafo, orden de implementación, matriz y orden priorizado.
     Avisar al orquestador con: `[LISTO PARA REVISIÓN] Backlog completo en conversación — confirmá para continuar al Paso 14.`
 
-**⏸ PAUSA:** Esperar revisión y confirmación explícita del usuario.
+**🛑 FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:**
+1. Muestra el estado del backlog completo (archivos creados o markdown en chat) y avisa al orquestador.
+2. DETÉN tu respuesta inmediatamente aquí.
+3. QUEDA TERMINANTEMENTE PROHIBIDO crear issues en GitHub/Linear o pasar al Paso 14 en este mismo turno.
+4. Espera la confirmación explícita del usuario antes de continuar.
 - Si `tiene_repositorio = true`: `[LISTO PARA COMMIT] docs/backlog/ — el orquestador hace el commit tras confirmación.`
 - Si `tiene_repositorio = false`: Continuar al Paso 14 sin commit.
 
@@ -172,8 +196,12 @@ preguntar al inicio:
   - Aplicar milestones y labels según Scrum o Kanban.
   - Generar y devolver el reporte consolidado con tabla de issues creados, sus IDs y URLs.
 
-**⏸ PAUSA:** Confirmar con el usuario antes de crear los issues:
+**🛑 FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:**
+1. Pregunta al usuario antes de crear los issues:
 `"¿Creo los issues en <herramienta>? Esto creará <N> items. Confirmar para continuar."`
+2. DETÉN tu respuesta inmediatamente aquí.
+3. QUEDA TERMINANTEMENTE PROHIBIDO invocar `issue-materializer-agent` o ejecutar la creación de issues antes de recibir la confirmación explícita del usuario.
+4. Espera la confirmación del usuario para proceder a la materialización.
 
 ---
 

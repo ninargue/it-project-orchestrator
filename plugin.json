@@ -1,0 +1,10 @@
+{
+  "name": "it-project-orchestrator",
+  "version": "0.1.1",
+  "displayName": "IT Project Orchestrator",
+  "description": "Plugin agéntico para proyectos IT: idea-to-backlog y desarrollo con SDD",
+  "author": {
+    "name": "Nindiri Armenta G.",
+    "email": "nindiri.armentag@gmail.com"
+  }
+}
