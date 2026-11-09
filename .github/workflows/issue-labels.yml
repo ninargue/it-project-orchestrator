@@ -1,0 +1,50 @@
+name: Issue Labels
+
+# Traduce la Criticidad (bug_report), la Prioridad (feature_request) y el Riesgo (tech_debt)
+# elegidos en el formulario a etiquetas severidad:*, prioridad:* y riesgo:*.
+# Al editar el issue, la etiqueta se resincroniza con la respuesta.
+
+on:
+  issues:
+    types: [opened, edited]
+
+permissions:
+  issues: write
+
+jobs:
+  label:
+    name: Etiquetar por criticidad / prioridad
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.payload.issue;
+            const body = issue.body || '';
+            const current = issue.labels.map(l => l.name);
+
+            const rules = [
+              { heading: 'Criticidad', prefix: 'severidad:',
+                map: { 'Crítica': 'critica', 'Alta': 'alta', 'Media': 'media', 'Baja': 'baja' } },
+              { heading: 'Prioridad', prefix: 'prioridad:',
+                map: { 'Alta': 'alta', 'Media': 'media', 'Baja': 'baja' } },
+              { heading: 'Riesgo', prefix: 'riesgo:',
+                map: { 'Alto': 'alto', 'Medio': 'medio', 'Bajo': 'bajo' } },
+            ];
+
+            for (const rule of rules) {
+              // Los issue forms renderizan cada campo como "### <label>\n\n<respuesta>"
+              const match = body.match(new RegExp(`^###\\s+${rule.heading}\\s*[\\r\\n]+([^\\r\\n]+)`, 'm'));
+              if (!match) continue;
+
+              const key = Object.keys(rule.map).find(k => match[1].trim().startsWith(k));
+              if (!key) continue;
+              const wanted = rule.prefix + rule.map[key];
+
+              for (const name of current.filter(n => n.startsWith(rule.prefix) && n !== wanted)) {
+                await github.rest.issues.removeLabel({ ...context.repo, issue_number: issue.number, name });
+              }
+              if (!current.includes(wanted)) {
+                await github.rest.issues.addLabels({ ...context.repo, issue_number: issue.number, labels: [wanted] });
+              }
+            }

@@ -1,0 +1,37 @@
+name: PR Labeler
+
+# Etiqueta los PRs automáticamente:
+# - tipo:*, área y alertas de riesgo según .github/labeler.yml
+# - breaking-change si el título usa "!" de Conventional Commits (p. ej. "feat(api)!: ...")
+# No quita etiquetas puestas a mano.
+#
+# Usa pull_request_target para poder etiquetar también PRs desde forks.
+# Es seguro porque no hace checkout ni ejecuta código del PR.
+
+on:
+  pull_request_target:
+    types: [opened, reopened, synchronize, edited]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  label:
+    name: Etiquetar PR
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/labeler@v5
+        with:
+          sync-labels: false
+
+      - name: Detectar breaking change en el título
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            if (/^[a-z]+(\([^)]*\))?!:/.test(pr.title)) {
+              await github.rest.issues.addLabels({
+                ...context.repo, issue_number: pr.number, labels: ['breaking-change'],
+              });
+            }

@@ -1,0 +1,63 @@
+# Configuración de actions/labeler (v5) usada por .github/workflows/pr-labeler.yml
+# - tipo:*      según el prefijo de la rama origen (garantizado por Branch Policy)
+# - capa:*      según los archivos modificados
+# - alertas     según rutas de riesgo
+#
+# Cuando exista la estructura de código, agregar aquí:
+#   capa:frontend, capa:backend → por carpeta de cada aplicación
+#   modulo:*     → por carpeta de cada módulo (auth, tenancy, catalogo, ventas, caja, inventario, reportes, ia)
+#   seguridad    → módulos auth y tenancy / políticas RLS
+#   sync-offline → sincronización del cliente y endpoints idempotentes
+
+# --- Tipo de cambio ---------------------------------------------------------
+tipo:feature:
+  - head-branch: ['^feature/']
+tipo:fix:
+  - head-branch: ['^fix/']
+tipo:hotfix:
+  - head-branch: ['^hotfix/']
+tipo:docs:
+  - head-branch: ['^docs/']
+tipo:refactor:
+  - head-branch: ['^refactor/']
+tipo:test:
+  - head-branch: ['^test/']
+tipo:chore:
+  - head-branch: ['^chore/']
+tipo:release:
+  - head-branch: ['^release/']
+
+# --- Capa -------------------------------------------------------------------
+capa:docs:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'docs/**'
+          - 'README.md'
+          - '.github/CONTRIBUTING.md'
+          - '.github/SECURITY.md'
+capa:db:
+  - changed-files:
+      - any-glob-to-any-file:
+          - '**/alembic/**'
+capa:infra:
+  - changed-files:
+      - any-glob-to-any-file:
+          - '.github/workflows/**'
+          - '.github/labeler.yml'
+          - '.github/release.yml'
+          - '**/Dockerfile*'
+          - '**/docker-compose*.yml'
+
+# --- Notas de versión -------------------------------------------------------
+# PRs que solo tocan configuración de GitHub (CI, templates) o el propio
+# changelog no aportan al usuario: se excluyen de las notas de versión.
+sin-changelog:
+  - changed-files:
+      - all-globs-to-all-files:
+          - '{.github/**,CHANGELOG.md}'
+
+# --- Alertas de riesgo ------------------------------------------------------
+migracion:
+  - changed-files:
+      - any-glob-to-any-file:
+          - '**/alembic/versions/**'

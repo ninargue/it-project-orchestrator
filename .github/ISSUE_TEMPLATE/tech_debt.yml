@@ -1,0 +1,65 @@
+name: 🧹 Deuda técnica / tarea interna
+description: Trabajo que no es bug ni funcionalidad nueva (dependencias, refactor, pruebas, rendimiento, infraestructura)
+labels: [chore]
+body:
+  - type: dropdown
+    id: tipo
+    attributes:
+      label: Tipo
+      options:
+        - Refactor
+        - Actualización de dependencias
+        - Pruebas / cobertura
+        - Rendimiento (consultas, índices, carga)
+        - Infraestructura / CI / despliegue
+        - Otro
+    validations:
+      required: true
+
+  - type: textarea
+    id: descripcion
+    attributes:
+      label: Descripción
+      description: ¿Qué hay que hacer y en qué parte del sistema (módulo, archivo, tabla)?
+    validations:
+      required: true
+
+  - type: textarea
+    id: problema
+    attributes:
+      label: Problema que causa hoy
+      description: ¿Qué dificulta, ralentiza o pone en riesgo la situación actual?
+    validations:
+      required: true
+
+  - type: dropdown
+    id: riesgo
+    attributes:
+      label: Riesgo
+      description: Riesgo de no hacerlo. Se aplica automáticamente la etiqueta `riesgo:*`.
+      options:
+        - Alto — puede causar incidentes de seguridad, pérdida de datos o caídas
+        - Medio — frena el desarrollo o degrada el rendimiento de forma notoria
+        - Bajo — mejora de mantenibilidad, sin impacto inmediato
+    validations:
+      required: true
+
+  - type: textarea
+    id: propuesta
+    attributes:
+      label: Propuesta
+      description: ¿Cómo se resolvería?
+
+  - type: textarea
+    id: validacion
+    attributes:
+      label: Cómo se valida
+      description: ¿Cómo se comprueba que quedó bien sin romper nada? (tests, métricas, revisión)
+      value: |
+        - [ ]
+        - [ ]
+
+  - type: textarea
+    id: contexto
+    attributes:
+      label: Contexto adicional

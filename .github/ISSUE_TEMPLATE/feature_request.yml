@@ -1,0 +1,72 @@
+name: ✨ Feature Request
+description: Propone una nueva funcionalidad o mejora
+labels: [enhancement]
+body:
+  - type: textarea
+    id: descripcion
+    attributes:
+      label: Descripción de la funcionalidad
+      description: Describe claramente qué quieres agregar o mejorar.
+    validations:
+      required: true
+
+  - type: textarea
+    id: problema
+    attributes:
+      label: Problema que resuelve
+      description: ¿Qué problema o necesidad motiva esta propuesta?
+    validations:
+      required: true
+
+  - type: dropdown
+    id: prioridad
+    attributes:
+      label: Prioridad
+      description: Elige según el valor para el negocio. Se aplica automáticamente la etiqueta `prioridad:*`.
+      options:
+        - Alta — bloquea el uso diario o es necesaria para el MVP
+        - Media — mejora relevante, pero hoy hay forma de arreglárselas
+        - Baja — deseable, sin urgencia
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: rol
+    attributes:
+      label: Rol afectado
+      options:
+        - label: Dueño / administrador (owner)
+        - label: Cajero / empleado (cashier)
+
+  - type: textarea
+    id: solucion
+    attributes:
+      label: Solución propuesta
+      description: ¿Cómo imaginas que debería funcionar?
+    validations:
+      required: true
+
+  - type: textarea
+    id: offline
+    attributes:
+      label: Comportamiento sin conexión
+      description: ¿Debe funcionar offline? ¿Qué pasa al sincronizar?
+
+  - type: textarea
+    id: alternativas
+    attributes:
+      label: Alternativas consideradas
+
+  - type: textarea
+    id: criterios
+    attributes:
+      label: Criterios de aceptación
+      value: |
+        - [ ]
+        - [ ]
+
+  - type: textarea
+    id: contexto
+    attributes:
+      label: Contexto adicional
+      description: Mockups, referencias, ejemplos de otras herramientas, etc.

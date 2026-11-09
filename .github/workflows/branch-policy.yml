@@ -1,0 +1,67 @@
+name: Branch Policy
+
+# Valida que la rama origen de un PR siga la convención de .github/CONTRIBUTING.md:
+#   <tipo>/<descripcion-en-kebab-case>   (minúsculas, números y guiones)
+#   release/vX.Y.Z
+# Hacia una rama release/vX.Y.Z solo se aceptan fix/*, docs/* y chore/*
+# (correcciones menores, changelog y ajuste de versión).
+
+on:
+  pull_request:
+    branches:
+      - develop
+      - master
+      - 'release/**'
+
+jobs:
+  validate-source-branch:
+    name: Validar rama origen
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verificar convención de rama
+        env:
+          BASE: ${{ github.base_ref }}
+          HEAD: ${{ github.head_ref }}
+        run: |
+          echo "PR: $HEAD → $BASE"
+
+          KEBAB='[a-z0-9]+(-[a-z0-9]+)*'
+          RELEASE='release/v[0-9]+\.[0-9]+\.[0-9]+'
+
+          if [ "$BASE" = "master" ]; then
+            if echo "$HEAD" | grep -qE "^(develop|$RELEASE|hotfix/$KEBAB)$"; then
+              echo "✅ Rama '$HEAD' permitida hacia master."
+              exit 0
+            else
+              echo "❌ '$HEAD' no puede hacer PR directo a master."
+              echo "   Solo se permiten: develop, release/vX.Y.Z, hotfix/<descripcion>"
+              exit 1
+            fi
+          fi
+
+          if [ "$BASE" = "develop" ]; then
+            if echo "$HEAD" | grep -qE "^((feature|fix|hotfix|chore|refactor|docs|test)/$KEBAB|$RELEASE)$"; then
+              echo "✅ Rama '$HEAD' permitida hacia develop."
+              exit 0
+            else
+              echo "❌ '$HEAD' no sigue la convención de nombres."
+              echo "   Formato: <tipo>/<descripcion-en-kebab-case> (minúsculas, números y guiones) o release/vX.Y.Z"
+              echo "   Tipos permitidos: feature/, fix/, hotfix/, chore/, refactor/, docs/, test/, release/"
+              echo "   Ver .github/CONTRIBUTING.md"
+              exit 1
+            fi
+          fi
+
+          if echo "$BASE" | grep -qE "^$RELEASE$"; then
+            if echo "$HEAD" | grep -qE "^(fix|docs|chore)/$KEBAB$"; then
+              echo "✅ Rama '$HEAD' permitida hacia $BASE."
+              exit 0
+            else
+              echo "❌ '$HEAD' no puede hacer PR a una rama de release."
+              echo "   Solo se permiten: fix/<descripcion>, docs/<descripcion>, chore/<descripcion>"
+              exit 1
+            fi
+          fi
+
+          echo "❌ Rama destino '$BASE' no contemplada por la política."
+          exit 1

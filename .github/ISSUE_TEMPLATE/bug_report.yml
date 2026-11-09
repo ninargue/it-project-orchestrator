@@ -1,0 +1,118 @@
+name: 🐛 Bug Report
+description: Reporta un error o comportamiento inesperado
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Gracias por reportar. No incluyas datos reales de clientes, contraseñas ni tokens.
+        ⚠️ Si el problema permite ver o modificar datos de **otro negocio**, no lo reportes aquí: usa el reporte privado de vulnerabilidades (pestaña *Security*).
+
+  - type: textarea
+    id: descripcion
+    attributes:
+      label: Descripción del bug
+      description: Describe claramente qué está fallando.
+    validations:
+      required: true
+
+  - type: textarea
+    id: pasos
+    attributes:
+      label: Pasos para reproducir
+      value: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+
+  - type: textarea
+    id: esperado
+    attributes:
+      label: Comportamiento esperado
+      description: Qué debería pasar.
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Comportamiento actual
+      description: Qué está pasando en realidad.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: criticidad
+    attributes:
+      label: Criticidad
+      description: Elige según el impacto en el negocio. Se aplica automáticamente la etiqueta `severidad:*`.
+      options:
+        - Crítica — fuga de datos entre negocios, pérdida o duplicación de ventas, o no se puede vender
+        - Alta — caja, stock o reportes con valores incorrectos
+        - Media — una función falla pero hay una forma de evitarlo
+        - Baja — estético o de redacción, sin impacto en la operación
+    validations:
+      required: true
+
+  - type: dropdown
+    id: dispositivo
+    attributes:
+      label: Dispositivo
+      options:
+        - Celular
+        - Tablet
+        - PC / notebook
+    validations:
+      required: true
+
+  - type: input
+    id: navegador
+    attributes:
+      label: Navegador y versión
+      placeholder: "Chrome 140 en Android 15"
+
+  - type: dropdown
+    id: pwa
+    attributes:
+      label: ¿PWA instalada o navegador?
+      options:
+        - PWA instalada
+        - Navegador
+        - No sé
+
+  - type: dropdown
+    id: conexion
+    attributes:
+      label: Conexión al momento del error
+      options:
+        - Con conexión
+        - Sin conexión
+        - Intermitente
+        - No sé
+
+  - type: dropdown
+    id: rol
+    attributes:
+      label: Rol del usuario
+      options:
+        - Dueño / administrador (owner)
+        - Cajero / empleado (cashier)
+        - No aplica
+
+  - type: input
+    id: version
+    attributes:
+      label: Branch / versión
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots o logs
+      description: Arrastra capturas de pantalla o pega logs de error.
+
+  - type: textarea
+    id: contexto
+    attributes:
+      label: Contexto adicional

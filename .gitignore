@@ -1,0 +1,12 @@
+# SO
+.DS_Store
+Thumbs.db
+
+# Editores
+.vscode/
+.idea/
+
+# Entorno
+.env
+.env.*
+!.env.example
