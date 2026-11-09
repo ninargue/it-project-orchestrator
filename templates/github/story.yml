@@ -1,0 +1,48 @@
+name: Historia de usuario
+description: Historia de usuario del backlog del proyecto
+title: "[HISTORIA] "
+labels: ["historia"]
+body:
+  - type: input
+    id: epic
+    attributes:
+      label: Épica
+      placeholder: "E1 — Nombre de la épica"
+    validations:
+      required: true
+
+  - type: textarea
+    id: user-story
+    attributes:
+      label: Historia de usuario
+      placeholder: "Como <rol>, quiero <acción> para <beneficio>."
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance-criteria
+    attributes:
+      label: Criterios de aceptación
+      description: "Formato: DADO / CUANDO / ENTONCES (o GIVEN / WHEN / THEN)"
+      placeholder: |
+        **Camino feliz**
+        - DADO ... CUANDO ... ENTONCES ...
+
+        **Edge cases**
+        - DADO ... CUANDO ... ENTONCES ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Dependencias
+      placeholder: |
+        Bloquea: #
+        Bloqueado por: #
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notas
+      description: Contexto adicional, decisiones, links relevantes
