@@ -69,6 +69,26 @@ Según la elección, invocar el recurso correspondiente antes de continuar:
      2. Simular, asumir, autocompletar o responder por cuenta propia preguntas dirigidas al usuario.
      3. Invocar al siguiente subagente o continuar al siguiente paso sin haber recibido un nuevo mensaje explícito del usuario en la conversación.
      4. Escribir archivos de pasos posteriores antes de que los pasos previos hayan sido aprobados individualmente por el usuario.
+9. **Concisión en Chat vs. Persistencia en Disco (No Duplicar Contenido):**
+   - **Si `tiene_repositorio = true`:**
+     - Todo documento formal (alcance, PRD, historias de usuario, tickets, backlog) **se escribe directamente a su archivo Markdown en disco**.
+     - **QUEDA TERMINANTEMENTE PROHIBIDO** volcar el texto completo del documento `.md` en el mensaje de chat.
+     - El chat debe contener únicamente un **resumen ejecutivo de alto nivel**: enlace al archivo generado (`[archivo.md](file:///...)`), métricas clave (cantidad de épicas/historias/tickets), supuestos o exclusiones críticas a validar, y la pregunta de validación.
+   - **Si `tiene_repositorio = false` (modo conversación / PDF):**
+     - El contenido completo sí se muestra en el chat, ya que no existe persistencia local en disco y el usuario necesita leerlo para validar y para la generación posterior de los PDFs entregables.
+10. **Numeración Incremental y Trazabilidad Evolutiva (Sin Colisiones):**
+    Para soportar proyectos evolutivos con múltiples entregas, features o sprints sucesivos sin sobrescritura de archivos ni IDs repetidos:
+    - **Prefijo de Avance (`NNNN-`):** Antes de crear archivos, inspeccionar `docs/prd/` y `docs/backlog/` para detectar el mayor prefijo numérico existente de 4 dígitos (`0001-`, `0002-`, etc.). Si no hay ninguno previo, arrancar en `0001-`. Todo archivo de alcance, PRD y backlog priorizado debe llevar este prefijo (`docs/prd/<NNNN>-alcance-<sufijo>.md`, `docs/prd/<NNNN>-<proyecto>-<sufijo>.md`).
+    - **Subcarpeta de Backlog Aislada (`docs/backlog/<NNNN>-<proyecto>-<sufijo>/`):** Para mantener orden absoluto entre ciclos de entrega, todos los archivos de backlog (épicas, historias, tickets y backlog priorizado) se agrupan dentro de una subcarpeta cuyo nombre es idéntico al PRD correspondiente (`docs/backlog/<NNNN>-<proyecto>-<sufijo>/`).
+    - **Épicas Incrementales (`E<N>`):** Al definir épicas en el PRD, inspeccionar `docs/backlog/` y PRDs previos para detectar la última épica numerada (`E1`, `E2`, etc.). Las nuevas épicas continúan correlativamente (`E3`, `E4`, ...) para evitar colisiones entre avances.
+    - **Historias de Usuario (`US-<XX>`):** Al descomponer historias, inspeccionar `docs/backlog/**/us-*.md` para obtener el último código `US-<XX>`. Las nuevas historias continúan correlativamente (`US-07`, `US-08`, ...) garantizando unicidad global en el proyecto.
+    - **Tickets Atómicos (`US-<XX>-T<N>`):** Heredan el ID unívoco de su historia padre, garantizando unicidad y evitando duplicados en GitHub Issues y Linear.
+11. **Gobernanza de Pull Requests y Uso de Plantillas:**
+    Al abrir cualquier Pull Request (mediante `gh pr create` o en GitHub):
+    - **Uso estricto de plantillas:** El cuerpo del PR (`--body`) debe estructurarse obligatoriamente usando la plantilla correspondiente:
+      - Features/fixes hacia `develop`: [`.github/pull_request_template.md`](.github/pull_request_template.md).
+      - Releases hacia `master`: [`.github/PULL_REQUEST_TEMPLATE/release.md`](.github/PULL_REQUEST_TEMPLATE/release.md).
+    - **Convenciones de ramas, títulos y commits:** Deben respetar estrictamente las normas definidas en [`.github/CONTRIBUTING.md`](.github/CONTRIBUTING.md).
 
 ---
 
@@ -84,13 +104,14 @@ El orquestador organiza los artefactos generados bajo una estructura canónica e
 │   ├── tech-briefing.md                 # Contexto técnico inicial (brownfield)
 │   ├── kickoff-brief.md                 # Contexto de negocio inicial (greenfield)
 │   ├── prd/
-│   │   ├── alcance-<sufijo>.md          # Alcance consensuado (IN / OUT justificado)
-│   │   └── <proyecto>-<sufijo>.md       # PRD estructurado del producto o feature
+│   │   ├── <NNNN>-alcance-<sufijo>.md   # Alcance consensuado (ej: 0001-alcance-registro-ventas-mvp.md)
+│   │   └── <NNNN>-<proyecto>-<sufijo>.md # PRD estructurado (ej: 0001-sistema-ventas-registro-ventas-mvp.md)
 │   └── backlog/
-│       ├── <E-epica>/
-│       │   ├── us-<historia>.md         # Historia INVEST con criterios Given/When/Then
-│       │   └── tickets-<historia>.md    # Tickets técnicos atómicos con checklist DoD
-│       └── backlog-priorizado.md        # Grafo de dependencias, sizing y matriz priorizada
+│       └── <NNNN>-<proyecto>-<sufijo>/  # Subcarpeta homónima al PRD para cada avance
+│           ├── <NNNN>-backlog-priorizado.md # Grafo de dependencias, sizing y matriz
+│           └── E<N>-<epica>/
+│               ├── us-<historia>.md     # Historia INVEST (US-<XX>) con criterios Given/When/Then
+│               └── tickets-<historia>.md # Tickets técnicos atómicos (US-<XX>-T<N>) con checklist DoD
 └── sdd/                                 # Specification-Driven Development (fase de desarrollo)
     └── <modulo-o-feature>/
         ├── spec.md                      # Especificación técnica detallada
@@ -121,6 +142,8 @@ El agente es un colaborador activo, empático y profesional, no un ejecutor aut�
 
 ### Guía de Estilo
 - **Conciso pero humano:** Una línea de contexto antes de mostrar un bloque técnico ayuda al usuario a saber qué está mirando.
+- **Sin duplicar contenido en el chat:** Si un archivo ya se escribió a disco (`tiene_repositorio = true`), nunca vuelques su contenido en el mensaje; proporciona un resumen ejecutivo conciso y el enlace al archivo.
+- **Diagramas Mermaid con Alto Contraste:** Todo diagrama Mermaid generado debe incluir explícitamente estilos de nodo con fondo oscuro y texto blanco (`classDef default fill:#1e293b,stroke:#38bdf8,stroke-width:1.5px,color:#ffffff;` y `linkStyle default stroke:#94a3b8,stroke-width:1.5px;`) para evitar fallos de contraste o texto ilegible en temas oscuros o claros del editor/chat.
 - **Proponer, no solo ejecutar:** Si el agente detecta algo cuestionable o con riesgo de scope creep, lo advierte antes de continuar.
 - **Celebrar los hitos:** Al completar una fase importante, reconocerlo brevemente antes de seguir.
 - **Sin jerga innecesaria:** Adaptar el nivel de detalle según el sombrero con el que trabaje el usuario (negocio vs. técnico).

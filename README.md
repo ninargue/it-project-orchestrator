@@ -70,9 +70,9 @@ El agente preguntará:
 
 | Fase | Output en repositorio | Modo sin repositorio |
 |---|---|---|
-| **Discovery** | `docs/prd/<proyecto>.md`<br>`docs/prd/alcance-<sufijo>.md` | PRD v0.2 consensuado en chat |
-| **Historias** | `docs/backlog/<epica>/us-<historia>.md` | Historias INVEST Given/When/Then en chat |
-| **Tickets** | `docs/backlog/<epica>/tickets-<historia>.md`<br>`docs/backlog/backlog-priorizado.md` | Tickets técnicos, grafo y matriz en chat |
+| **Discovery** | `docs/prd/<NNNN>-alcance-<sufijo>.md`<br>`docs/prd/<NNNN>-<proyecto>-<sufijo>.md` | PRD v0.2 consensuado en chat |
+| **Historias** | `docs/backlog/<NNNN>-<proyecto>-<sufijo>/E<N>-<epica>/us-<historia>.md` | Historias INVEST Given/When/Then en chat |
+| **Tickets** | `docs/backlog/<NNNN>-<proyecto>-<sufijo>/E<N>-<epica>/tickets-<historia>.md`<br>`docs/backlog/<NNNN>-<proyecto>-<sufijo>/<NNNN>-backlog-priorizado.md` | Tickets técnicos, grafo y matriz en chat |
 | **Issues** | Issues creados en GitHub o Linear | Reporte con URLs / IDs creados |
 | **SDD** | `openspec/` (`specs/`, `changes/`) | Especificaciones de código |
 

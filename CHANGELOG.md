@@ -6,15 +6,24 @@ Versionado siguiendo [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [0.1.2] — 2026-11-09
+
+### Mejorado
+- **Concisión en chat:** Emisión de resúmenes ejecutivos con enlaces cuando hay repositorio, evitando volcar documentos completos.
+- **Contraste en Mermaid:** Estilos universales de alto contraste en diagramas de dependencias para temas oscuros y claros.
+- **Trazabilidad evolutiva:** Prefijo incremental `NNNN-` en alcance, PRD y backlog, con numeración continua de épicas (`E<N>`) e historias (`US-<XX>`).
+- **Agrupación y trazabilidad de backlog:** Encapsulación en subcarpetas homónimas al PRD (`docs/backlog/<NNNN>-<proyecto>-<sufijo>/`) con enlaces bidireccionales al PRD/alcance y enlaces directos a cada ticket en la tabla de sizing.
+- **Gobernanza de PRs y Git Flow:** Regla de Oro 11 en `AGENTS.md`, plantillas oficiales (`.github/`) y política de ramas estricta que exige ramas `release/*` o `hotfix/*` para `master`.
+- **Vinculación y dependencias de issues:** Mapeo explícito de jerarquía padre-hijo (con tasklist de progreso en historias) y dependencias entre tickets al materializar en GitHub/Linear.
+- **GitHub Projects v2 y vistas:** Paso opcional para vincular proyectos y generar vistas nativas (Roadmap, Kanban, Backlog) adaptadas a Scrum o Kanban.
+
+---
+
 ## [0.1.1] — 2026-11-09
 
 ### Corregido
-- **Límites duros de turno (Hard Turn Boundaries):**
-  - Se sustituyeron todas las pausas ambiguas (`⏸ PAUSA: Continuar al Paso X`) por directivas taxativas `🛑 FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO` en todos los pasos de `_skills/product-discovery/SKILL.md` (Pasos 0c–8) y `_skills/stories-to-tickets/SKILL.md` (Pasos 9–14).
-  - Se incorporó la **Regla de Oro 8** en `AGENTS.md` prohibiendo estrictamente la ejecución multi-paso en un solo turno ("runaway execution" o sesgo de autocompletado), la simulación de respuestas de usuario y el avance sin mensaje explícito.
-  - Se reforzó `orchestrator/ORCHESTRATOR.md` con prohibición explícita de ejecución en lote (`BATCH EXECUTION FORBIDDEN`).
-- **Compatibilidad con Antigravity:**
-  - Registro canónico de plugin en `plugin.json` y skill maestro en `_skills/it-project-orchestrator/SKILL.md`.
+- **Límites de turno:** Directivas taxativas de fin de turno obligatorio en pausas para evitar ejecución desatendida en lote.
+- **Compatibilidad Antigravity:** Registro canónico en `plugin.json` y skill maestro en `_skills/it-project-orchestrator/`.
 
 ---
 

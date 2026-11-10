@@ -44,7 +44,7 @@ Las vulnerabilidades de seguridad **no** se reportan como issue: ver [SECURITY.m
 
 | Rama | Propósito |
 |------|-----------|
-| `master` | Código en producción. Solo recibe PRs desde `develop`, `release/*` o `hotfix/*`. |
+| `master` | Código en producción. Solo recibe PRs desde `release/*` o `hotfix/*`. |
 | `develop` | Rama de integración. Las ramas de trabajo se mergean aquí antes de ir a `master`. |
 
 ### Reglas
