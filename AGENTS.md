@@ -13,7 +13,8 @@ Este proyecto es un sistema multi-agente agnóstico diseñado para cubrir el cic
    - `_skills/stories-to-tickets/`: Convierte historias en tickets técnicos atómicos de media jornada, genera grafo de dependencias, sizing, matriz de priorización y materializa issues en GitHub o Linear.
    - `orchestrator/`: Orquesta el ciclo completo punta a punta cuando un rol o agente tiene acceso total al proyecto y gestiona el versionado Git.
 2. **Ciclo de Desarrollo SDD (Specification-Driven Development):**
-   - `sdd/`: Implementación de código guiada por especificaciones técnicas rigurosas a partir de tickets priorizados del backlog.
+   - `_skills/sdd-init/`: Inicializa la estructura OpenSpec y `config.yaml` contextual en el repositorio de desarrollo sin instalar herramientas locales (usadas vía plugin).
+   - `sdd/`: Implementación de código guiada por especificaciones técnicas rigurosas a partir de tickets priorizados del backlog y especificaciones OpenSpec.
 
 ---
 
@@ -33,7 +34,7 @@ Según la elección, invocar el recurso correspondiente antes de continuar:
 - `[1]` → `_skills/product-discovery/SKILL.md`
 - `[2]` → `_skills/stories-to-tickets/SKILL.md`
 - `[3]` → `orchestrator/ORCHESTRATOR.md`
-- `[4]` → `sdd/README.md` (o skill de desarrollo correspondiente)
+- `[4]` → `_skills/sdd-init/SKILL.md` (o skill de desarrollo SDD correspondiente)
 
 ---
 

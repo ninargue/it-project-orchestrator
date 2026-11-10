@@ -6,6 +6,14 @@ Versionado siguiendo [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [Unreleased]
+
+### Añadido
+- **Skill de inicialización SDD (`_skills/sdd-init/`):** Automatiza la configuración de OpenSpec (`openspec/config.yaml`, carpetas `specs/` y `changes/`) en el repositorio de desarrollo sin instalar herramientas locales en el código, extrayendo el contexto del proyecto de forma inteligente.
+- **Integración OpenSpec en el orquestador:** Integración del ciclo de desarrollo guiado por especificaciones (SDD) vía plugin, vinculando la opción `[4]` de `AGENTS.md`.
+
+---
+
 ## [0.1.2] — 2026-11-09
 
 ### Mejorado
