@@ -114,6 +114,20 @@ Si un ticket técnico impacta 2 o más capas (ej. Base de Datos + Backend + Fron
      git commit -m "feat(<modulo>): implementacion fullstack para <ticket_id>"
      ```
 
+### 2.2. Decisión de Concurrencia: Invocación Paralela vs. Secuencial
+El orquestador evalúa el grafo de dependencias de la User Story o de las tareas del ticket para determinar la estrategia de despacho:
+
+1. **Invocación Secuencial Obligatoria (Pipeline):**
+   - Aplica cuando existe **dependencia de datos**: el output de un subagente es insumo directo del siguiente (ej. `db-architect-agent` genera `design.md` antes de que `db-developer-agent` escriba el DDL).
+   - Aplica cuando existe **acoplamiento técnico de capas**: la base de datos debe estar modelada y migrada antes de implementar lógica de persistencia en Backend.
+   - Aplica cuando existe una **pausa de validación humana obligatoria (HITL)** entre pasos.
+2. **Invocación Paralela (Fork-Join):**
+   - Aplica cuando dos o más subagentes realizan **tareas disjuntas y ortogonales** sin dependencias mutuas ni riesgo de colisión de archivos.
+   - *Auditorías multidimensionales concurrentes:* En fases de verificación, el orquestador puede lanzar en paralelo agentes de solo lectura sobre el mismo entregable (ej. `db-security-agent` auditando RLS/PII concurrentemente con `db-qa-agent` evaluando planes de ejecución).
+   - *Tareas paralelas de la US:* Tareas sin dependencia mutua (ej. maquetado visual en Frontend con interfaces mockeadas en paralelo con la definición de seeds en DB).
+3. **Barrera de Sincronización (Join Barrier):**
+   - Al despachar agentes en paralelo, el orquestador mantiene una barrera de sincronización: recopila todos los resultados y no avanza a la siguiente fase ni emite pausas al usuario hasta que todos los subagentes concurrentes hayan concluido sus análisis.
+
 3. **Archivado en OpenSpec y Commit de la Entrega (Ticket Mono-Capa):**
    - Al recibir la señal `[LISTO PARA COMMIT Y ARCHIVE] database/ openspec/changes/<change-name>/`:
      ```text
