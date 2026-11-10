@@ -6,6 +6,8 @@ trigger: "cuando el usuario elige rol [3] Ciclo completo en el punto de entrada"
 skills_invoked:
   - _skills/product-discovery/SKILL.md
   - _skills/stories-to-tickets/SKILL.md
+  - _skills/db-sdd/SKILL.md
+  - _skills/sdd-init/SKILL.md
 ---
 
 # Orquestador — Ciclo completo
@@ -76,6 +78,43 @@ Reglas generales, tono y convenciones de archivos: ver `AGENTS.md`.
    git add docs/backlog/
    git commit -m "feat: stories-to-tickets — tickets y backlog priorizado (<proyecto>)"
    ```
+
+---
+
+## FASE 3 — Ejecutar Desarrollo con SDD (OpenSpec & Dispatcher por Capa)
+
+> 🛑 **PROHIBIDO EJECUTAR EN LOTE:** Cada paso del ciclo de desarrollo requiere validación interactiva del usuario antes de continuar.
+
+1. **Verificación de Entorno OpenSpec:**
+   - Si `openspec/config.yaml` no existe en el repositorio de destino, invocar primero `_skills/sdd-init/SKILL.md` para inicializar el framework.
+2. **Selección del Ticket y Despacho:**
+   - Identificar el ticket técnico a implementar (desde `docs/backlog/**/tickets-*.md` o issue de GitHub).
+   - Analizar los metadatos o etiquetas del ticket:
+     - **Capa Base de Datos (`capa:db`):** Conducir `_skills/db-sdd/SKILL.md` paso a paso (Modelado ERD con `db-architect-agent` → Planificación de tareas con `db-developer-agent` → Implementación DDL/RLS → Validación mecánica determinista con `scripts/validate-db-migrations.ps1` → Auditoría adversarial con `db-qa-agent`).
+     - **Capa Backend (`capa:backend`):** Conducir el flujo SDD correspondiente para backend.
+     - **Capa Frontend (`capa:frontend`):** Conducir el flujo SDD correspondiente para frontend.
+3. **Archivado en OpenSpec y Commit de la Entrega:**
+   - Al recibir la señal `[LISTO PARA COMMIT Y ARCHIVE] database/ openspec/changes/<change-name>/`:
+     ```text
+     ⏸️ Ciclo SDD de Base de Datos completado y validado mediante DB-TDD.
+     Archivos:
+     - database/schemas/
+     - database/tests/
+     - database/migrations/
+     - database/security/
+     - database/seeds/
+     - database/reports/<change-name>-qa-report.md
+     - openspec/changes/<change-name>/
+
+     ¿Confirmás archivar el cambio en OpenSpec y realizar el commit?
+     ```
+   - Tras confirmación explícita del usuario:
+     1. Archivar el cambio en OpenSpec (mueve a `openspec/changes/archive/` y consolida en `openspec/specs/`).
+     2. Ejecutar el commit de Git:
+        ```bash
+        git add database/ openspec/
+        git commit -m "feat(db): schema, migraciones y tests para <ticket>"
+        ```
 
 ---
 

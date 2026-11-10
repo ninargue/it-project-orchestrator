@@ -34,7 +34,9 @@ Según la elección, invocar el recurso correspondiente antes de continuar:
 - `[1]` → `_skills/product-discovery/SKILL.md`
 - `[2]` → `_skills/stories-to-tickets/SKILL.md`
 - `[3]` → `orchestrator/ORCHESTRATOR.md`
-- `[4]` → `_skills/sdd-init/SKILL.md` (o skill de desarrollo SDD correspondiente)
+- `[4]` → Si `openspec/config.yaml` no existe en el repositorio de destino: `_skills/sdd-init/SKILL.md`. Si ya está inicializado, el orquestador solicita el ticket o requerimiento técnico y activa el **Dispatcher por Capa**:
+  - `capa:db` → `_skills/db-sdd/SKILL.md` (Ciclo SDD de Base de Datos con equipo multi-agente en `agents/db/`)
+  - `capa:backend` / `capa:frontend` → Ciclos SDD correspondientes
 
 ---
 
@@ -42,10 +44,12 @@ Según la elección, invocar el recurso correspondiente antes de continuar:
 
 | Tipo | Ubicación | Responsabilidad |
 |---|---|---|
-| **Subagentes** | `agents/<nombre>.md` | Definen la identidad, rol y guardrails permanentes de comportamiento especializado |
+| **Subagentes Core** | `agents/<nombre>.md` | Discovery, análisis de producto, backlog, tickets y materialización |
+| **Subagentes de Base de Datos** | `agents/db/<nombre>.md` | Equipo especializado de BD: Architect, Developer, Security DBA y QA Adversarial |
 | **Skills** | `_skills/<nombre>/SKILL.md` | Runbooks y procedimientos operativos paso a paso con interacción humana |
-| **Orquestador** | `orchestrator/ORCHESTRATOR.md` | Secuenciación de flujos completos punta a punta y gobernanza Git |
-| **Especificaciones SDD** | `sdd/` | Planes y especificaciones técnicas de desarrollo guiado |
+| **Orquestador** | `orchestrator/ORCHESTRATOR.md` | Secuenciación de flujos completos punta a punta, dispatching de tickets y gobernanza Git |
+| **Especificaciones SDD** | `openspec/` y `sdd/` | Framework OpenSpec, planes y especificaciones técnicas de desarrollo guiado |
+| **Scripts Deterministas** | `scripts/` | Validaciones mecánicas automatizadas (linters, checks de FKs, simetría up/down, RLS) |
 | **Templates** | `templates/` y `docs/` | Plantillas oficiales para issues (GitHub/Linear) y documentos (briefings, tool-config) |
 
 ---
@@ -119,6 +123,14 @@ El orquestador organiza los artefactos generados bajo una estructura canónica e
 │           └── E<N>-<epica>/
 │               ├── us-<historia>.md     # Historia INVEST (US-<XX>) con criterios Given/When/Then
 │               └── tickets-<historia>.md # Tickets técnicos atómicos (US-<XX>-T<N>) con checklist DoD
+├── database/                            # Ciclo de base de datos y migraciones
+│   ├── schemas/                         # Diagramas ERD Mermaid y diccionarios de datos
+│   ├── tests/                           # Suites de pruebas DB-TDD (<change-name>-test.sql)
+│   ├── migrations/                      # Migraciones versionadas <timestamp>_<nombre>.up.sql y .down.sql
+│   ├── security/                        # Políticas RLS y permisos DCL
+│   ├── seeds/                           # Fixtures de datos sintéticos DML
+│   └── reports/                         # Reportes de auditoría atómicos (<change-name>-qa-report.md)
+├── openspec/                            # Especificaciones OpenSpec (specs/, changes/, config.yaml)
 └── sdd/                                 # Specification-Driven Development (fase de desarrollo)
     └── <modulo-o-feature>/
         ├── spec.md                      # Especificación técnica detallada
@@ -163,8 +175,8 @@ El agente es un colaborador activo, empático y profesional, no un ejecutor aut�
 Cualquier agente o desarrollador que cree o modifique un Skill (`_skills/`), un Subagente (`agents/`) o el Orquestador (`orchestrator/`) DEBE cumplir estas invariantes para mantener inalterable el rendimiento y funcionamiento del sistema:
 
 ### 7.1. SSOT y Patrón Puntero (Anti-Prompt Drift)
-1. **Definición Canónica Única:** Todo subagente se define única y exclusivamente en `agents/<nombre>.md` con 3 secciones obligatorias: `1. Identidad y Misión`, `2. Invariantes y Guardrails Estrictos` y `3. Contratos de Ejecución (Inputs, Lógica, Formato de salida)`.
-2. **Espejo Puntero en `.claude/_agents/`:** Por cada `agents/<nombre>.md`, debe existir `.claude/_agents/<nombre>.md` que contenga **únicamente** el frontmatter YAML (`name`, `description`, `tools`) y la instrucción de una línea: `Lee y adopta estrictamente la identidad, rol, guardrails y contratos de ejecución definidos en el archivo canónico del agente: agents/<nombre>.md`. Prohibido duplicar el prompt.
+1. **Definición Canónica Única:** Todo subagente se define única y exclusivamente en `agents/<nombre>.md` o en subcarpetas especializadas por capa (`agents/db/<nombre>.md`, `agents/backend/`, etc.) con 3 secciones obligatorias: `1. Identidad y Misión`, `2. Invariantes y Guardrails Estrictos` y `3. Contratos de Ejecución (Inputs, Lógica, Formato de salida)`.
+2. **Espejo Puntero en `.claude/_agents/`:** Por cada archivo en `agents/`, debe existir `.claude/_agents/<nombre>.md` (o subcarpeta homóloga `.claude/_agents/db/<nombre>.md`) que contenga **únicamente** el frontmatter YAML (`name`, `description`, `tools`) y la instrucción de una línea: `Lee y adopta estrictamente la identidad, rol, guardrails y contratos de ejecución definidos en el archivo canónico del agente: agents/<capa>/<nombre>.md`. Prohibido duplicar el prompt.
 3. **Desacoplamiento Skill ↔ Agente:** Los archivos `_skills/<skill>/SKILL.md` NO deben contener el prompt del sistema del subagente; solo especifican en qué paso se invoca, qué archivos/variables recibe como input y cómo se persiste o valida su salida.
 
 ### 7.2. Matriz de Mínimo Privilegio (Permisos y Herramientas)

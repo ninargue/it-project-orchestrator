@@ -9,6 +9,14 @@ Versionado siguiendo [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Añadido
+- **Sistema Multi-Agente de Base de Datos (`agents/db/`):** 4 subagentes especializados con arquitectura SSOT, mínimo privilegio y punteros espejo en `.claude/_agents/db/`:
+  - `db-architect-agent`: Exploración de esquemas vivos, propuesta formal (`proposal.md` con *Non-goals* y riesgos de compatibilidad), modelado ERD Mermaid de alto contraste, diccionario de datos físico y desglose de tareas ordenadas topológicamente (`tasks.md`).
+  - `db-developer-agent`: Ejecución de la fase Apply de OpenSpec, generando migraciones SQL simétricas e idempotentes (`up.sql`/`down.sql`) y seeds sintéticos DML coherentes con FKs.
+  - `db-security-agent`: Shift-left de seguridad, políticas Row-Level Security (RLS) granulares con índices de soporte, roles/grants DCL de mínimo privilegio y auditoría.
+  - `db-qa-agent`: Metodología **DB-TDD** con generación de suite de pruebas unitarias (`database/tests/<change-name>-test.sql`), drift check estricto (Design vs SQL), missing indexes en FKs, simulación de planes EXPLAIN y reportes de QA atómicos e inmutables (`database/reports/<change-name>-qa-report.md`).
+- **Skill de Ciclo SDD de Base de Datos (`_skills/db-sdd/`):** Runbook paso a paso que implementa el ciclo Spec-First de OpenSpec (Propose → DB-TDD → Apply → Verify) para bases de datos relacionales con límites duros de fin de turno (`🛑 FIN DE TURNO OBLIGATORIO`).
+- **Validaciones Mecánicas Deterministas (`scripts/validate-db-migrations.ps1`):** Script PowerShell de verificación automática (simetría de migraciones, reversibilidad de tablas, índices obligatorios en FKs, activación de RLS y escaneo de campos sensibles PII).
+- **Enrutador de Tickets y Gobernanza de Archivado en el Orquestador:** Dispatcher inteligente en `orchestrator/ORCHESTRATOR.md` y `AGENTS.md` que identifica el área del ticket (`capa:db`, `capa:backend`, `capa:frontend`), canaliza a `_skills/db-sdd/SKILL.md` y gobierna el archivado formal de OpenSpec (`opsx:archive`) y el commit en Git.
 - **Skill de inicialización SDD (`_skills/sdd-init/`):** Automatiza la configuración de OpenSpec (`openspec/config.yaml`, carpetas `specs/` y `changes/`) en el repositorio de desarrollo sin instalar herramientas locales en el código, extrayendo el contexto del proyecto de forma inteligente.
 - **Integración OpenSpec en el orquestador:** Integración del ciclo de desarrollo guiado por especificaciones (SDD) vía plugin, vinculando la opción `[4]` de `AGENTS.md`.
 
