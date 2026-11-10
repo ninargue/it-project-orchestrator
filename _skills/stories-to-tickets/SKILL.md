@@ -162,12 +162,12 @@ detectar `prefijo_avance` inspeccionando `docs/prd/` y `docs/backlog/` (o asigna
 - **Tarea:**
   - **Si `tiene_repositorio = true`:** Escribir en disco:
     1. `docs/backlog/<prefijo_avance>-<proyecto>-<sufijo>/E<N>-<nombre-epica>/tickets-<nombre-historia>.md`: Un archivo por cada historia con sus tickets (`US-<XX>-T<N>`), DoD, talla y riesgo.
-    2. `docs/backlog/<prefijo_avance>-<proyecto>-<sufijo>/<prefijo_avance>-backlog-priorizado.md`: Grafo Mermaid con alto contraste, orden de implementación, matriz impacto/complejidad y orden priorizado de esta entrega.
+    2. `docs/backlog/<prefijo_avance>-<proyecto>-<sufijo>/<prefijo_avance>-backlog-priorizado.md`: Debe incluir en su encabezado el enlace y referencia al PRD correspondiente (`> PRD de referencia: [docs/prd/<prefijo_avance>-<proyecto>-<sufijo>.md](../../prd/<prefijo_avance>-<proyecto>-<sufijo>.md)`), seguido del grafo Mermaid con alto contraste, orden de implementación, matriz impacto/complejidad y orden priorizado de esta entrega.
     En el chat: mostrar únicamente un **resumen estructurado** de archivos generados con sus enlaces, tabla de historias con cantidad de tickets y tallas consolidadas. **QUEDA TERMINANTEMENTE PROHIBIDO volcar el contenido íntegro de todos los tickets en el chat**.
     Avisar al orquestador con: `[LISTO PARA COMMIT] docs/backlog/<prefijo_avance>-<proyecto>-<sufijo>/ completo.`
   - **Si `tiene_repositorio = false`:** Mostrar en conversación los dos bloques markdown listos para cuando el usuario cree el repositorio:
     1. `tickets-<sufijo>.md`: Todos los tickets por historia.
-    2. `<prefijo_avance>-backlog-priorizado-<sufijo>.md`: Grafo, orden de implementación, matriz y orden priorizado.
+    2. `<prefijo_avance>-backlog-priorizado-<sufijo>.md`: Con referencia al PRD (`> PRD de referencia: <prefijo_avance>-<proyecto>-<sufijo>.md`), grafo, orden de implementación, matriz y orden priorizado.
     Avisar al orquestador con: `[LISTO PARA REVISIÓN] Backlog completo en conversación — confirmá para continuar al Paso 14.`
 
 **🛑 FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:**
@@ -246,7 +246,8 @@ Mostrar en la conversación el markdown completo listo para usar:
 [todos los tickets por historia, con DoD, talla y riesgo — formato del Paso 9]
 
 ---
-## backlog-priorizado-<sufijo>.md
+## <prefijo_avance>-backlog-priorizado-<sufijo>.md
+> PRD de referencia: docs/prd/<prefijo_avance>-<proyecto>-<sufijo>.md
 [grafo de dependencias, orden de implementación, matriz impacto/complejidad, orden de backlog]
 ```
 
@@ -262,8 +263,8 @@ Resumen:
 
 Los archivos están listos en la conversación.
 Cuando crees el repositorio del proyecto, guardá estos archivos en:
-  docs/backlog/<E-epica>/tickets-<historia>.md
-  docs/backlog/backlog-priorizado.md
+  docs/backlog/<prefijo_avance>-<proyecto>-<sufijo>/E<N>-<epica>/tickets-<historia>.md
+  docs/backlog/<prefijo_avance>-<proyecto>-<sufijo>/<prefijo_avance>-backlog-priorizado.md
 
 Próximos pasos sugeridos:
 1. Crear el repositorio del proyecto y versionar los archivos generados

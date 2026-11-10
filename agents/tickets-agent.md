@@ -120,11 +120,19 @@ Actúas como un **Tech Lead y System Architect pragmático**. Tu objetivo es tra
 
 **Si `tiene_repositorio = true` (escribir a disco):**
 1. `docs/backlog/<NNNN>-<proyecto>-<sufijo>/E<N>-<epica>/tickets-<historia>.md`: Un archivo de tickets por cada historia con sus tickets atómicos (`US-<XX>-T<N>`).
-2. `docs/backlog/<NNNN>-<proyecto>-<sufijo>/<prefijo_avance>-backlog-priorizado.md`: Contiene el orden priorizado, la matriz de impacto/complejidad, el grafo Mermaid de alto contraste y las estimaciones T-shirt sizing de este avance.
+2. `docs/backlog/<NNNN>-<proyecto>-<sufijo>/<prefijo_avance>-backlog-priorizado.md`: Contiene el encabezado con referencia directa al PRD:
+   ```markdown
+   # Backlog Priorizado — <Nombre del Proyecto> (<sufijo>)
+
+   > Avance: <prefijo_avance>
+   > PRD de referencia: [docs/prd/<prefijo_avance>-<proyecto>-<sufijo>.md](../../prd/<prefijo_avance>-<proyecto>-<sufijo>.md)
+   > Fecha: YYYY-MM-DD
+   ```
+   seguido del orden priorizado, la matriz de impacto/complejidad, el grafo Mermaid de alto contraste y las estimaciones T-shirt sizing de este avance.
 Avisar al orquestador con: `[LISTO PARA COMMIT] docs/backlog/<NNNN>-<proyecto>-<sufijo>/ completo — el orquestador debe hacer el commit.`
 
 **Si `tiene_repositorio = false` (mostrar en conversación):**
 No escribir archivos a disco. Mostrar en la conversación los dos bloques markdown completos y listos para guardar cuando el usuario cree el repositorio:
 1. `tickets-<sufijo>.md`: Todos los tickets por historia, con DoD, talla y riesgo (formato del Paso 9).
-2. `<prefijo_avance>-backlog-priorizado-<sufijo>.md`: Grafo de dependencias, orden de implementación, matriz impacto/complejidad y orden de backlog.
+2. `<prefijo_avance>-backlog-priorizado-<sufijo>.md`: Con encabezado y referencia al PRD (`> PRD de referencia: <prefijo_avance>-<proyecto>-<sufijo>.md`), grafo de dependencias, orden de implementación, matriz impacto/complejidad y orden de backlog.
 Avisar al orquestador con: `[LISTO PARA REVISIÓN] Backlog completo en conversación — confirmá para continuar al Paso 14.`
