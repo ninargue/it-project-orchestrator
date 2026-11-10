@@ -87,14 +87,44 @@ Reglas generales, tono y convenciones de archivos: ver `AGENTS.md`.
 
 1. **Verificación de Entorno OpenSpec:**
    - Si `openspec/config.yaml` no existe en el repositorio de destino, invocar primero `_skills/sdd-init/SKILL.md` para inicializar el framework.
-2. **Selección del Ticket y Despacho:**
+2. **Selección del Ticket y Análisis de Capas:**
    - Identificar el ticket técnico a implementar (desde `docs/backlog/**/tickets-*.md` o issue de GitHub).
-   - Analizar los metadatos o etiquetas del ticket:
+   - Analizar los metadatos, etiquetas y criterios del ticket para determinar:
+     - Capas involucradas (`capa:db`, `capa:backend`, `capa:frontend`).
+     - Si es **Mono-capa** (impacta una sola área) o **Multi-capa** (impacta 2 o más áreas).
+     - Dependencias técnicas entre tareas para fijar la estrategia de concurrencia (secuencial vs. paralelo).
+
+3. **Presentación y Validación del Plan de Ejecución (HITL Obligatorio):**
+   - **ANTES de lanzar cualquier skill o subagente**, el orquestador DEBE elaborar y presentar al usuario el **Plan de Ejecución Formal** para su aprobación explícita:
+
+   ```text
+   📋 Plan de Ejecución Propuesto — Ticket <ticket_id>
+   - Objetivo: <título / descripción breve del ticket>
+   - Alcance: <Mono-capa / Multi-capa>
+   - Capas afectadas: <Lista de capas: BD, Backend, Frontend>
+   
+   Ruta de Ejecución Planificada:
+     1. [<Secuencial/Paralelo>] <Capa 1>: <Skill y subagentes que intervienen>
+        → Subcarpeta OpenSpec: openspec/changes/<ticket_id>-<capa>/
+        → Entregables clave esperados
+     2. [<Secuencial/Paralelo>] <Capa 2>: <Skill y subagentes que intervienen>
+        → Subcarpeta OpenSpec: openspec/changes/<ticket_id>-<capa>/
+        → Entregables clave esperados
+   - Validaciones: <Linters deterministas, DB-TDD, tests unitarios>
+   - Cierre: <Archivado OpenSpec (Archive / Bulk Archive) + Commit Git>
+
+   ¿Confirmas este plan de ejecución para comenzar con la primera fase?
+   ```
+
+   🛑 **FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:** Detén tu turno aquí y espera la confirmación explícita del usuario antes de proceder a la ejecución.
+
+4. **Despacho y Ejecución por Capa:**
+   - Una vez aprobado el plan:
      - **Capa Base de Datos (`capa:db`):** Conducir `_skills/db-sdd/SKILL.md` paso a paso (Modelado ERD con `db-architect-agent` → Planificación de tareas con `db-developer-agent` → Implementación DDL/RLS → Validación mecánica determinista con `scripts/validate-db-migrations.ps1` → Auditoría adversarial con `db-qa-agent`).
      - **Capa Backend (`capa:backend`):** Conducir el flujo SDD correspondiente para backend.
      - **Capa Frontend (`capa:frontend`):** Conducir el flujo SDD correspondiente para frontend.
 
-### 2.1. Gestión de Tickets Multi-Capa (Cross-Cutting / Fullstack)
+#### 4.1. Gestión de Tickets Multi-Capa (Cross-Cutting / Fullstack)
 Si un ticket técnico impacta 2 o más capas (ej. Base de Datos + Backend + Frontend):
 1. **Nomenclatura Canónica en OpenSpec (`openspec/changes/`):**
    El orquestador instruye generar una carpeta de cambio independiente por cada capa afectada, compartiendo el identificador único del ticket:
@@ -114,7 +144,7 @@ Si un ticket técnico impacta 2 o más capas (ej. Base de Datos + Backend + Fron
      git commit -m "feat(<modulo>): implementacion fullstack para <ticket_id>"
      ```
 
-### 2.2. Decisión de Concurrencia: Invocación Paralela vs. Secuencial
+#### 4.2. Decisión de Concurrencia: Invocación Paralela vs. Secuencial
 El orquestador evalúa el grafo de dependencias de la User Story o de las tareas del ticket para determinar la estrategia de despacho:
 
 1. **Invocación Secuencial Obligatoria (Pipeline):**
@@ -128,7 +158,7 @@ El orquestador evalúa el grafo de dependencias de la User Story o de las tareas
 3. **Barrera de Sincronización (Join Barrier):**
    - Al despachar agentes en paralelo, el orquestador mantiene una barrera de sincronización: recopila todos los resultados y no avanza a la siguiente fase ni emite pausas al usuario hasta que todos los subagentes concurrentes hayan concluido sus análisis.
 
-3. **Archivado en OpenSpec y Commit de la Entrega (Ticket Mono-Capa):**
+5. **Archivado en OpenSpec y Commit de la Entrega (Ticket Mono-Capa):**
    - Al recibir la señal `[LISTO PARA COMMIT Y ARCHIVE] database/ openspec/changes/<change-name>/`:
      ```text
      ⏸️ Ciclo SDD de Base de Datos completado y validado mediante DB-TDD.
