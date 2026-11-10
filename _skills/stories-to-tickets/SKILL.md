@@ -195,12 +195,18 @@ detectar `prefijo_avance` inspeccionando `docs/prd/` y `docs/backlog/` (o asigna
   ```
 
 **Invocación del subagente:**
-- **Fuente de datos:** Configuración de herramienta + historias + tickets.
+- **Fuente de datos:** Configuración de herramienta + historias + tickets + grafo de dependencias.
 - **Tarea:**
-  - Ejecutar la creación de forma estrictamente SECUENCIAL (primero padres, luego hijos).
+  - Ejecutar la creación de forma estrictamente SECUENCIAL (primero historias padre, luego tickets hijos).
+  - **Jerarquía Padre-Hijo:**
+    - GitHub: cada ticket lleva en su cuerpo `Historia padre: #<id_padre>`. Al finalizar los tickets de cada historia, actualizar el issue padre agregando la checklist Markdown (`- [ ] #<id_ticket> ...`) para activar la barra de progreso nativa de tareas en GitHub.
+    - Linear: asignar `parentId` para anidar los tickets como sub-issues nativos.
+  - **Dependencias entre Tickets:**
+    - GitHub: traducir los IDs lógicos del grafo a los números de issue reales (`Bloquea: #<id>`, `Bloqueado por: #<id>`) generando hipervínculos cruzados automáticos.
+    - Linear: registrar relaciones nativas de dependencia (`blocks` / `blocked_by`).
   - Si es GitHub, verificar si existen `.github/ISSUE_TEMPLATE/story.yml` y `ticket.yml` en el proyecto; si faltan, copiarlos desde `<raíz del plugin>/templates/github/`. Al invocar al subagente, sustituir `<raíz del plugin>` por la ruta absoluta: el subagente no la conoce.
   - Aplicar milestones y labels según Scrum o Kanban.
-  - Generar y devolver el reporte consolidado con tabla de issues creados, sus IDs y URLs.
+  - Generar y devolver el reporte consolidado con tabla de issues creados, sus IDs, dependencias y URLs.
 
 **🛑 FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:**
 1. Pregunta al usuario antes de crear los issues:
