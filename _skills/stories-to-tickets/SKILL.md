@@ -40,11 +40,12 @@ Este skill recibe del Skill 1 (product-discovery) las siguientes variables en me
 | Variable | Valores | Uso en este skill |
 |---|---|---|
 | `tiene_repositorio` | `true` / `false` | Determina si se escribe a disco o se trabaja en conversación |
+| `prefijo_avance` | ej: `0001`, `0002` | Prefijo numérico incremental de la entrega/avance |
 | `sufijo` | ej: `registro-ventas-mvp` | Nombre de archivos generados |
 | `tipo_proyecto` | `greenfield` / `brownfield` | Contexto para tickets |
 
 Si alguna de estas variables no está en memoria de sesión (usuario entró directo al Skill 2),
-preguntar al inicio:
+detectar `prefijo_avance` inspeccionando `docs/prd/` y `docs/backlog/` (o asignar `0001` si no hay previos) y preguntar al inicio:
 ```
 1. Repositorio de destino:
    a) Sí (escribir archivos en el repositorio del proyecto)
@@ -160,13 +161,13 @@ preguntar al inicio:
 - **Input:** Todo el backlog consensuado en los Pasos 9 al 12.
 - **Tarea:**
   - **Si `tiene_repositorio = true`:** Escribir en disco:
-    1. `docs/backlog/<E-nombre-epica>/tickets-<nombre-historia>.md`: Un archivo por cada historia con sus tickets, DoD, talla y riesgo.
-    2. `docs/backlog/backlog-priorizado.md`: Grafo Mermaid, orden de implementación, matriz impacto/complejidad y orden priorizado.
+    1. `docs/backlog/E<N>-<nombre-epica>/tickets-<nombre-historia>.md`: Un archivo por cada historia con sus tickets (`US-<XX>-T<N>`), DoD, talla y riesgo.
+    2. `docs/backlog/<prefijo_avance>-backlog-priorizado.md`: Grafo Mermaid con alto contraste, orden de implementación, matriz impacto/complejidad y orden priorizado de esta entrega.
     En el chat: mostrar únicamente un **resumen estructurado** de archivos generados con sus enlaces, tabla de historias con cantidad de tickets y tallas consolidadas. **QUEDA TERMINANTEMENTE PROHIBIDO volcar el contenido íntegro de todos los tickets en el chat**.
     Avisar al orquestador con: `[LISTO PARA COMMIT] docs/backlog/ completo.`
   - **Si `tiene_repositorio = false`:** Mostrar en conversación los dos bloques markdown listos para cuando el usuario cree el repositorio:
     1. `tickets-<sufijo>.md`: Todos los tickets por historia.
-    2. `backlog-priorizado-<sufijo>.md`: Grafo, orden de implementación, matriz y orden priorizado.
+    2. `<prefijo_avance>-backlog-priorizado-<sufijo>.md`: Grafo, orden de implementación, matriz y orden priorizado.
     Avisar al orquestador con: `[LISTO PARA REVISIÓN] Backlog completo en conversación — confirmá para continuar al Paso 14.`
 
 **🛑 FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:**

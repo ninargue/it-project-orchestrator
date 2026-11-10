@@ -232,8 +232,15 @@ Si el usuario ya proporcionó su idea, pitch o requerimiento (producto nuevo, nu
 
 Primer archivo que se escribe a disco.
 
+**Determinación del prefijo de avance (`NNNN`):**
+- Si `tiene_repositorio = true`, inspeccionar `docs/prd/` y `docs/backlog/` para detectar el mayor prefijo numérico existente de 4 dígitos (`0001-`, `0002-`, etc.).
+  - Si no existen archivos previos, asignar `prefijo_avance = 0001`.
+  - Si ya existen, calcular el siguiente correlativo (ej. si el máximo es `0001`, asignar `0002`).
+  - Guardar `prefijo_avance` en memoria de sesión para los archivos de esta iniciativa.
+- Si `tiene_repositorio = false`, asignar `prefijo_avance = 0001` (o preguntar si corresponde a una segunda entrega).
+
 Proponer un sufijo basado en el requerimiento trabajado en el discovery (2-4 palabras en kebab-case que resuman el pedido):
-`"Para los archivos usaría el sufijo '<sufijo-sugerido>' — por ejemplo: registro-ventas-mvp, auth-usuarios-v1. ¿Lo usamos o preferís otro?"`
+`"Para los archivos usaría el identificador '<prefijo_avance>-alcance-<sufijo-sugerido>' — por ejemplo: 0001-alcance-registro-ventas-mvp. ¿Lo usamos o preferís otro sufijo?"`
 
 Esperar confirmación o ajuste del usuario antes de continuar.
 
@@ -244,7 +251,7 @@ Reglas de consolidación:
 - Exclusividad de alcance: NO incluir épicas, historias, métricas de éxito, arquitectura
   ni requisitos no funcionales (eso pertenece estrictamente al Paso 5 — PRD).
 
-Generar `docs/prd/alcance-<sufijo>.md`:
+Generar `docs/prd/<prefijo_avance>-alcance-<sufijo>.md`:
 
 ```markdown
 # Alcance — <Nombre del Proyecto> (<sufijo>)
@@ -272,9 +279,9 @@ Generar `docs/prd/alcance-<sufijo>.md`:
 ```
 
 **Si `tiene_repositorio = true`:**
-- Escribir `docs/prd/alcance-<sufijo>.md` a disco.
-- En el chat: mostrar únicamente un **resumen ejecutivo** (capacidades clave en IN, exclusiones justificadas en OUT, supuestos críticos) y el enlace al archivo generado `[docs/prd/alcance-<sufijo>.md](file:///...)`. **QUEDA TERMINANTEMENTE PROHIBIDO volcar el texto completo del markdown en el mensaje de chat**.
-- Avisar: `[LISTO PARA COMMIT] docs/prd/alcance-<sufijo>.md`
+- Escribir `docs/prd/<prefijo_avance>-alcance-<sufijo>.md` a disco.
+- En el chat: mostrar únicamente un **resumen ejecutivo** (capacidades clave en IN, exclusiones justificadas en OUT, supuestos críticos) y el enlace al archivo generado `[docs/prd/<prefijo_avance>-alcance-<sufijo>.md](file:///...)`. **QUEDA TERMINANTEMENTE PROHIBIDO volcar el texto completo del markdown en el mensaje de chat**.
+- Avisar: `[LISTO PARA COMMIT] docs/prd/<prefijo_avance>-alcance-<sufijo>.md`
 
 **Si `tiene_repositorio = false`:**
 - Mostrar el contenido completo en la conversación para revisión previa a la generación de PDFs. No escribir a disco. Las correcciones se hacen en el chat.
@@ -290,17 +297,22 @@ Generar `docs/prd/alcance-<sufijo>.md`:
 ## PASO 5 — Generar PRD
 
 **Fuente de entrada:**
-- Si `tiene_repositorio = true`: leer desde disco `docs/prd/alcance-<sufijo>.md`. No usar el contexto volátil de la conversación.
+- Si `tiene_repositorio = true`: leer desde disco `docs/prd/<prefijo_avance>-alcance-<sufijo>.md`. No usar el contexto volátil de la conversación.
 - Si `tiene_repositorio = false`: tomar como base el alcance consensuado en el Paso 4 de la conversación.
 
-Generar el PRD para la iniciativa (MVP, nueva feature o mejora) en `docs/prd/<proyecto>-<sufijo>.md`:
+**Detección de épicas existentes (Numeración incremental continua):**
+- Si `tiene_repositorio = true`, inspeccionar `docs/backlog/` (carpetas `E*-*`) y los PRDs en `docs/prd/` para detectar la última épica numerada (`E1`, `E2`, `E3`, etc.).
+- Las nuevas épicas derivadas del alcance IN deben continuar la correlación numérica (ej: si la última existente es `E3`, las nuevas de esta entrega serán `E4`, `E5`, ...).
+- Si no existen épicas previas en el proyecto, comenzar en `E1`.
+
+Generar el PRD para la iniciativa (MVP, nueva feature o mejora) en `docs/prd/<prefijo_avance>-<proyecto>-<sufijo>.md`:
 
 ```markdown
 # PRD — <Nombre del Proyecto> (<sufijo>)
 
 > Versión: 0.1 (borrador)
 > Fecha: YYYY-MM-DD
-> Basado en: docs/prd/alcance-<sufijo>.md
+> Basado en: docs/prd/<prefijo_avance>-alcance-<sufijo>.md
 
 ## 1. Problema y contexto
 <texto concreto — sin cifras de mercado inventadas>
@@ -321,9 +333,9 @@ Generar el PRD para la iniciativa (MVP, nueva feature o mejora) en `docs/prd/<pr
 | <item idéntico al Paso 4> | <razón> |
 
 ## 5. Épicas del alcance
-> Derivadas 1:1 de las capacidades del bloque IN. El usuario puede recortar este listado.
-- E1: <nombre>
-- E2: <nombre>
+> Derivadas 1:1 de las capacidades del bloque IN, numeradas incrementalmente a partir de las existentes.
+- E<N>: <nombre>
+- E<N+1>: <nombre>
 ...
 
 ## 6. Requisitos no funcionales
@@ -350,9 +362,9 @@ Generar el PRD para la iniciativa (MVP, nueva feature o mejora) en `docs/prd/<pr
 - **Concreto y testeable:** No inventar cifras de mercado; todo supuesto no confirmado va con `[SUPUESTO]`.
 
 **Si `tiene_repositorio = true`:**
-- Escribir `docs/prd/<proyecto>-<sufijo>.md` a disco.
-- En el chat: mostrar únicamente un **resumen ejecutivo estructurado** (tabla/lista de épicas derivadas 1:1, supuestos críticos, RNF clave) y el enlace al archivo generado `[docs/prd/<proyecto>-<sufijo>.md](file:///...)`. **QUEDA TERMINANTEMENTE PROHIBIDO volcar el texto completo del PRD en el mensaje de chat**.
-- Avisar: `[LISTO PARA COMMIT] docs/prd/<proyecto>-<sufijo>.md`
+- Escribir `docs/prd/<prefijo_avance>-<proyecto>-<sufijo>.md` a disco.
+- En el chat: mostrar únicamente un **resumen ejecutivo estructurado** (tabla/lista de épicas derivadas 1:1, supuestos críticos, RNF clave) y el enlace al archivo generado `[docs/prd/<prefijo_avance>-<proyecto>-<sufijo>.md](file:///...)`. **QUEDA TERMINANTEMENTE PROHIBIDO volcar el texto completo del PRD en el mensaje de chat**.
+- Avisar: `[LISTO PARA COMMIT] docs/prd/<prefijo_avance>-<proyecto>-<sufijo>.md`
 
 **Si `tiene_repositorio = false`:**
 - Mostrar el PRD completo en la conversación para revisión previa a la generación de PDFs. No escribir a disco. Las correcciones se hacen en el chat.
@@ -370,7 +382,7 @@ Generar el PRD para la iniciativa (MVP, nueva feature o mejora) en `docs/prd/<pr
 
 **Invocación del subagente:**
 - **Fuente del PRD:**
-  - Si `tiene_repositorio = true`: leer `docs/prd/<proyecto>-<sufijo>.md` desde disco.
+  - Si `tiene_repositorio = true`: leer `docs/prd/<prefijo_avance>-<proyecto>-<sufijo>.md` desde disco.
   - Si `tiene_repositorio = false`: usar el PRD consensuado en la conversación (Paso 5).
 - **Tarea:** Atacar el PRD evaluando supuestos asesinos, ambigüedades funcionales, scope creep oculto y métricas de vanidad, emitiendo el informe de hallazgos clasificados por riesgo (🔴 Alto, 🟡 Medio, 🟢 Menor) y preguntas clave para consolidar la v0.2.
 
@@ -381,7 +393,7 @@ Generar el PRD para la iniciativa (MVP, nueva feature o mejora) en `docs/prd/<pr
 
 Tras confirmación explícita del usuario:
 - Si `tiene_repositorio = true`: actualizar el archivo en disco.
-  `[LISTO PARA COMMIT] docs/prd/<proyecto>-<sufijo>.md (v0.2)`
+  `[LISTO PARA COMMIT] docs/prd/<prefijo_avance>-<proyecto>-<sufijo>.md (v0.2)`
 - Si `tiene_repositorio = false`: mostrar el PRD actualizado completo en la conversación para que el usuario confirme antes de avanzar al Paso 7.
 
 ---
@@ -392,8 +404,11 @@ Tras confirmación explícita del usuario:
 
 **Invocación del subagente:**
 - **Fuente del PRD:**
-  - Si `tiene_repositorio = true`: leer desde disco `docs/prd/<proyecto>-<sufijo>.md`.
+  - Si `tiene_repositorio = true`: leer desde disco `docs/prd/<prefijo_avance>-<proyecto>-<sufijo>.md`.
   - Si `tiene_repositorio = false`: usar el PRD confirmado en la conversación (Paso 5/6).
+- **Numeración incremental continua de historias (`US-<XX>`):**
+  - Si `tiene_repositorio = true`: inspeccionar `docs/backlog/**/us-*.md` para detectar el último código numérico existente (ej: `US-06`). Las nuevas historias continúan correlativamente (`US-07`, `US-08`, etc.) con padding de dos dígitos.
+  - Si no existen historias previas en el proyecto, comenzar en `US-01`.
 - **Tarea:** Descomponer las épicas en historias de usuario formato INVEST (`"Como <rol>, quiero <acción> para <beneficio>"`), auto-validando contra el alcance y marcando explícitamente `[FUERA DE ALCANCE]` las que no correspondan.
 
 **🛑 FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:**
@@ -413,7 +428,7 @@ Tras confirmación explícita del usuario:
 - **Tarea:** Redactar criterios Given/When/Then como reglas de negocio observables (camino feliz y edge cases; marcar `[PROPUESTO]` los propios), sin endpoints ni status codes.
 - **Persistencia o entrega:**
   - **Si `tiene_repositorio = true`:**
-    - Escribir en disco cada historia en `docs/backlog/<E-nombre-epica>/us-<nombre-historia>.md`.
+    - Escribir en disco cada historia en `docs/backlog/E<N>-<nombre-epica>/us-<nombre-historia>.md`.
     - En el chat: mostrar únicamente una **tabla resumen de historias generadas** (ID, Épica, Título, Cantidad de criterios G/W/T, Supuestos) y enlaces a los archivos en disco. **QUEDA TERMINANTEMENTE PROHIBIDO volcar el contenido completo de los archivos `us-*.md` en el chat**.
     - Avisar: `[LISTO PARA REVISIÓN] Historias guardadas en docs/backlog/. Pedir al usuario que las revise en los archivos o indique cambios en el chat.`
   - **Si `tiene_repositorio = false`:**
@@ -440,13 +455,13 @@ Al completar el Paso 8 y recibir confirmación del usuario:
 ✅ product-discovery completado.
 
 Archivos generados:
-- docs/prd/alcance-<sufijo>.md
-- docs/prd/<proyecto>-<sufijo>.md
-- docs/backlog/<E-epica>/us-*.md (<N> historias)
+- docs/prd/<prefijo_avance>-alcance-<sufijo>.md
+- docs/prd/<prefijo_avance>-<proyecto>-<sufijo>.md
+- docs/backlog/E<N>-<epica>/us-*.md (<N> historias)
 
 Próximo paso: stories-to-tickets (Pasos 9–14)
 Lo corre el tech lead o dev senior con acceso al repo completo.
-Input requerido: docs/backlog/<E-epica>/us-*.md
+Input requerido: docs/backlog/E<N>-<epica>/us-*.md
 ```
 
 **Si `tiene_repositorio = false`:**

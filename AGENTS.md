@@ -76,6 +76,12 @@ Según la elección, invocar el recurso correspondiente antes de continuar:
      - El chat debe contener únicamente un **resumen ejecutivo de alto nivel**: enlace al archivo generado (`[archivo.md](file:///...)`), métricas clave (cantidad de épicas/historias/tickets), supuestos o exclusiones críticas a validar, y la pregunta de validación.
    - **Si `tiene_repositorio = false` (modo conversación / PDF):**
      - El contenido completo sí se muestra en el chat, ya que no existe persistencia local en disco y el usuario necesita leerlo para validar y para la generación posterior de los PDFs entregables.
+10. **Numeración Incremental y Trazabilidad Evolutiva (Sin Colisiones):**
+    Para soportar proyectos evolutivos con múltiples entregas, features o sprints sucesivos sin sobrescritura de archivos ni IDs repetidos:
+    - **Prefijo de Avance (`NNNN-`):** Antes de crear archivos, inspeccionar `docs/prd/` y `docs/backlog/` para detectar el mayor prefijo numérico existente de 4 dígitos (`0001-`, `0002-`, etc.). Si no hay ninguno previo, arrancar en `0001-`. Todo archivo de alcance, PRD y backlog priorizado debe llevar este prefijo (`docs/prd/<NNNN>-alcance-<sufijo>.md`, `docs/prd/<NNNN>-<proyecto>-<sufijo>.md`, `docs/backlog/<NNNN>-backlog-priorizado.md`).
+    - **Épicas Incrementales (`E<N>`):** Al definir épicas en el PRD, inspeccionar `docs/backlog/` y PRDs previos para detectar la última épica numerada (`E1`, `E2`, etc.). Las nuevas épicas continúan correlativamente (`E3`, `E4`, ...) para evitar colisiones entre avances.
+    - **Historias de Usuario (`US-<XX>`):** Al descomponer historias, inspeccionar `docs/backlog/**/us-*.md` para obtener el último código `US-<XX>`. Las nuevas historias continúan correlativamente (`US-07`, `US-08`, ...) garantizando unicidad global en el proyecto.
+    - **Tickets Atómicos (`US-<XX>-T<N>`):** Heredan el ID unívoco de su historia padre, garantizando unicidad y evitando duplicados en GitHub Issues y Linear.
 
 ---
 
@@ -91,13 +97,13 @@ El orquestador organiza los artefactos generados bajo una estructura canónica e
 │   ├── tech-briefing.md                 # Contexto técnico inicial (brownfield)
 │   ├── kickoff-brief.md                 # Contexto de negocio inicial (greenfield)
 │   ├── prd/
-│   │   ├── alcance-<sufijo>.md          # Alcance consensuado (IN / OUT justificado)
-│   │   └── <proyecto>-<sufijo>.md       # PRD estructurado del producto o feature
+│   │   ├── <NNNN>-alcance-<sufijo>.md   # Alcance consensuado (ej: 0001-alcance-registro-ventas-mvp.md)
+│   │   └── <NNNN>-<proyecto>-<sufijo>.md # PRD estructurado (ej: 0001-sistema-ventas-registro-ventas-mvp.md)
 │   └── backlog/
-│       ├── <E-epica>/
-│       │   ├── us-<historia>.md         # Historia INVEST con criterios Given/When/Then
-│       │   └── tickets-<historia>.md    # Tickets técnicos atómicos con checklist DoD
-│       └── backlog-priorizado.md        # Grafo de dependencias, sizing y matriz priorizada
+│       ├── E<N>-<epica>/
+│       │   ├── us-<historia>.md         # Historia INVEST (US-<XX>) con criterios Given/When/Then
+│       │   └── tickets-<historia>.md    # Tickets técnicos atómicos (US-<XX>-T<N>) con checklist DoD
+│       └── <NNNN>-backlog-priorizado.md # Grafo de dependencias, sizing y matriz (ej: 0001-backlog-priorizado.md)
 └── sdd/                                 # Specification-Driven Development (fase de desarrollo)
     └── <modulo-o-feature>/
         ├── spec.md                      # Especificación técnica detallada

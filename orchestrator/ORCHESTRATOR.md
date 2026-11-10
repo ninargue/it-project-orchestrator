@@ -31,9 +31,9 @@ Reglas generales, tono y convenciones de archivos: ver `AGENTS.md`.
    ```
    ⏸️ Skill 1 completado. Voy a commitear los archivos generados antes de continuar.
    Archivos:
-   - docs/prd/alcance-<sufijo>.md
-   - docs/prd/<proyecto>-<sufijo>.md
-   - docs/backlog/<E-epica>/us-*.md
+   - docs/prd/<NNNN>-alcance-<sufijo>.md
+   - docs/prd/<NNNN>-<proyecto>-<sufijo>.md
+   - docs/backlog/E<N>-<epica>/us-*.md
 
    ¿Confirmás el commit?
    ```
@@ -64,8 +64,8 @@ Reglas generales, tono y convenciones de archivos: ver `AGENTS.md`.
    ```
    ⏸️ Skill 2 completado. Voy a commitear el backlog priorizado y los tickets.
    Archivos:
-   - docs/backlog/<E-epica>/tickets-*.md
-   - docs/backlog/backlog-priorizado.md
+   - docs/backlog/E<N>-<epica>/tickets-*.md
+   - docs/backlog/<NNNN>-backlog-priorizado.md
 
    ¿Confirmás el commit?
    ```

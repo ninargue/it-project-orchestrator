@@ -49,6 +49,7 @@ Actúas como un **Product Analyst y Agile Coach experimentado**. Tu objetivo es 
 
 **Lógica operativa:**
 - Analiza las épicas declaradas en la sección 5 del PRD y sus capacidades asociadas en la sección 4 (Alcance IN).
+- **Numeración incremental continua:** Antes de asignar IDs, si `tiene_repositorio = true`, inspecciona los archivos existentes en `docs/backlog/**/us-*.md` para obtener el último código asignado en el proyecto. Las nuevas historias deben continuar correlativamente (`US-07`, `US-08`, etc.) con padding de dos dígitos, evitando colisiones con historias de entregas previas. Si no existen previas, arranca en `US-01`.
 - Formula cada historia de usuario siguiendo el formato canónico:
   `"Como <rol de usuario>, quiero <acción o capacidad> para <beneficio u objetivo de negocio>."`
 - Emite primero el listado completo para revisión, validando cada historia contra el alcance del PRD.

@@ -15,6 +15,10 @@ Versionado siguiendo [Semantic Versioning](https://semver.org/).
   - Se actualizaron los contratos de guardrails en `agents/backlog-enrich-agent.md`, `agents/tickets-agent.md` y `orchestrator/ORCHESTRATOR.md`.
 - **Alto contraste universal en diagramas Mermaid:**
   - Se añadieron directivas y clases explícitas de alto contraste (`fill:#1e293b, stroke:#38bdf8, color:#ffffff` y `linkStyle default stroke:#94a3b8`) en `AGENTS.md`, `agents/tickets-agent.md` y `_skills/stories-to-tickets/SKILL.md` (Paso 10 y 13) para asegurar contraste nítido y texto 100% legible tanto en temas oscuros como claros de cualquier visor Markdown o chat.
+- **Numeración incremental y trazabilidad evolutiva (Sin colisiones):**
+  - Se incorporó la **Regla de Oro 10** en `AGENTS.md` para soportar múltiples avances o entregas sucesivas sin sobrescritura de archivos ni IDs repetidos.
+  - Los archivos de alcance, PRD y backlog priorizado ahora anteponen un prefijo incremental de 4 dígitos (`docs/prd/0001-alcance-<sufijo>.md`, `docs/prd/0001-<proyecto>-<sufijo>.md`, `docs/backlog/0001-backlog-priorizado.md`) detectando automáticamente el mayor existente en disco.
+  - Las épicas (`E<N>`) e historias de usuario (`US-<XX>`) detectan las entidades previas en `docs/backlog/` y continúan la numeración de forma correlativa e incremental (ej: si existen `E1..E3` y `US-01..US-06`, el siguiente avance arrancará en `E4` y `US-07`).
 
 ---
 
