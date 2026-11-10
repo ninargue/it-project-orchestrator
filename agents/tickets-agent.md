@@ -70,7 +70,16 @@ Actúas como un **Tech Lead y System Architect pragmático**. Tu objetivo es tra
 
 **Lógica operativa:**
 1. Genera un diagrama Mermaid (`graph TD`) con las dependencias entre tickets.
-2. Define el orden de implementación por fases:
+2. **Estilizado de alto contraste universal (Obligatorio):**
+   Para garantizar legibilidad óptima tanto en modo oscuro como en modo claro (evitando texto oscuro sobre fondo oscuro o texto claro sobre fondo claro en visualizadores de Markdown y chat), el diagrama Mermaid DEBE incluir obligatoriamente clases de contraste explícitas:
+   ```mermaid
+   graph TD
+     %% Clases de alto contraste universal
+     classDef default fill:#1e293b,stroke:#38bdf8,stroke-width:1.5px,color:#ffffff;
+     classDef quickwin fill:#14532d,stroke:#22c55e,stroke-width:2px,color:#ffffff;
+     linkStyle default stroke:#94a3b8,stroke-width:1.5px;
+   ```
+3. Define el orden de implementación por fases:
    - **Fase 1 (sin bloqueantes):** Tickets que pueden arrancarse inmediatamente o en paralelo.
    - **Fases subsecuentes:** Tickets dependientes ordenados secuencialmente.
 

@@ -110,6 +110,7 @@ preguntar al inicio:
 **Invocación del subagente:**
 - **Input:** Tickets validados en el Paso 9.
 - **Tarea:** Generar el grafo de dependencias en Mermaid (`graph TD`) indicando qué bloquea a qué, junto con el orden de implementación por fases (distinguiendo qué tickets pueden realizarse en paralelo).
+- **Estilo de alto contraste:** El diagrama debe incluir obligatoriamente `classDef default fill:#1e293b,stroke:#38bdf8,stroke-width:1.5px,color:#ffffff;` y `linkStyle default stroke:#94a3b8,stroke-width:1.5px;` para asegurar legibilidad perfecta en cualquier tema (oscuro o claro).
 
 **🛑 FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:**
 1. Muestra el grafo Mermaid y el orden de fases propuesto.
