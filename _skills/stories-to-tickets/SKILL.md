@@ -12,11 +12,11 @@ subagents:
   - tickets-agent
   - issue-materializer-agent
 inputs:
-  - docs/backlog/<E-nombre-epica>/us-<nombre-historia>.md  # output del Skill 1
+  - docs/backlog/<prefijo_avance>-<proyecto>-<sufijo>/E<N>-<nombre-epica>/us-<nombre-historia>.md  # output del Skill 1
   - docs/config-project-orchestrator/tool-config.md        # configuración de herramienta (opcional — se solicita al usuario si no existe)
 outputs:
-  - docs/backlog/<E-nombre-epica>/tickets-<historia>.md    # tickets por historia
-  - docs/backlog/backlog-priorizado.md                     # grafo + sizing + matriz
+  - docs/backlog/<prefijo_avance>-<proyecto>-<sufijo>/E<N>-<nombre-epica>/tickets-<historia>.md    # tickets por historia
+  - docs/backlog/<prefijo_avance>-<proyecto>-<sufijo>/<prefijo_avance>-backlog-priorizado.md       # grafo + sizing + matriz
   - issues creados en GitHub o Linear
 commits:
   - "El orquestador (nunca este skill ni sus subagentes) hace todos los commits,
@@ -92,7 +92,7 @@ detectar `prefijo_avance` inspeccionando `docs/prd/` y `docs/backlog/` (o asigna
 
 **Invocación del subagente:**
 - **Fuente de historias:**
-  - Si `tiene_repositorio = true`: leer desde disco `docs/backlog/<E-nombre-epica>/us-*.md`
+  - Si `tiene_repositorio = true`: leer desde disco `docs/backlog/<prefijo_avance>-<proyecto>-<sufijo>/E<N>-<nombre-epica>/us-*.md`
   - Si `tiene_repositorio = false`: usar las historias del Skill 1 disponibles en la conversación
 - **Tarea:** Descomponer cada historia en tickets atómicos de media jornada (`US-<XX>-T<N>`), nombrando la capa que tocan (sin diseñar el esquema) y con Definition of Done (DoD) como checklist de entrega (sin horas ni criterios inventados).
 
@@ -161,10 +161,10 @@ detectar `prefijo_avance` inspeccionando `docs/prd/` y `docs/backlog/` (o asigna
 - **Input:** Todo el backlog consensuado en los Pasos 9 al 12.
 - **Tarea:**
   - **Si `tiene_repositorio = true`:** Escribir en disco:
-    1. `docs/backlog/E<N>-<nombre-epica>/tickets-<nombre-historia>.md`: Un archivo por cada historia con sus tickets (`US-<XX>-T<N>`), DoD, talla y riesgo.
-    2. `docs/backlog/<prefijo_avance>-backlog-priorizado.md`: Grafo Mermaid con alto contraste, orden de implementación, matriz impacto/complejidad y orden priorizado de esta entrega.
+    1. `docs/backlog/<prefijo_avance>-<proyecto>-<sufijo>/E<N>-<nombre-epica>/tickets-<nombre-historia>.md`: Un archivo por cada historia con sus tickets (`US-<XX>-T<N>`), DoD, talla y riesgo.
+    2. `docs/backlog/<prefijo_avance>-<proyecto>-<sufijo>/<prefijo_avance>-backlog-priorizado.md`: Grafo Mermaid con alto contraste, orden de implementación, matriz impacto/complejidad y orden priorizado de esta entrega.
     En el chat: mostrar únicamente un **resumen estructurado** de archivos generados con sus enlaces, tabla de historias con cantidad de tickets y tallas consolidadas. **QUEDA TERMINANTEMENTE PROHIBIDO volcar el contenido íntegro de todos los tickets en el chat**.
-    Avisar al orquestador con: `[LISTO PARA COMMIT] docs/backlog/ completo.`
+    Avisar al orquestador con: `[LISTO PARA COMMIT] docs/backlog/<prefijo_avance>-<proyecto>-<sufijo>/ completo.`
   - **Si `tiene_repositorio = false`:** Mostrar en conversación los dos bloques markdown listos para cuando el usuario cree el repositorio:
     1. `tickets-<sufijo>.md`: Todos los tickets por historia.
     2. `<prefijo_avance>-backlog-priorizado-<sufijo>.md`: Grafo, orden de implementación, matriz y orden priorizado.

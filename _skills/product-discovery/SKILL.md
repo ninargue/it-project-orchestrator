@@ -18,9 +18,9 @@ inputs:
   - docs/kickoff-brief.md  # greenfield o brownfield sin acceso al repo
 outputs:
   - docs/config-project-orchestrator/tool-config.md
-  - docs/prd/alcance-<sufijo>.md
-  - docs/prd/<proyecto>-<sufijo>.md
-  - docs/backlog/<E-nombre-epica>/us-<nombre-historia>.md  # uno por historia
+  - docs/prd/<prefijo_avance>-alcance-<sufijo>.md
+  - docs/prd/<prefijo_avance>-<proyecto>-<sufijo>.md
+  - docs/backlog/<prefijo_avance>-<proyecto>-<sufijo>/E<N>-<nombre-epica>/us-<nombre-historia>.md  # uno por historia
 commits:
   - "El orquestador (nunca este skill ni sus subagentes) hace todos los commits,
      siempre tras confirmación explícita del usuario."
@@ -428,9 +428,9 @@ Tras confirmación explícita del usuario:
 - **Tarea:** Redactar criterios Given/When/Then como reglas de negocio observables (camino feliz y edge cases; marcar `[PROPUESTO]` los propios), sin endpoints ni status codes.
 - **Persistencia o entrega:**
   - **Si `tiene_repositorio = true`:**
-    - Escribir en disco cada historia en `docs/backlog/E<N>-<nombre-epica>/us-<nombre-historia>.md`.
+    - Escribir en disco cada historia en `docs/backlog/<prefijo_avance>-<proyecto>-<sufijo>/E<N>-<nombre-epica>/us-<nombre-historia>.md`.
     - En el chat: mostrar únicamente una **tabla resumen de historias generadas** (ID, Épica, Título, Cantidad de criterios G/W/T, Supuestos) y enlaces a los archivos en disco. **QUEDA TERMINANTEMENTE PROHIBIDO volcar el contenido completo de los archivos `us-*.md` en el chat**.
-    - Avisar: `[LISTO PARA REVISIÓN] Historias guardadas en docs/backlog/. Pedir al usuario que las revise en los archivos o indique cambios en el chat.`
+    - Avisar: `[LISTO PARA REVISIÓN] Historias guardadas en docs/backlog/<prefijo_avance>-<proyecto>-<sufijo>/. Pedir al usuario que las revise en los archivos o indique cambios en el chat.`
   - **Si `tiene_repositorio = false`:**
     - Mostrar cada historia completa con sus criterios en la conversación para revisión previa a los PDFs. No escribir a disco. Las correcciones se hacen en el chat. Una vez que el usuario confirme todas las historias, continuar al HANDOFF.
 
@@ -457,11 +457,11 @@ Al completar el Paso 8 y recibir confirmación del usuario:
 Archivos generados:
 - docs/prd/<prefijo_avance>-alcance-<sufijo>.md
 - docs/prd/<prefijo_avance>-<proyecto>-<sufijo>.md
-- docs/backlog/E<N>-<epica>/us-*.md (<N> historias)
+- docs/backlog/<prefijo_avance>-<proyecto>-<sufijo>/E<N>-<epica>/us-*.md (<N> historias)
 
 Próximo paso: stories-to-tickets (Pasos 9–14)
 Lo corre el tech lead o dev senior con acceso al repo completo.
-Input requerido: docs/backlog/E<N>-<epica>/us-*.md
+Input requerido: docs/backlog/<prefijo_avance>-<proyecto>-<sufijo>/E<N>-<epica>/us-*.md
 ```
 
 **Si `tiene_repositorio = false`:**

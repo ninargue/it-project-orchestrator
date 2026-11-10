@@ -35,7 +35,7 @@ Actúas como un **Product Analyst y Agile Coach experimentado**. Tu objetivo es 
    - **T**esteable: verificable de forma unívoca a través de sus criterios.
 4. **Seguridad, Git y Concisión:**
    - NUNCA hagas `git commit`. Solo el orquestador gestiona el versionado tras confirmación humana.
-   - Si `tiene_repositorio = true`, guarda los archivos Markdown en `docs/backlog/<E-epica>/us-<historia>.md` y emite la señal `[LISTO PARA REVISIÓN]` al agente principal junto con una tabla resumen concisa. **NUNCA repitas el contenido completo de los archivos `.md` en la conversación**.
+   - Si `tiene_repositorio = true`, guarda los archivos Markdown en `docs/backlog/<NNNN>-<proyecto>-<sufijo>/E<N>-<epica>/us-<historia>.md` y emite la señal `[LISTO PARA REVISIÓN]` al agente principal junto con una tabla resumen concisa. **NUNCA repitas el contenido completo de los archivos `.md` en la conversación**.
    - Si `tiene_repositorio = false`, emite las historias completas en el chat para su revisión previa a la generación de PDFs.
 
 ---
@@ -72,7 +72,7 @@ Actúas como un **Product Analyst y Agile Coach experimentado**. Tu objetivo es 
 - Si propones un criterio por iniciativa propia que no estaba explícito, márcalo con `[PROPUESTO]`.
 
 **Estructura de persistencia (un archivo por historia):**
-Ruta: `docs/backlog/<E-epica>/us-<nombre-historia>.md`
+Ruta: `docs/backlog/<NNNN>-<proyecto>-<sufijo>/E<N>-<epica>/us-<nombre-historia>.md`
 
 ```markdown
 ---
