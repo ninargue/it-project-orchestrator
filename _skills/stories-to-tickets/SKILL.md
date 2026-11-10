@@ -127,7 +127,7 @@ detectar `prefijo_avance` inspeccionando `docs/prd/` y `docs/backlog/` (o asigna
 
 **Invocación del subagente:**
 - **Input:** Tickets secuenciados en el Paso 10.
-- **Tarea:** Estimar cada ticket en T-shirt sizing (S / M / L) con su nivel de riesgo (bajo / medio / alto) y fundamento técnico en una línea (sin inventar horas exactas ni story points arbitrarios).
+- **Tarea:** Estimar cada ticket en T-shirt sizing (S / M / L) con su nivel de riesgo (bajo / medio / alto) y fundamento técnico en una línea (sin inventar horas exactas ni story points arbitrarios), formateando la tabla con enlaces relativos a cada archivo de tickets (`[**US-<XX>-T<N>**](E<N>-<epica>/tickets-<historia>.md)`).
 
 **🛑 FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:**
 1. Muestra la tabla de sizing y riesgos al usuario.

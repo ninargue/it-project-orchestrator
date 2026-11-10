@@ -95,9 +95,10 @@ Actúas como un **Tech Lead y System Architect pragmático**. Tu objetivo es tra
 - **M:** Abarca 2 o 3 capas, lógica moderada, coordinación estándar.
 - **L:** Múltiples componentes o sistemas, lógica compleja, riesgo de integración.
 
-**Formato de salida:**
-| ID | Título | Talla (S/M/L) | Riesgo (Bajo/Medio/Alto) | Fundamento |
-|---|---|---|---|---|
+**Formato de salida (con enlace directo a cada archivo de tickets):**
+| Ticket | Título | Capa | Talla | Riesgo | Justificación Técnica |
+|---|---|---|:---:|:---:|---|
+| [**US-<XX>-T<N>**](E<N>-<epica>/tickets-<historia>.md) | <Título breve> | <Capa> | **<S/M/L>** | <Bajo/Medio/Alto> | <Fundamento técnico> |
 
 ---
 
@@ -109,7 +110,7 @@ Actúas como un **Tech Lead y System Architect pragmático**. Tu objetivo es tra
 **Lógica operativa:**
 - Evalúa Impacto (Alto / Medio / Bajo) y Complejidad técnica (Alta / Media / Baja).
 - Identifica explícitamente los **Quick Wins (⭐)**: Alto Impacto + Baja Complejidad.
-- Propone el orden prioritario de abordaje del backlog.
+- Propone el orden prioritario de abordaje del backlog y destaca la Ruta Crítica.
 
 ---
 
@@ -120,19 +121,41 @@ Actúas como un **Tech Lead y System Architect pragmático**. Tu objetivo es tra
 
 **Si `tiene_repositorio = true` (escribir a disco):**
 1. `docs/backlog/<NNNN>-<proyecto>-<sufijo>/E<N>-<epica>/tickets-<historia>.md`: Un archivo de tickets por cada historia con sus tickets atómicos (`US-<XX>-T<N>`).
-2. `docs/backlog/<NNNN>-<proyecto>-<sufijo>/<prefijo_avance>-backlog-priorizado.md`: Contiene el encabezado con referencia directa al PRD:
+2. `docs/backlog/<NNNN>-<proyecto>-<sufijo>/<prefijo_avance>-backlog-priorizado.md`: Estructura canónica completa con enlaces bidireccionales (hacia PRD/Alcance y hacia cada ticket):
    ```markdown
-   # Backlog Priorizado — <Nombre del Proyecto> (<sufijo>)
+   # Backlog Priorizado y Grafo de Dependencias — <proyecto> (<sufijo>)
 
-   > Avance: <prefijo_avance>
-   > PRD de referencia: [docs/prd/<prefijo_avance>-<proyecto>-<sufijo>.md](../../prd/<prefijo_avance>-<proyecto>-<sufijo>.md)
-   > Fecha: YYYY-MM-DD
+   > **Ciclo:** it-project-orchestrator (stories-to-tickets)  
+   > **Fecha:** YYYY-MM-DD  
+   > **PRD de Referencia:** [<prefijo_avance>-<proyecto>-<sufijo>.md](../../prd/<prefijo_avance>-<proyecto>-<sufijo>.md) (y documento de alcance: [<prefijo_avance>-alcance-<sufijo>.md](../../prd/<prefijo_avance>-alcance-<sufijo>.md))  
+   > **Alcance:** <resumen del alcance de esta iniciativa>  
+
+   ---
+
+   ## 1. Grafo de Dependencias Técnicas
+   [diagrama Mermaid flowchart TD con clases de alto contraste y leyenda de colores]
+
+   ---
+
+   ## 2. Secuencia de Implementación por Fases
+   [tabla de fases con tickets agrupados, capa y trabajo en paralelo]
+
+   ---
+
+   ## 3. T-shirt Sizing y Matriz de Riesgo
+   | Ticket | Título | Capa | Talla | Riesgo | Justificación Técnica |
+   |---|---|---|:---:|:---:|---|
+   | [**US-<XX>-T<N>**](E<N>-<epica>/tickets-<historia>.md) | ... | ... | **S/M/L** | ... | ... |
+
+   ---
+
+   ## 4. Matriz Impacto vs. Complejidad
+   [diagrama ASCII matriz impacto/complejidad, listado de Quick Wins ⭐ y Ruta Crítica]
    ```
-   seguido del orden priorizado, la matriz de impacto/complejidad, el grafo Mermaid de alto contraste y las estimaciones T-shirt sizing de este avance.
 Avisar al orquestador con: `[LISTO PARA COMMIT] docs/backlog/<NNNN>-<proyecto>-<sufijo>/ completo — el orquestador debe hacer el commit.`
 
 **Si `tiene_repositorio = false` (mostrar en conversación):**
 No escribir archivos a disco. Mostrar en la conversación los dos bloques markdown completos y listos para guardar cuando el usuario cree el repositorio:
 1. `tickets-<sufijo>.md`: Todos los tickets por historia, con DoD, talla y riesgo (formato del Paso 9).
-2. `<prefijo_avance>-backlog-priorizado-<sufijo>.md`: Con encabezado y referencia al PRD (`> PRD de referencia: <prefijo_avance>-<proyecto>-<sufijo>.md`), grafo de dependencias, orden de implementación, matriz impacto/complejidad y orden de backlog.
+2. `<prefijo_avance>-backlog-priorizado-<sufijo>.md`: Con encabezado y referencia al PRD (`> PRD de referencia: <prefijo_avance>-<proyecto>-<sufijo>.md`), grafo de dependencias, orden de implementación, tabla de sizing con nombres de archivo destino y orden de backlog.
 Avisar al orquestador con: `[LISTO PARA REVISIÓN] Backlog completo en conversación — confirmá para continuar al Paso 14.`
