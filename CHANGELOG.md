@@ -6,6 +6,16 @@ Versionado siguiendo [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [0.1.2] — 2026-11-09
+
+### Mejorado
+- **Concisión en Chat vs. Persistencia en Disco (No duplicar contenido):**
+  - Se incorporó la **Regla de Oro 9** en `AGENTS.md` prohibiendo terminantemente volcar el contenido completo de los documentos `.md` en los mensajes de chat cuando hay acceso al repositorio (`tiene_repositorio = true`).
+  - En `_skills/product-discovery/SKILL.md` (Pasos 4, 5, 8) y `_skills/stories-to-tickets/SKILL.md` (Paso 13), el agente ahora emite únicamente resúmenes ejecutivos concisos (tablas resumen, enlaces directos a los archivos en disco y decisiones abiertas), reservando el volcado completo en conversación exclusivamente para cuando no se tiene acceso al repositorio (`tiene_repositorio = false`) para la validación previa a la generación de PDFs.
+  - Se actualizaron los contratos de guardrails en `agents/backlog-enrich-agent.md`, `agents/tickets-agent.md` y `orchestrator/ORCHESTRATOR.md`.
+
+---
+
 ## [0.1.1] — 2026-11-09
 
 ### Corregido

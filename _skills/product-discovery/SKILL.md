@@ -51,6 +51,9 @@ briefing generado por el tech lead.
 6. Usar el idioma configurado en onboarding en todos los archivos generados.
 7. Si el usuario no tiene clara una decisión metodológica, **proponer con sustento**.
    Si la decisión elegida tiene riesgos conocidos, **advertirlo antes de continuar**.
+8. **Concisión en Chat vs. Persistencia en Disco:**
+   - **Si `tiene_repositorio = true`:** Todo documento formal se escribe en disco. En el chat SOLO se muestra un resumen ejecutivo conciso con enlaces a los archivos generados. **QUEDA TERMINANTEMENTE PROHIBIDO pegar o repetir el texto completo del documento `.md` en el mensaje de chat**.
+   - **Si `tiene_repositorio = false`:** El contenido completo sí se muestra en la conversación, ya que no hay persistencia en disco y es el insumo necesario para que el usuario valide y se generen los PDFs descargables.
 
 ---
 
@@ -268,16 +271,19 @@ Generar `docs/prd/alcance-<sufijo>.md`:
 | <ítem descartado en Paso 2 o 3> | <razón por la que no entra en esta entrega> |
 ```
 
-**Si `tiene_repositorio = true`:** escribir `docs/prd/alcance-<sufijo>.md` a disco.
-`[LISTO PARA COMMIT] docs/prd/alcance-<sufijo>.md`
+**Si `tiene_repositorio = true`:**
+- Escribir `docs/prd/alcance-<sufijo>.md` a disco.
+- En el chat: mostrar únicamente un **resumen ejecutivo** (capacidades clave en IN, exclusiones justificadas en OUT, supuestos críticos) y el enlace al archivo generado `[docs/prd/alcance-<sufijo>.md](file:///...)`. **QUEDA TERMINANTEMENTE PROHIBIDO volcar el texto completo del markdown en el mensaje de chat**.
+- Avisar: `[LISTO PARA COMMIT] docs/prd/alcance-<sufijo>.md`
 
-**Si `tiene_repositorio = false`:** mostrar el contenido completo en la conversación.
-No escribir a disco. Las correcciones se hacen en el chat.
+**Si `tiene_repositorio = false`:**
+- Mostrar el contenido completo en la conversación para revisión previa a la generación de PDFs. No escribir a disco. Las correcciones se hacen en el chat.
 
 **🛑 FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:**
-1. Confirma con el usuario que el contenido y archivo de alcance están correctos.
-2. DETÉN tu respuesta inmediatamente aquí. PROHIBIDO generar el PRD o pasar al Paso 5 en este mismo turno.
-3. Espera la confirmación del usuario para avanzar.
+1. Presenta el resumen ejecutivo con enlace al archivo (si hay repo) o el contenido completo en chat (si no hay repo).
+2. Pregunta: `"¿El alcance consolidado refleja lo acordado o ajustamos algo antes de generar el PRD?"`
+3. DETÉN tu respuesta inmediatamente aquí. PROHIBIDO generar el PRD o pasar al Paso 5 en este mismo turno.
+4. Espera la confirmación del usuario para avanzar.
 
 ---
 
@@ -343,14 +349,16 @@ Generar el PRD para la iniciativa (MVP, nueva feature o mejora) en `docs/prd/<pr
   `> ⚠️ Nota: '<fragmento>' es detalle de implementación — se abordará en el Paso 9 (tickets).`
 - **Concreto y testeable:** No inventar cifras de mercado; todo supuesto no confirmado va con `[SUPUESTO]`.
 
-**Si `tiene_repositorio = true`:** escribir `docs/prd/<proyecto>-<sufijo>.md` a disco.
-`[LISTO PARA COMMIT] docs/prd/<proyecto>-<sufijo>.md`
+**Si `tiene_repositorio = true`:**
+- Escribir `docs/prd/<proyecto>-<sufijo>.md` a disco.
+- En el chat: mostrar únicamente un **resumen ejecutivo estructurado** (tabla/lista de épicas derivadas 1:1, supuestos críticos, RNF clave) y el enlace al archivo generado `[docs/prd/<proyecto>-<sufijo>.md](file:///...)`. **QUEDA TERMINANTEMENTE PROHIBIDO volcar el texto completo del PRD en el mensaje de chat**.
+- Avisar: `[LISTO PARA COMMIT] docs/prd/<proyecto>-<sufijo>.md`
 
-**Si `tiene_repositorio = false`:** mostrar el PRD completo en la conversación.
-No escribir a disco. Las correcciones se hacen en el chat.
+**Si `tiene_repositorio = false`:**
+- Mostrar el PRD completo en la conversación para revisión previa a la generación de PDFs. No escribir a disco. Las correcciones se hacen en el chat.
 
 **🛑 FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:**
-1. Muestra el PRD generado.
+1. Muestra el resumen ejecutivo con enlace al archivo (si hay repo) o el PRD completo en chat (si no hay repo).
 2. DETÉN tu respuesta inmediatamente aquí. PROHIBIDO invocar al revisor adversarial o pasar al Paso 6 en este mismo turno.
 3. Espera la revisión y confirmación del usuario para avanzar.
 
@@ -404,12 +412,15 @@ Tras confirmación explícita del usuario:
 - **Input:** Historias aprobadas en el Paso 7.
 - **Tarea:** Redactar criterios Given/When/Then como reglas de negocio observables (camino feliz y edge cases; marcar `[PROPUESTO]` los propios), sin endpoints ni status codes.
 - **Persistencia o entrega:**
-  - **Si `tiene_repositorio = true`:** escribir en disco `docs/backlog/<E-nombre-epica>/us-<nombre-historia>.md` (un archivo por historia). NO hacer commit. Avisar:
-    `[LISTO PARA REVISIÓN] Historias guardadas en docs/backlog/. Pedir al usuario que las revise en los archivos o indique cambios en el chat.`
-  - **Si `tiene_repositorio = false`:** mostrar cada historia completa en la conversación. No escribir a disco. Las correcciones se hacen en el chat. Una vez que el usuario confirme todas las historias, continuar al HANDOFF.
+  - **Si `tiene_repositorio = true`:**
+    - Escribir en disco cada historia en `docs/backlog/<E-nombre-epica>/us-<nombre-historia>.md`.
+    - En el chat: mostrar únicamente una **tabla resumen de historias generadas** (ID, Épica, Título, Cantidad de criterios G/W/T, Supuestos) y enlaces a los archivos en disco. **QUEDA TERMINANTEMENTE PROHIBIDO volcar el contenido completo de los archivos `us-*.md` en el chat**.
+    - Avisar: `[LISTO PARA REVISIÓN] Historias guardadas en docs/backlog/. Pedir al usuario que las revise en los archivos o indique cambios en el chat.`
+  - **Si `tiene_repositorio = false`:**
+    - Mostrar cada historia completa con sus criterios en la conversación para revisión previa a los PDFs. No escribir a disco. Las correcciones se hacen en el chat. Una vez que el usuario confirme todas las historias, continuar al HANDOFF.
 
 **🛑 FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:**
-1. Muestra las historias con sus criterios o avisa que están listas en disco para revisión.
+1. Presenta la tabla resumen de historias generadas con enlaces a disco (si hay repo) o el detalle completo en chat (si no hay repo).
 2. DETÉN tu respuesta inmediatamente aquí.
 3. Espera la revisión y confirmación explícita del usuario.
 

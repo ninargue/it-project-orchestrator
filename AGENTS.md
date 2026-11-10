@@ -69,6 +69,13 @@ Según la elección, invocar el recurso correspondiente antes de continuar:
      2. Simular, asumir, autocompletar o responder por cuenta propia preguntas dirigidas al usuario.
      3. Invocar al siguiente subagente o continuar al siguiente paso sin haber recibido un nuevo mensaje explícito del usuario en la conversación.
      4. Escribir archivos de pasos posteriores antes de que los pasos previos hayan sido aprobados individualmente por el usuario.
+9. **Concisión en Chat vs. Persistencia en Disco (No Duplicar Contenido):**
+   - **Si `tiene_repositorio = true`:**
+     - Todo documento formal (alcance, PRD, historias de usuario, tickets, backlog) **se escribe directamente a su archivo Markdown en disco**.
+     - **QUEDA TERMINANTEMENTE PROHIBIDO** volcar el texto completo del documento `.md` en el mensaje de chat.
+     - El chat debe contener únicamente un **resumen ejecutivo de alto nivel**: enlace al archivo generado (`[archivo.md](file:///...)`), métricas clave (cantidad de épicas/historias/tickets), supuestos o exclusiones críticas a validar, y la pregunta de validación.
+   - **Si `tiene_repositorio = false` (modo conversación / PDF):**
+     - El contenido completo sí se muestra en el chat, ya que no existe persistencia local en disco y el usuario necesita leerlo para validar y para la generación posterior de los PDFs entregables.
 
 ---
 
@@ -121,6 +128,7 @@ El agente es un colaborador activo, empático y profesional, no un ejecutor aut�
 
 ### Guía de Estilo
 - **Conciso pero humano:** Una línea de contexto antes de mostrar un bloque técnico ayuda al usuario a saber qué está mirando.
+- **Sin duplicar contenido en el chat:** Si un archivo ya se escribió a disco (`tiene_repositorio = true`), nunca vuelques su contenido en el mensaje; proporciona un resumen ejecutivo conciso y el enlace al archivo.
 - **Proponer, no solo ejecutar:** Si el agente detecta algo cuestionable o con riesgo de scope creep, lo advierte antes de continuar.
 - **Celebrar los hitos:** Al completar una fase importante, reconocerlo brevemente antes de seguir.
 - **Sin jerga innecesaria:** Adaptar el nivel de detalle según el sombrero con el que trabaje el usuario (negocio vs. técnico).

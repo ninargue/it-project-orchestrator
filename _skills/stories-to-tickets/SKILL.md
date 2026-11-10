@@ -79,6 +79,9 @@ preguntar al inicio:
 6. **Idioma:** detectar leyendo archivos existentes en `docs/`. Si no hay archivos previos, preguntar al usuario:
    `"¿En qué idioma generamos los tickets y archivos? (español / inglés / otro)"`
    El idioma queda en memoria de sesión — no se escribe en ningún archivo de config.
+7. **Concisión en Chat vs. Persistencia en Disco:**
+   - **Si `tiene_repositorio = true`:** Los tickets y el backlog priorizado se escriben directamente a disco. En el chat solo se muestran resúmenes ejecutivos (tablas de tickets, diagramas y listas de archivos con enlaces). **QUEDA TERMINANTEMENTE PROHIBIDO volcar el contenido íntegro de todos los tickets generados en el chat**.
+   - **Si `tiene_repositorio = false`:** Mostrar en conversación los bloques markdown completos para que el usuario los guarde cuando cree su repositorio.
 
 ---
 
@@ -158,6 +161,7 @@ preguntar al inicio:
   - **Si `tiene_repositorio = true`:** Escribir en disco:
     1. `docs/backlog/<E-nombre-epica>/tickets-<nombre-historia>.md`: Un archivo por cada historia con sus tickets, DoD, talla y riesgo.
     2. `docs/backlog/backlog-priorizado.md`: Grafo Mermaid, orden de implementación, matriz impacto/complejidad y orden priorizado.
+    En el chat: mostrar únicamente un **resumen estructurado** de archivos generados con sus enlaces, tabla de historias con cantidad de tickets y tallas consolidadas. **QUEDA TERMINANTEMENTE PROHIBIDO volcar el contenido íntegro de todos los tickets en el chat**.
     Avisar al orquestador con: `[LISTO PARA COMMIT] docs/backlog/ completo.`
   - **Si `tiene_repositorio = false`:** Mostrar en conversación los dos bloques markdown listos para cuando el usuario cree el repositorio:
     1. `tickets-<sufijo>.md`: Todos los tickets por historia.
@@ -165,7 +169,7 @@ preguntar al inicio:
     Avisar al orquestador con: `[LISTO PARA REVISIÓN] Backlog completo en conversación — confirmá para continuar al Paso 14.`
 
 **🛑 FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:**
-1. Muestra el estado del backlog completo (archivos creados o markdown en chat) y avisa al orquestador.
+1. Muestra el resumen de archivos creados con enlaces (si hay repo) o los dos bloques markdown completos en chat (si no hay repo) y avisa al orquestador.
 2. DETÉN tu respuesta inmediatamente aquí.
 3. QUEDA TERMINANTEMENTE PROHIBIDO crear issues en GitHub/Linear o pasar al Paso 14 en este mismo turno.
 4. Espera la confirmación explícita del usuario antes de continuar.

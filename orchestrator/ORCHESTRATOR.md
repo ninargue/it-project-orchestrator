@@ -15,6 +15,8 @@ Los roles `[1]` y `[2]` van directo a su SKILL.md — ver `AGENTS.md`.
 
 Reglas generales, tono y convenciones de archivos: ver `AGENTS.md`.
 
+> 💡 **Concisión en Chat vs. Persistencia:** Cuando `tiene_repositorio = true`, todos los entregables se persisten directamente en disco (`docs/prd/`, `docs/backlog/`). En el chat solo se emiten resúmenes ejecutivos con enlaces; **queda terminantemente prohibido volcar el contenido íntegro de los archivos Markdown en los mensajes**. El volcado completo en chat queda reservado exclusivamente para cuando `tiene_repositorio = false` (modo sin repo / previo a PDF).
+
 ---
 
 ## FASE 1 — Ejecutar Skill 1 (product-discovery)
