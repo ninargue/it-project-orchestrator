@@ -77,22 +77,63 @@ foreach ($upFile in $upFiles) {
     $content = Get-Content -Path $upFile.FullName -Raw
     $fileName = $upFile.Name
 
-    # A. Índices en Foreign Keys
-    # Detecta patterns: REFERENCES tabla(col) o FOREIGN KEY (col) REFERENCES
-    $fkMatches = [regex]::Matches($content, '(?:\b([a-zA-Z0-9_]+)\s+[a-zA-Z0-9_\(\)]+)?\s+REFERENCES\s+([a-zA-Z0-9_\.]+)\s*\(([a-zA-Z0-9_]+)\)', [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)
-    
-    foreach ($m in $fkMatches) {
-        $fkCol = $m.Groups[1].Value
-        $targetTable = $m.Groups[2].Value
-        
-        # Si fue sintaxis inline: campo ... REFERENCES tabla(id)
-        if ($fkCol -and $fkCol -notmatch 'FOREIGN|CONSTRAINT') {
-            $indexPattern = "CREATE\s+(?:UNIQUE\s+)?INDEX\s+(?:IF\s+NOT\s+EXISTS\s+)?[a-zA-Z0-9_]+\s+ON\s+[a-zA-Z0-9_\.]+\s*\([^\)]*\b$fkCol\b[^\)]*\)"
-            if ($content -notmatch $indexPattern) {
-                $failures += "❌ [MISSING INDEX]: La clave foránea en columna '$fkCol' (referenciando a '$targetTable') en '$fileName' no tiene un CREATE INDEX asociado."
-            } else {
-                $passedChecks += "✅ [INDEX FK]: Índice detectado para clave foránea '$fkCol' en '$fileName'."
+    # A. Índices en Foreign Keys (Parser robusto por tabla)
+    $detectedFks = @()
+
+    # 1. Extracción desde bloques CREATE TABLE (inline y table constraints)
+    $tableBlocks = [regex]::Matches($content, 'CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?([a-zA-Z0-9_\.]+)\s*\(([\s\S]*?)\)\s*;', [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)
+    foreach ($tb in $tableBlocks) {
+        $sourceTbl = $tb.Groups[1].Value.Split('.')[-1].Trim('`"[]')
+        $body = $tb.Groups[2].Value
+
+        # Constraint explícita: FOREIGN KEY (col) REFERENCES target(id)
+        $explicitFks = [regex]::Matches($body, '(?:CONSTRAINT\s+[a-zA-Z0-9_]+\s+)?FOREIGN\s+KEY\s*\(\s*([a-zA-Z0-9_]+)\s*\)\s*REFERENCES\s+([a-zA-Z0-9_\.]+)', [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)
+        foreach ($efk in $explicitFks) {
+            $detectedFks += [PSCustomObject]@{
+                SourceTable = $sourceTbl
+                FkCol       = $efk.Groups[1].Value.Trim()
+                TargetTable = $efk.Groups[2].Value.Split('.')[-1].Trim('`"[]')
             }
+        }
+
+        # Constraint inline: col type [NOT NULL] REFERENCES target(id)
+        $lines = $body -split "`r?`n"
+        foreach ($line in $lines) {
+            $trimmedLine = $line.Trim().TrimEnd(',')
+            if ($trimmedLine -match '^\s*(?:CONSTRAINT|FOREIGN\s+KEY|PRIMARY\s+KEY|CHECK|UNIQUE)\b' -or $trimmedLine -match '^\s*--') {
+                continue
+            }
+            if ($trimmedLine -match '^\s*([a-zA-Z0-9_]+)\s+[a-zA-Z0-9_\(\)]+[\s\S]*?\bREFERENCES\s+([a-zA-Z0-9_\.]+)') {
+                $detectedFks += [PSCustomObject]@{
+                    SourceTable = $sourceTbl
+                    FkCol       = $Matches[1].Trim()
+                    TargetTable = $Matches[2].Split('.')[-1].Trim('`"[]')
+                }
+            }
+        }
+    }
+
+    # 2. Extracción desde sentencias ALTER TABLE ... ADD FOREIGN KEY
+    $alterFks = [regex]::Matches($content, 'ALTER\s+TABLE\s+(?:ONLY\s+)?([a-zA-Z0-9_\.]+)\s+ADD\s+(?:CONSTRAINT\s+[a-zA-Z0-9_]+\s+)?FOREIGN\s+KEY\s*\(\s*([a-zA-Z0-9_]+)\s*\)\s*REFERENCES\s+([a-zA-Z0-9_\.]+)', [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)
+    foreach ($afk in $alterFks) {
+        $detectedFks += [PSCustomObject]@{
+            SourceTable = $afk.Groups[1].Value.Split('.')[-1].Trim('`"[]')
+            FkCol       = $afk.Groups[2].Value.Trim()
+            TargetTable = $afk.Groups[3].Value.Split('.')[-1].Trim('`"[]')
+        }
+    }
+
+    # 3. Verificación de índice correspondiente (con ámbito estricto por tabla)
+    foreach ($fk in $detectedFks) {
+        $srcTbl = $fk.SourceTable
+        $fkCol = $fk.FkCol
+        $tgtTbl = $fk.TargetTable
+
+        $indexPattern = "CREATE\s+(?:UNIQUE\s+)?INDEX\s+(?:IF\s+NOT\s+EXISTS\s+)?[a-zA-Z0-9_]+\s+ON\s+(?:[a-zA-Z0-9_\.]+\.)?$srcTbl\s*\([^\)]*?\b$fkCol\b[^\)]*?\)"
+        if ($content -notmatch $indexPattern) {
+            $failures += "❌ [MISSING INDEX]: Clave foránea en '$srcTbl.$fkCol' (referenciando a '$tgtTbl') en '$fileName' no tiene un CREATE INDEX sobre '$srcTbl'."
+        } else {
+            $passedChecks += "✅ [INDEX FK]: Índice detectado para '$srcTbl.$fkCol' -> '$tgtTbl' en '$fileName'."
         }
     }
 
