@@ -29,7 +29,6 @@ Closes #<!-- número del issue -->
 - [ ] otra, si corresponde
 
 ## ✅ Checklist
-- [ ] Lint y validaciones en verde en CI
 - [ ] Se probó manualmente el flujo o comando modificado
 - [ ] No se incluyen credenciales, secretos ni archivos temporales
 - [ ] El nombre del branch sigue la convención Git Flow (`feature/`, `fix/`, `hotfix/`, `chore/`, `refactor/`, `docs/`, `test/`, `release/`)
