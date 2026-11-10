@@ -177,9 +177,9 @@ Skill especializado en el desarrollo e implementación de bases de datos mediant
 ### Paso 5 — Validación Mecánica y Auditoría Adversarial (OpenSpec Verify)
 
 1. **Validación Mecánica Determinista:**
-   - Ejecutar el script:
+   - Ejecutar el script (resolviendo la ruta contra la raíz del plugin `<plugin-root>` e indicando las rutas del proyecto destino):
      ```powershell
-     powershell -ExecutionPolicy Bypass -File .\scripts\validate-db-migrations.ps1 -MigrationsDir "database/migrations"
+     powershell -ExecutionPolicy Bypass -File "<plugin-root>\scripts\validate-db-migrations.ps1" -MigrationsDir "<repo-destino>\database\migrations" -SecurityDir "<repo-destino>\database\security"
      ```
 2. **Auditoría Adversarial:**
    - Invocar a `db-qa-agent` (Fase B) entregando:

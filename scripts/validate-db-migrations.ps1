@@ -20,6 +20,9 @@ param(
     [string]$MigrationsDir = "database/migrations",
 
     [Parameter(Mandatory = $false)]
+    [string]$SecurityDir = "",
+
+    [Parameter(Mandatory = $false)]
     [string]$Engine = "postgres"
 )
 
@@ -28,8 +31,18 @@ $failures = @()
 $warnings = @()
 $passedChecks = @()
 
+# Resolver SecurityDir si no fue provisto explícitamente
+if (-not $SecurityDir) {
+    $parent = Split-Path -Path $MigrationsDir -Parent
+    if ($parent) {
+        $SecurityDir = Join-Path -Path $parent -ChildPath "security"
+    } else {
+        $SecurityDir = "database/security"
+    }
+}
+
 Write-Host "🔍 Iniciando validación mecánica determinista de migraciones SQL..." -ForegroundColor Cyan
-Write-Host "Directorio: $MigrationsDir | Motor: $Engine`n"
+Write-Host "Directorio Migraciones: $MigrationsDir | Directorio Seguridad: $SecurityDir | Motor: $Engine`n"
 
 if (-not (Test-Path $MigrationsDir)) {
     Write-Warning "El directorio '$MigrationsDir' no existe todavía. Se omite validación hasta generar código."
@@ -155,7 +168,10 @@ foreach ($upFile in $upFiles) {
             $rlsPattern = "ALTER\s+TABLE\s+(?:[a-zA-Z0-9_\.]+\.)?$tbl\s+ENABLE\s+ROW\s+LEVEL\s+SECURITY"
             if ($content -notmatch $rlsPattern) {
                 # Buscamos también en archivos de seguridad anexos si existen
-                $securityFiles = Get-ChildItem -Path "database/security" -Filter "*.sql" -File -ErrorAction SilentlyContinue
+                $securityFiles = @()
+                if (Test-Path $SecurityDir) {
+                    $securityFiles = Get-ChildItem -Path $SecurityDir -Filter "*.sql" -File -ErrorAction SilentlyContinue
+                }
                 $foundInSecurity = $false
                 foreach ($sf in $securityFiles) {
                     if ((Get-Content $sf.FullName -Raw) -match $rlsPattern) {
@@ -165,9 +181,9 @@ foreach ($upFile in $upFiles) {
                 }
 
                 if (-not $foundInSecurity) {
-                    $warnings += "⚠️ [RLS]: La tabla '$tbl' creada en '$fileName' no tiene un comando 'ENABLE ROW LEVEL SECURITY' explícito en la migración ni en database/security/."
+                    $warnings += "⚠️ [RLS]: La tabla '$tbl' creada en '$fileName' no tiene un comando 'ENABLE ROW LEVEL SECURITY' explícito en la migración ni en '$SecurityDir'."
                 } else {
-                    $passedChecks += "✅ [RLS]: RLS habilitado para tabla '$tbl' en scripts de seguridad."
+                    $passedChecks += "✅ [RLS]: RLS habilitado para tabla '$tbl' en scripts de seguridad ($($sf.Name))."
                 }
             } else {
                 $passedChecks += "✅ [RLS]: RLS habilitado directamente para tabla '$tbl' en '$fileName'."
