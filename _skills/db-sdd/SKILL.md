@@ -117,44 +117,64 @@ Skill especializado en el desarrollo e implementación de bases de datos mediant
 - Archivo de pruebas: [test.sql](file:///<ruta>/database/tests/<change-name>-test.sql)
 - Cobertura: Restricciones de integridad, unicidad y aislamiento RLS.
 
-¿Procedemos a ejecutar la fase Apply (código SQL de migraciones, RLS y seeds)?
+¿Procedemos a ejecutar la fase Apply para generar el código DDL y las migraciones?
 ```
 
 🛑 **FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:** Detén tu turno aquí y espera la confirmación explícita del usuario.
 
 ---
 
-### Paso 3 — Implementación SQL y Seguridad (OpenSpec Apply / Green Phase)
+### Paso 3 — Implementación DDL y Migraciones (OpenSpec Apply: DDL)
 
-1. Invocar a `db-developer-agent` para ejecutar las tareas de `tasks.md`:
+1. Invocar a `db-developer-agent` para ejecutar las tareas DDL de `tasks.md`:
    - Migración UP: `<timestamp>_<change-name>.up.sql`
    - Migración DOWN: `<timestamp>_<change-name>.down.sql`
    - Mock Data / Fixtures: `<timestamp>_seeds.sql`
-2. Invocar a `db-security-agent` para generar:
-   - Políticas RLS e índices de aceleración de seguridad: `<timestamp>_security_rls.sql`
-   - Control de acceso DCL (roles y grants mínimos).
-3. Persistir los scripts en disco:
+2. Persistir los scripts en disco:
    - `database/migrations/<timestamp>_<change-name>.up.sql`
    - `database/migrations/<timestamp>_<change-name>.down.sql`
-   - `database/security/<timestamp>_security_rls.sql`
    - `database/seeds/<timestamp>_seeds.sql`
-4. Presentar resumen ejecutivo en chat:
+3. Presentar resumen ejecutivo en chat:
 
 ```text
-🛠️ Scripts SQL implementados (Fase Apply):
+🛠️ Scripts DDL y migraciones generados (Fase Apply: DDL):
 - Migración UP: [up.sql](file:///<ruta>/database/migrations/<timestamp>_<change-name>.up.sql)
 - Rollback DOWN: [down.sql](file:///<ruta>/database/migrations/<timestamp>_<change-name>.down.sql)
-- Seguridad RLS: [security_rls.sql](file:///<ruta>/database/security/<timestamp>_security_rls.sql)
 - Datos sintéticos: [seeds.sql](file:///<ruta>/database/seeds/<timestamp>_seeds.sql)
 
-¿Procedemos a ejecutar la validación mecánica y la auditoría adversarial de QA?
+¿Validás el DDL generado para proceder con el diseño de políticas de seguridad y RLS?
 ```
 
 🛑 **FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:** Detén tu turno aquí y espera la confirmación explícita del usuario.
 
 ---
 
-### Paso 4 — Validación Mecánica y Auditoría Adversarial (OpenSpec Verify)
+### Paso 4 — Seguridad, RLS y Control de Acceso (OpenSpec Apply: Security)
+
+1. Invocar a `db-security-agent` entregando:
+   - `design.md` (especificación de PII y multi-tenancy).
+   - Scripts DDL generados y validados en el Paso 3.
+2. El agente genera:
+   - Políticas RLS e índices de aceleración de seguridad: `<timestamp>_security_rls.sql`
+   - Control de acceso DCL (roles, usuarios y grants de mínimo privilegio).
+3. Persistir los scripts en disco:
+   - `database/security/<timestamp>_security_rls.sql`
+4. Presentar resumen ejecutivo en chat:
+
+```text
+🔒 Políticas de Seguridad y RLS generadas (Fase Apply: Security):
+- Script RLS: [security_rls.sql](file:///<ruta>/database/security/<timestamp>_security_rls.sql)
+- Tablas protegidas: <lista_de_tablas_con_RLS>
+- Control de acceso: Roles DCL y grants de mínimo privilegio aplicados.
+
+¿Procedemos a ejecutar la validación mecánica determinista y la auditoría adversarial de QA?
+```
+
+🛑 **FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:** Detén tu turno aquí y espera la confirmación explícita del usuario.
+
+---
+
+### Paso 5 — Validación Mecánica y Auditoría Adversarial (OpenSpec Verify)
 
 1. **Validación Mecánica Determinista:**
    - Ejecutar el script:
@@ -185,7 +205,7 @@ Skill especializado en el desarrollo e implementación de bases de datos mediant
 
 ---
 
-### Paso 5 — Handoff al Orquestador (Archive y Commit)
+### Paso 6 — Handoff al Orquestador (Archive y Commit)
 
 1. Emitir la señal hacia el orquestador principal:
    ```text
