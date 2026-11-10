@@ -93,7 +93,28 @@ Reglas generales, tono y convenciones de archivos: ver `AGENTS.md`.
      - **Capa Base de Datos (`capa:db`):** Conducir `_skills/db-sdd/SKILL.md` paso a paso (Modelado ERD con `db-architect-agent` → Planificación de tareas con `db-developer-agent` → Implementación DDL/RLS → Validación mecánica determinista con `scripts/validate-db-migrations.ps1` → Auditoría adversarial con `db-qa-agent`).
      - **Capa Backend (`capa:backend`):** Conducir el flujo SDD correspondiente para backend.
      - **Capa Frontend (`capa:frontend`):** Conducir el flujo SDD correspondiente para frontend.
-3. **Archivado en OpenSpec y Commit de la Entrega:**
+
+### 2.1. Gestión de Tickets Multi-Capa (Cross-Cutting / Fullstack)
+Si un ticket técnico impacta 2 o más capas (ej. Base de Datos + Backend + Frontend):
+1. **Nomenclatura Canónica en OpenSpec (`openspec/changes/`):**
+   El orquestador instruye generar una carpeta de cambio independiente por cada capa afectada, compartiendo el identificador único del ticket:
+   - `openspec/changes/<ticket_id>-db/` (ej. `E1-US03-T01-db/`)
+   - `openspec/changes/<ticket_id>-backend/` (ej. `E1-US03-T01-backend/`)
+   - `openspec/changes/<ticket_id>-frontend/` (ej. `E1-US03-T01-frontend/`)
+2. **Ejecución Secuencial Topológica:**
+   - **Paso A (Datos):** Ejecuta `_skills/db-sdd/` para `<ticket_id>-db/`. La base de datos, migraciones, políticas RLS y tests DB-TDD se validan primero.
+   - **Paso B (Backend):** Con el esquema de datos validado, ejecuta el flujo de backend para `<ticket_id>-backend/` (endpoints, controladores, DTOs y lógica de negocio).
+   - **Paso C (Frontend):** Con los contratos de API disponibles, ejecuta el flujo de frontend para `<ticket_id>-frontend/` (componentes UI, estado y consumo de APIs).
+3. **Archivado Atómico en Lote (`Bulk Archive`):**
+   - Una vez validadas todas las capas del ticket, el orquestador NO archiva carpeta por carpeta de forma fragmentada.
+   - Invoca el archivado en lote mediante **OpenSpec Bulk Archive** (`/opsx:bulk-archive` o `openspec bulk-archive`), consolidando simultáneamente las especificaciones canónicas en `openspec/specs/` y moviendo todas las subcarpetas del ticket a `openspec/changes/archive/`.
+   - Realiza un único commit atómico de la feature completa:
+     ```bash
+     git add database/ backend/ frontend/ openspec/
+     git commit -m "feat(<modulo>): implementacion fullstack para <ticket_id>"
+     ```
+
+3. **Archivado en OpenSpec y Commit de la Entrega (Ticket Mono-Capa):**
    - Al recibir la señal `[LISTO PARA COMMIT Y ARCHIVE] database/ openspec/changes/<change-name>/`:
      ```text
      ⏸️ Ciclo SDD de Base de Datos completado y validado mediante DB-TDD.

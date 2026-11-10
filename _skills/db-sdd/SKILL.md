@@ -57,7 +57,7 @@ Skill especializado en el desarrollo e implementación de bases de datos mediant
 1. Obtener los datos del ticket técnico (`capa:db`):
    - ID del ticket (ej. `US-03-T1` o issue #17), título y criterios de aceptación.
 2. Detectar el motor de base de datos desde `docs/tech-briefing.md`, `openspec/config.yaml` o preguntar al usuario (por defecto: `PostgreSQL`).
-3. Definir el identificador único del cambio en `kebab-case`: `<change-name>` (ej. `0017-crear-esquema-usuarios`).
+3. Definir el identificador único del cambio en `kebab-case`: `<change-name>` (ej. `0017-crear-esquema-usuarios`, o `<ticket_id>-db` si forma parte de un ticket multi-capa).
 
 ```text
 💡 Iniciando ciclo SDD de Base de Datos:

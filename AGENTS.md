@@ -100,6 +100,11 @@ Según la elección, invocar el recurso correspondiente antes de continuar:
     - **ÚNICAMENTE PUEDE PASAR:**
       1. Las instrucciones, respuestas o contexto provistos **explícitamente por el usuario**.
       2. Las rutas o el contenido íntegro de los artefactos persistidos en disco y validados en pasos previos.
+13. **Gobernanza de Tickets Multi-Capa y Bulk Archive:**
+    Cuando un ticket técnico impacte 2 o más capas tecnológicas (ej. `db` + `backend` + `frontend`):
+    - **Subcarpetas en OpenSpec por Capa:** Queda prohibido mezclar especificaciones heterogéneas en una única carpeta de change monolítica. El orquestador debe instruir la creación de una subcarpeta por cada capa afectada, compartiendo el identificador único del ticket: `openspec/changes/<ticket_id>-<capa>/` (ej: `E1-US03-T01-db/`, `E1-US03-T01-backend/`, `E1-US03-T01-frontend/`).
+    - **Secuenciación Topológica Obligatoria:** Se ejecuta y valida primero la capa de datos (`-db`), luego la capa de servicios y lógica (`-backend`), y finalmente la interfaz de usuario (`-frontend`).
+    - **Archivado Atómico en Lote (`Bulk Archive`):** Al finalizar la validación de todas las capas del ticket, el orquestador debe archivar en lote mediante **OpenSpec Bulk Archive** (`/opsx:bulk-archive` o `openspec bulk-archive`), garantizando la consolidación coherente de especificaciones en `openspec/specs/` y un único commit atómico de Git para la entrega completa.
 
 ---
 
