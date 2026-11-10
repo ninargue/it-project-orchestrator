@@ -90,6 +90,12 @@ Según la elección, invocar el recurso correspondiente antes de continuar:
       - Features/fixes hacia `develop`: [`.github/pull_request_template.md`](.github/pull_request_template.md).
       - Releases hacia `master`: [`.github/PULL_REQUEST_TEMPLATE/release.md`](.github/PULL_REQUEST_TEMPLATE/release.md).
     - **Convenciones de ramas, títulos y commits:** Deben respetar estrictamente las normas definidas en [`.github/CONTRIBUTING.md`](.github/CONTRIBUTING.md).
+12. **Neutralidad del Orquestador en Handoffs (Prohibición de Inyección de Sesgo):**
+    Al invocar a cualquier subagente o transferir el control entre skills, el agente orquestador actúa como un **canal transparente y neutral**:
+    - **QUEDA TERMINANTEMENTE PROHIBIDO** que el orquestador pase contexto, interpretaciones, preferencias técnicas/funcionales, reformulaciones sesgadas o suposiciones producto de su propio sesgo.
+    - **ÚNICAMENTE PUEDE PASAR:**
+      1. Las instrucciones, respuestas o contexto provistos **explícitamente por el usuario**.
+      2. Las rutas o el contenido íntegro de los artefactos persistidos en disco y validados en pasos previos.
 
 ---
 
@@ -149,3 +155,53 @@ El agente es un colaborador activo, empático y profesional, no un ejecutor aut�
 - **Celebrar los hitos:** Al completar una fase importante, reconocerlo brevemente antes de seguir.
 - **Sin jerga innecesaria:** Adaptar el nivel de detalle según el sombrero con el que trabaje el usuario (negocio vs. técnico).
 - **Pausas conversacionales:** En lugar de *"Confirmar para continuar"*, preferir *"¿Todo bien con esto? Cuando me des el visto bueno seguimos."*.
+
+---
+
+## 7. Reglas de Ingeniería para Crear o Modificar Skills y Subagentes (Invariantes de Arquitectura)
+
+Cualquier agente o desarrollador que cree o modifique un Skill (`_skills/`), un Subagente (`agents/`) o el Orquestador (`orchestrator/`) DEBE cumplir estas invariantes para mantener inalterable el rendimiento y funcionamiento del sistema:
+
+### 7.1. SSOT y Patrón Puntero (Anti-Prompt Drift)
+1. **Definición Canónica Única:** Todo subagente se define única y exclusivamente en `agents/<nombre>.md` con 3 secciones obligatorias: `1. Identidad y Misión`, `2. Invariantes y Guardrails Estrictos` y `3. Contratos de Ejecución (Inputs, Lógica, Formato de salida)`.
+2. **Espejo Puntero en `.claude/_agents/`:** Por cada `agents/<nombre>.md`, debe existir `.claude/_agents/<nombre>.md` que contenga **únicamente** el frontmatter YAML (`name`, `description`, `tools`) y la instrucción de una línea: `Lee y adopta estrictamente la identidad, rol, guardrails y contratos de ejecución definidos en el archivo canónico del agente: agents/<nombre>.md`. Prohibido duplicar el prompt.
+3. **Desacoplamiento Skill ↔ Agente:** Los archivos `_skills/<skill>/SKILL.md` NO deben contener el prompt del sistema del subagente; solo especifican en qué paso se invoca, qué archivos/variables recibe como input y cómo se persiste o valida su salida.
+
+### 7.2. Matriz de Mínimo Privilegio (Permisos y Herramientas)
+1. **Subagentes de Análisis, Diseño, Arquitectura y QA/Auditoría:** En su frontmatter solo pueden declarar `tools: [Read]`. Tienen **prohibido** escribir archivos en disco (`Write`/`Edit`), ejecutar comandos shell (`bash`) o hacer commits. Devuelven su resultado en Markdown estructurado al Skill invocador.
+2. **Subagentes de Materialización Externa (`issue-materializer-agent`, etc.):** Solo pueden ejecutarse tras una pausa `🛑` confirmada explícitamente por el usuario en el turno inmediato anterior.
+3. **Exclusividad de Git:** Ningún `SKILL.md` ni `agents/*.md` puede ejecutar `git add`, `git commit`, `git push` o `git branch`. Los Skills solo emiten la señal `[LISTO PARA COMMIT] <ruta>` y delegan la ejecución a `orchestrator/ORCHESTRATOR.md`.
+
+### 7.3. Prevención de Handoff Drift y Neutralidad de Contexto
+1. **Handoff por Archivo, no por Memoria:** Cuando `tiene_repositorio = true`, la comunicación entre pasos o entre skills se realiza leyendo el archivo persistido en disco en el paso anterior (ej. `docs/prd/...`, `docs/backlog/...`, `sdd/.../spec.md`). Queda prohibido pasar resúmenes improvisados en memoria cuando existe un artefacto en disco.
+2. **Prohibición de Sesgo del Orquestador:** Al invocar un subagente, el orquestador tiene **prohibido** inyectar suposiciones, opiniones, decisiones técnicas no solicitadas o contexto derivado de su propio sesgo. Solo está autorizado a transferir: (a) instrucciones o contexto dados explícitamente por el usuario, y (b) artefactos validados en pasos anteriores.
+3. **Verificación de Pre-condiciones (Input Gate):** Todo Skill que reciba outputs de un Skill previo debe verificar en su Paso inicial que los archivos requeridos existan en disco antes de invocar a cualquier subagente. Si faltan, debe detenerse e informar qué paso previo debe completarse.
+4. **Invariabilidad de Variables de Sesión:** Todo nuevo Skill debe reutilizar estrictamente los nombres de variables de sesión globales:
+   - `idioma`
+   - `tiene_repositorio` (`true` | `false`)
+   - `tipo_proyecto` (`greenfield` | `brownfield`)
+   - `prefijo_avance` (`0001`, `0002`, ...)
+   - `sufijo` (`kebab-case`)
+   Si el usuario entra directamente al Skill sin pasar por el Paso 0 global, el Skill debe detectarlas en disco o solicitarlas con el mismo contrato.
+
+### 7.4. Presupuesto de Contexto y Rendimiento (Lazy Loading)
+1. **Carga Perezosa (Lazy Evaluation):** El agente principal NUNCA debe leer todos los `SKILL.md` ni todos los `agents/*.md` al iniciar la sesión. Solo debe leer el archivo correspondiente a la opción elegida por el usuario en el Punto de Entrada, y cargar cada subagente únicamente en el paso exacto donde se le invoca.
+2. **Payload Mínimo al Subagente:** Al invocar un subagente, pasarle exclusivamente las rutas de archivos o el bloque de datos declarado en su sección `Inputs recibidos`, nunca el historial completo de la charla.
+3. **Límite de Granularidad:**
+   - Un archivo `agents/<nombre>.md` no debe exceder ~150 líneas (mantener instrucciones densas, deterministas y sin relleno).
+   - Un archivo `_skills/<nombre>/SKILL.md` debe contener entre 3 y 8 pasos interactivos como máximo. Si un flujo supera los 8 pasos, debe particionarse en 2 Skills secuenciales conectados por `ORCHESTRATOR.md` con un commit intermedio.
+
+### 7.5. Protocolo HITL (Human-in-the-Loop) e Idempotencia
+1. **Plantilla Obligatoria de Fin de Turno:** Todo paso interactivo dentro de un `SKILL.md` debe cerrar con el bloque literal:
+   `**🛑 FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:**` seguido de las instrucciones explícitas de detención.
+2. **Un Subagente por Turno Interactivo:** Prohibido encadenar dos subagentes en un mismo turno si el output del primero requiere validación humana o sirve de especificación (`spec.md` / `plan.md` / `PRD`) para el segundo.
+3. **Trazabilidad SDD 1:1 (Anti-Invención):** En flujos de desarrollo o base de datos (SDD), ningún agente de implementación puede agregar tablas, columnas, endpoints o lógica que no estén declarados en el `spec.md` aprobado. Cualquier omisión detectada durante la implementación o QA obliga a reportar el *drift* y actualizar el `spec.md` antes de regenerar código.
+
+### 7.6. Checklist de No-Regresión al Agregar un Nuevo Componente
+Antes de dar por terminado un nuevo Skill o Subagente, verificar:
+- [ ] ¿Se creó `agents/<nombre>.md` y su puntero exacto en `.claude/_agents/<nombre>.md`?
+- [ ] ¿El frontmatter del `SKILL.md` declara `name`, `version`, `description`, `trigger`, `tools_required`, `subagents`, `inputs`, `outputs` y `commits`?
+- [ ] ¿El handoff hacia el subagente está libre de sesgos del orquestador (solo contexto del usuario + archivos en disco)?
+- [ ] ¿Respeta el modo dual (`tiene_repositorio = true` escribe a disco y resume en chat vs. `tiene_repositorio = false` vuelca en chat)?
+- [ ] ¿Respeta la numeración incremental (`<NNNN>-`) sin sobrescribir entregas anteriores?
+- [ ] ¿Se registró en el Mapa de Componentes y Punto de Entrada de `AGENTS.md` y `orchestrator/ORCHESTRATOR.md` sin alterar los pasos de los skills existentes?
