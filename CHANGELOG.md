@@ -9,28 +9,17 @@ Versionado siguiendo [Semantic Versioning](https://semver.org/).
 ## [0.1.2] — 2026-11-09
 
 ### Mejorado
-- **Concisión en Chat vs. Persistencia en Disco (No duplicar contenido):**
-  - Se incorporó la **Regla de Oro 9** en `AGENTS.md` prohibiendo terminantemente volcar el contenido completo de los documentos `.md` en los mensajes de chat cuando hay acceso al repositorio (`tiene_repositorio = true`).
-  - En `_skills/product-discovery/SKILL.md` (Pasos 4, 5, 8) y `_skills/stories-to-tickets/SKILL.md` (Paso 13), el agente ahora emite únicamente resúmenes ejecutivos concisos (tablas resumen, enlaces directos a los archivos en disco y decisiones abiertas), reservando el volcado completo en conversación exclusivamente para cuando no se tiene acceso al repositorio (`tiene_repositorio = false`) para la validación previa a la generación de PDFs.
-  - Se actualizaron los contratos de guardrails en `agents/backlog-enrich-agent.md`, `agents/tickets-agent.md` y `orchestrator/ORCHESTRATOR.md`.
-- **Alto contraste universal en diagramas Mermaid:**
-  - Se añadieron directivas y clases explícitas de alto contraste (`fill:#1e293b, stroke:#38bdf8, color:#ffffff` y `linkStyle default stroke:#94a3b8`) en `AGENTS.md`, `agents/tickets-agent.md` y `_skills/stories-to-tickets/SKILL.md` (Paso 10 y 13) para asegurar contraste nítido y texto 100% legible tanto en temas oscuros como claros de cualquier visor Markdown o chat.
-- **Numeración incremental y trazabilidad evolutiva (Sin colisiones):**
-  - Se incorporó la **Regla de Oro 10** en `AGENTS.md` para soportar múltiples avances o entregas sucesivas sin sobrescritura de archivos ni IDs repetidos.
-  - Los archivos de alcance, PRD y backlog priorizado ahora anteponen un prefijo incremental de 4 dígitos (`docs/prd/0001-alcance-<sufijo>.md`, `docs/prd/0001-<proyecto>-<sufijo>.md`, `docs/backlog/0001-backlog-priorizado.md`) detectando automáticamente el mayor existente en disco.
-  - Las épicas (`E<N>`) e historias de usuario (`US-<XX>`) detectan las entidades previas en `docs/backlog/` y continúan la numeración de forma correlativa e incremental (ej: si existen `E1..E3` y `US-01..US-06`, el siguiente avance arrancará en `E4` y `US-07`).
+- **Concisión en chat:** Emisión de resúmenes ejecutivos con enlaces cuando hay repositorio, evitando volcar documentos completos.
+- **Contraste en Mermaid:** Estilos universales de alto contraste en diagramas de dependencias para temas oscuros y claros.
+- **Trazabilidad evolutiva:** Prefijo incremental `NNNN-` en alcance, PRD y backlog, con numeración continua de épicas (`E<N>`) e historias (`US-<XX>`).
 
 ---
 
 ## [0.1.1] — 2026-11-09
 
 ### Corregido
-- **Límites duros de turno (Hard Turn Boundaries):**
-  - Se sustituyeron todas las pausas ambiguas (`⏸ PAUSA: Continuar al Paso X`) por directivas taxativas `🛑 FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO` en todos los pasos de `_skills/product-discovery/SKILL.md` (Pasos 0c–8) y `_skills/stories-to-tickets/SKILL.md` (Pasos 9–14).
-  - Se incorporó la **Regla de Oro 8** en `AGENTS.md` prohibiendo estrictamente la ejecución multi-paso en un solo turno ("runaway execution" o sesgo de autocompletado), la simulación de respuestas de usuario y el avance sin mensaje explícito.
-  - Se reforzó `orchestrator/ORCHESTRATOR.md` con prohibición explícita de ejecución en lote (`BATCH EXECUTION FORBIDDEN`).
-- **Compatibilidad con Antigravity:**
-  - Registro canónico de plugin en `plugin.json` y skill maestro en `_skills/it-project-orchestrator/SKILL.md`.
+- **Límites de turno:** Directivas taxativas de fin de turno obligatorio en pausas para evitar ejecución desatendida en lote.
+- **Compatibilidad Antigravity:** Registro canónico en `plugin.json` y skill maestro en `_skills/it-project-orchestrator/`.
 
 ---
 
