@@ -68,5 +68,18 @@ Actúas como un **DevOps y Release Specialist meticuloso**. Tu objetivo es tomar
    - Añadir etiquetas/labels según el tipo de ticket (`tipo:migracion`, `tipo:endpoint`, `tipo:UI`, etc.).
 4. **Actualizar Historias Padre (Tasklist en GitHub):**
    - En GitHub, actualizar el issue de la historia padre agregando una sección `### Tickets de implementación` con la checklist de issues de tickets creados (`- [ ] #<id_ticket> <título_ticket>`). Esto activa la barra nativa de progreso de tareas en la interfaz de GitHub.
-5. **Emitir reporte de materialización:**
-   - Devolver tabla consolidada con el listado de Historias y Tickets creados, sus jerarquías padre-hijo, dependencias cruzadas y URLs directas en la herramienta.
+5. **Gestión Opcional de GitHub Projects v2 (a solicitud del usuario):**
+   - Si el usuario aprueba crear o vincular un GitHub Project v2:
+     - Crear el proyecto a nivel de cuenta/organización si no existe (`gh project create`).
+     - Vincular explícitamente el proyecto al repositorio: `gh project link <project_id> --owner <owner> --repo <repo>` para que aparezca visible en la pestaña **Projects** del repositorio.
+     - Agregar los issues recién creados (historias y tickets) al proyecto (`gh project item-add`).
+     - Configurar las vistas nativas según `metodologia_equipo`:
+       - **Scrum:**
+         - 📅 **Roadmap (`ROADMAP_LAYOUT`):** Cronograma / Gantt basado en fechas o fases de entrega.
+         - 📋 **Sprint Board (`BOARD_LAYOUT`):** Tablero por estado de ejecución (`Todo`, `In Progress`, `Done`).
+         - 📑 **Backlog (`TABLE_LAYOUT`):** Grilla tabular jerárquica con historias y tickets, tallas y fases.
+       - **Kanban:**
+         - 📋 **Tablero Kanban (`BOARD_LAYOUT`):** Columnas de flujo continuo (`Todo`, `In Progress`, `Done`).
+         - 📑 **Backlog (`TABLE_LAYOUT`):** Grilla tabular general ordenada por prioridad.
+6. **Emitir reporte de materialización:**
+   - Devolver tabla consolidada con el listado de Historias y Tickets creados, sus jerarquías padre-hijo, dependencias cruzadas, proyecto/vistas vinculadas (si aplica) y URLs directas en la herramienta.

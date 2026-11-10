@@ -206,7 +206,20 @@ detectar `prefijo_avance` inspeccionando `docs/prd/` y `docs/backlog/` (o asigna
     - Linear: registrar relaciones nativas de dependencia (`blocks` / `blocked_by`).
   - Si es GitHub, verificar si existen `.github/ISSUE_TEMPLATE/story.yml` y `ticket.yml` en el proyecto; si faltan, copiarlos desde `<raíz del plugin>/templates/github/`. Al invocar al subagente, sustituir `<raíz del plugin>` por la ruta absoluta: el subagente no la conoce.
   - Aplicar milestones y labels según Scrum o Kanban.
-  - Generar y devolver el reporte consolidado con tabla de issues creados, sus IDs, dependencias y URLs.
+  - **Paso Opcional — GitHub Projects v2 y Vistas (si `herramienta_issues = github`):**
+    - Consultar al usuario si desea vincular/crear un GitHub Project v2 para este backlog.
+    - Si el usuario lo autoriza:
+      1. Crear / vincular el proyecto al repositorio: `gh project link <id> --owner <owner> --repo <repo>` para que sea accesible desde la pestaña **Projects** del repo.
+      2. Agregar los issues creados al proyecto (`gh project item-add`).
+      3. Configurar las vistas nativas según `metodologia_equipo`:
+         - **Scrum:**
+           - 📅 **Roadmap (`ROADMAP_LAYOUT`):** Vista de cronograma / Gantt por fases y fechas estimadas.
+           - 📋 **Sprint Board (`BOARD_LAYOUT`):** Tablero por estado (`Todo`, `In Progress`, `Done`).
+           - 📑 **Backlog (`TABLE_LAYOUT`):** Grilla tabular con historias, tickets, tallas y fases.
+         - **Kanban:**
+           - 📋 **Tablero Kanban (`BOARD_LAYOUT`):** Columnas de flujo continuo (`Todo`, `In Progress`, `Done`).
+           - 📑 **Backlog (`TABLE_LAYOUT`):** Grilla tabular general por prioridad.
+  - Generar y devolver el reporte consolidado con tabla de issues creados, sus IDs, dependencias y URLs (y enlace al proyecto si se configuró).
 
 **🛑 FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:**
 1. Pregunta al usuario antes de crear los issues:
