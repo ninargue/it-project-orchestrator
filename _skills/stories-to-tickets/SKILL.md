@@ -12,11 +12,11 @@ subagents:
   - tickets-agent
   - issue-materializer-agent
 inputs:
-  - docs/backlog/<E-nombre-epica>/us-<nombre-historia>.md  # output del Skill 1
+  - docs/backlog/<prefijo_avance>-<proyecto>-<sufijo>/E<N>-<nombre-epica>/us-<nombre-historia>.md  # output del Skill 1
   - docs/config-project-orchestrator/tool-config.md        # configuración de herramienta (opcional — se solicita al usuario si no existe)
 outputs:
-  - docs/backlog/<E-nombre-epica>/tickets-<historia>.md    # tickets por historia
-  - docs/backlog/backlog-priorizado.md                     # grafo + sizing + matriz
+  - docs/backlog/<prefijo_avance>-<proyecto>-<sufijo>/E<N>-<nombre-epica>/tickets-<historia>.md    # tickets por historia
+  - docs/backlog/<prefijo_avance>-<proyecto>-<sufijo>/<prefijo_avance>-backlog-priorizado.md       # grafo + sizing + matriz
   - issues creados en GitHub o Linear
 commits:
   - "El orquestador (nunca este skill ni sus subagentes) hace todos los commits,
@@ -40,11 +40,12 @@ Este skill recibe del Skill 1 (product-discovery) las siguientes variables en me
 | Variable | Valores | Uso en este skill |
 |---|---|---|
 | `tiene_repositorio` | `true` / `false` | Determina si se escribe a disco o se trabaja en conversación |
+| `prefijo_avance` | ej: `0001`, `0002` | Prefijo numérico incremental de la entrega/avance |
 | `sufijo` | ej: `registro-ventas-mvp` | Nombre de archivos generados |
 | `tipo_proyecto` | `greenfield` / `brownfield` | Contexto para tickets |
 
 Si alguna de estas variables no está en memoria de sesión (usuario entró directo al Skill 2),
-preguntar al inicio:
+detectar `prefijo_avance` inspeccionando `docs/prd/` y `docs/backlog/` (o asignar `0001` si no hay previos) y preguntar al inicio:
 ```
 1. Repositorio de destino:
    a) Sí (escribir archivos en el repositorio del proyecto)
@@ -79,6 +80,9 @@ preguntar al inicio:
 6. **Idioma:** detectar leyendo archivos existentes en `docs/`. Si no hay archivos previos, preguntar al usuario:
    `"¿En qué idioma generamos los tickets y archivos? (español / inglés / otro)"`
    El idioma queda en memoria de sesión — no se escribe en ningún archivo de config.
+7. **Concisión en Chat vs. Persistencia en Disco:**
+   - **Si `tiene_repositorio = true`:** Los tickets y el backlog priorizado se escriben directamente a disco. En el chat solo se muestran resúmenes ejecutivos (tablas de tickets, diagramas y listas de archivos con enlaces). **QUEDA TERMINANTEMENTE PROHIBIDO volcar el contenido íntegro de todos los tickets generados en el chat**.
+   - **Si `tiene_repositorio = false`:** Mostrar en conversación los bloques markdown completos para que el usuario los guarde cuando cree su repositorio.
 
 ---
 
@@ -88,7 +92,7 @@ preguntar al inicio:
 
 **Invocación del subagente:**
 - **Fuente de historias:**
-  - Si `tiene_repositorio = true`: leer desde disco `docs/backlog/<E-nombre-epica>/us-*.md`
+  - Si `tiene_repositorio = true`: leer desde disco `docs/backlog/<prefijo_avance>-<proyecto>-<sufijo>/E<N>-<nombre-epica>/us-*.md`
   - Si `tiene_repositorio = false`: usar las historias del Skill 1 disponibles en la conversación
 - **Tarea:** Descomponer cada historia en tickets atómicos de media jornada (`US-<XX>-T<N>`), nombrando la capa que tocan (sin diseñar el esquema) y con Definition of Done (DoD) como checklist de entrega (sin horas ni criterios inventados).
 
@@ -107,6 +111,7 @@ preguntar al inicio:
 **Invocación del subagente:**
 - **Input:** Tickets validados en el Paso 9.
 - **Tarea:** Generar el grafo de dependencias en Mermaid (`graph TD`) indicando qué bloquea a qué, junto con el orden de implementación por fases (distinguiendo qué tickets pueden realizarse en paralelo).
+- **Estilo de alto contraste:** El diagrama debe incluir obligatoriamente `classDef default fill:#1e293b,stroke:#38bdf8,stroke-width:1.5px,color:#ffffff;` y `linkStyle default stroke:#94a3b8,stroke-width:1.5px;` para asegurar legibilidad perfecta en cualquier tema (oscuro o claro).
 
 **🛑 FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:**
 1. Muestra el grafo Mermaid y el orden de fases propuesto.
@@ -122,7 +127,7 @@ preguntar al inicio:
 
 **Invocación del subagente:**
 - **Input:** Tickets secuenciados en el Paso 10.
-- **Tarea:** Estimar cada ticket en T-shirt sizing (S / M / L) con su nivel de riesgo (bajo / medio / alto) y fundamento técnico en una línea (sin inventar horas exactas ni story points arbitrarios).
+- **Tarea:** Estimar cada ticket en T-shirt sizing (S / M / L) con su nivel de riesgo (bajo / medio / alto) y fundamento técnico en una línea (sin inventar horas exactas ni story points arbitrarios), formateando la tabla con enlaces relativos a cada archivo de tickets (`[**US-<XX>-T<N>**](E<N>-<epica>/tickets-<historia>.md)`).
 
 **🛑 FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:**
 1. Muestra la tabla de sizing y riesgos al usuario.
@@ -156,16 +161,17 @@ preguntar al inicio:
 - **Input:** Todo el backlog consensuado en los Pasos 9 al 12.
 - **Tarea:**
   - **Si `tiene_repositorio = true`:** Escribir en disco:
-    1. `docs/backlog/<E-nombre-epica>/tickets-<nombre-historia>.md`: Un archivo por cada historia con sus tickets, DoD, talla y riesgo.
-    2. `docs/backlog/backlog-priorizado.md`: Grafo Mermaid, orden de implementación, matriz impacto/complejidad y orden priorizado.
-    Avisar al orquestador con: `[LISTO PARA COMMIT] docs/backlog/ completo.`
+    1. `docs/backlog/<prefijo_avance>-<proyecto>-<sufijo>/E<N>-<nombre-epica>/tickets-<nombre-historia>.md`: Un archivo por cada historia con sus tickets (`US-<XX>-T<N>`), DoD, talla y riesgo.
+    2. `docs/backlog/<prefijo_avance>-<proyecto>-<sufijo>/<prefijo_avance>-backlog-priorizado.md`: Debe incluir en su encabezado el enlace y referencia al PRD correspondiente (`> PRD de referencia: [docs/prd/<prefijo_avance>-<proyecto>-<sufijo>.md](../../prd/<prefijo_avance>-<proyecto>-<sufijo>.md)`), seguido del grafo Mermaid con alto contraste, orden de implementación, matriz impacto/complejidad y orden priorizado de esta entrega.
+    En el chat: mostrar únicamente un **resumen estructurado** de archivos generados con sus enlaces, tabla de historias con cantidad de tickets y tallas consolidadas. **QUEDA TERMINANTEMENTE PROHIBIDO volcar el contenido íntegro de todos los tickets en el chat**.
+    Avisar al orquestador con: `[LISTO PARA COMMIT] docs/backlog/<prefijo_avance>-<proyecto>-<sufijo>/ completo.`
   - **Si `tiene_repositorio = false`:** Mostrar en conversación los dos bloques markdown listos para cuando el usuario cree el repositorio:
     1. `tickets-<sufijo>.md`: Todos los tickets por historia.
-    2. `backlog-priorizado-<sufijo>.md`: Grafo, orden de implementación, matriz y orden priorizado.
+    2. `<prefijo_avance>-backlog-priorizado-<sufijo>.md`: Con referencia al PRD (`> PRD de referencia: <prefijo_avance>-<proyecto>-<sufijo>.md`), grafo, orden de implementación, matriz y orden priorizado.
     Avisar al orquestador con: `[LISTO PARA REVISIÓN] Backlog completo en conversación — confirmá para continuar al Paso 14.`
 
 **🛑 FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:**
-1. Muestra el estado del backlog completo (archivos creados o markdown en chat) y avisa al orquestador.
+1. Muestra el resumen de archivos creados con enlaces (si hay repo) o los dos bloques markdown completos en chat (si no hay repo) y avisa al orquestador.
 2. DETÉN tu respuesta inmediatamente aquí.
 3. QUEDA TERMINANTEMENTE PROHIBIDO crear issues en GitHub/Linear o pasar al Paso 14 en este mismo turno.
 4. Espera la confirmación explícita del usuario antes de continuar.
@@ -189,12 +195,31 @@ preguntar al inicio:
   ```
 
 **Invocación del subagente:**
-- **Fuente de datos:** Configuración de herramienta + historias + tickets.
+- **Fuente de datos:** Configuración de herramienta + historias + tickets + grafo de dependencias.
 - **Tarea:**
-  - Ejecutar la creación de forma estrictamente SECUENCIAL (primero padres, luego hijos).
+  - Ejecutar la creación de forma estrictamente SECUENCIAL (primero historias padre, luego tickets hijos).
+  - **Jerarquía Padre-Hijo:**
+    - GitHub: cada ticket lleva en su cuerpo `Historia padre: #<id_padre>`. Al finalizar los tickets de cada historia, actualizar el issue padre agregando la checklist Markdown (`- [ ] #<id_ticket> ...`) para activar la barra de progreso nativa de tareas en GitHub.
+    - Linear: asignar `parentId` para anidar los tickets como sub-issues nativos.
+  - **Dependencias entre Tickets:**
+    - GitHub: traducir los IDs lógicos del grafo a los números de issue reales (`Bloquea: #<id>`, `Bloqueado por: #<id>`) generando hipervínculos cruzados automáticos.
+    - Linear: registrar relaciones nativas de dependencia (`blocks` / `blocked_by`).
   - Si es GitHub, verificar si existen `.github/ISSUE_TEMPLATE/story.yml` y `ticket.yml` en el proyecto; si faltan, copiarlos desde `<raíz del plugin>/templates/github/`. Al invocar al subagente, sustituir `<raíz del plugin>` por la ruta absoluta: el subagente no la conoce.
   - Aplicar milestones y labels según Scrum o Kanban.
-  - Generar y devolver el reporte consolidado con tabla de issues creados, sus IDs y URLs.
+  - **Paso Opcional — GitHub Projects v2 y Vistas (si `herramienta_issues = github`):**
+    - Consultar al usuario si desea vincular/crear un GitHub Project v2 para este backlog.
+    - Si el usuario lo autoriza:
+      1. Crear / vincular el proyecto al repositorio: `gh project link <id> --owner <owner> --repo <repo>` para que sea accesible desde la pestaña **Projects** del repo.
+      2. Agregar los issues creados al proyecto (`gh project item-add`).
+      3. Configurar las vistas nativas según `metodologia_equipo`:
+         - **Scrum:**
+           - 📅 **Roadmap (`ROADMAP_LAYOUT`):** Vista de cronograma / Gantt por fases y fechas estimadas.
+           - 📋 **Sprint Board (`BOARD_LAYOUT`):** Tablero por estado (`Todo`, `In Progress`, `Done`).
+           - 📑 **Backlog (`TABLE_LAYOUT`):** Grilla tabular con historias, tickets, tallas y fases.
+         - **Kanban:**
+           - 📋 **Tablero Kanban (`BOARD_LAYOUT`):** Columnas de flujo continuo (`Todo`, `In Progress`, `Done`).
+           - 📑 **Backlog (`TABLE_LAYOUT`):** Grilla tabular general por prioridad.
+  - Generar y devolver el reporte consolidado con tabla de issues creados, sus IDs, dependencias y URLs (y enlace al proyecto si se configuró).
 
 **🛑 FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:**
 1. Pregunta al usuario antes de crear los issues:
@@ -240,7 +265,8 @@ Mostrar en la conversación el markdown completo listo para usar:
 [todos los tickets por historia, con DoD, talla y riesgo — formato del Paso 9]
 
 ---
-## backlog-priorizado-<sufijo>.md
+## <prefijo_avance>-backlog-priorizado-<sufijo>.md
+> PRD de referencia: docs/prd/<prefijo_avance>-<proyecto>-<sufijo>.md
 [grafo de dependencias, orden de implementación, matriz impacto/complejidad, orden de backlog]
 ```
 
@@ -256,8 +282,8 @@ Resumen:
 
 Los archivos están listos en la conversación.
 Cuando crees el repositorio del proyecto, guardá estos archivos en:
-  docs/backlog/<E-epica>/tickets-<historia>.md
-  docs/backlog/backlog-priorizado.md
+  docs/backlog/<prefijo_avance>-<proyecto>-<sufijo>/E<N>-<epica>/tickets-<historia>.md
+  docs/backlog/<prefijo_avance>-<proyecto>-<sufijo>/<prefijo_avance>-backlog-priorizado.md
 
 Próximos pasos sugeridos:
 1. Crear el repositorio del proyecto y versionar los archivos generados

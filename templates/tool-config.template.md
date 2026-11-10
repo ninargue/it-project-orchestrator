@@ -35,6 +35,20 @@ metodologia_equipo: scrum    # Scrum (épicas como milestones/proyectos y sprint
 
 ---
 
+## 5. GitHub Projects v2 y Vistas (Opcional — solo para GitHub)
+# Indica si deseas crear/vincular un GitHub Project con vistas nativas (Roadmap/Kanban/Backlog):
+crear_github_project: false  # true para crear/vincular y armar vistas según metodología
+
+---
+
+## 6. Estrategia de Ramas (Git Flow)
+# Deja activa solo una opción:
+estrategia_git: gitflow-strict     # master + develop + release/* + hotfix/*
+# estrategia_git: gitflow-standard  # master + develop directo con sincronización
+# estrategia_git: github-flow       # solo main / trunk-based
+
+---
+
 ## Metadatos
 fecha_configuracion: YYYY-MM-DD
 configurado_por: <tu-nombre-o-rol>
