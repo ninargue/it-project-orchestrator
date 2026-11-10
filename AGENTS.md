@@ -83,6 +83,13 @@ Según la elección, invocar el recurso correspondiente antes de continuar:
     - **Épicas Incrementales (`E<N>`):** Al definir épicas en el PRD, inspeccionar `docs/backlog/` y PRDs previos para detectar la última épica numerada (`E1`, `E2`, etc.). Las nuevas épicas continúan correlativamente (`E3`, `E4`, ...) para evitar colisiones entre avances.
     - **Historias de Usuario (`US-<XX>`):** Al descomponer historias, inspeccionar `docs/backlog/**/us-*.md` para obtener el último código `US-<XX>`. Las nuevas historias continúan correlativamente (`US-07`, `US-08`, ...) garantizando unicidad global en el proyecto.
     - **Tickets Atómicos (`US-<XX>-T<N>`):** Heredan el ID unívoco de su historia padre, garantizando unicidad y evitando duplicados en GitHub Issues y Linear.
+11. **Gobernanza de Pull Requests y Uso Obligatorio de Plantillas (PR Templates):**
+    Al abrir cualquier Pull Request (mediante `gh pr create` o en GitHub):
+    - **Uso estricto de plantillas oficiales:** El cuerpo del PR (`--body`) debe estructurarse obligatoriamente respetando la plantilla correspondiente en `.github/`:
+      - Para PRs de features/fixes hacia `develop`: `.github/pull_request_template.md` (con descripción, issue vinculado `Closes #X`, tipo de cambio, lista de cambios, rama base y checklist verificado).
+      - Para PRs de release/hotfix hacia `master`: `.github/PULL_REQUEST_TEMPLATE/release.md` (con versión, issues/PRs incluidos, checklist de pruebas, changelog y notas de release).
+    - **Prohibido el PR vacío o minimalista:** Queda terminantemente prohibido crear PRs sin cuerpo o con descripciones genéricas de una línea.
+    - **Convención de Títulos (Conventional Commits):** El título del PR debe respetar estrictamente Conventional Commits (`feat(...)`, `fix(...)`, `docs(...)`, `chore(...)`, `refactor(...)`, `release: vX.Y.Z`) para satisfacer las políticas automáticas de CI (`branch-policy.yml` y `pr-labeler.yml`).
 
 ---
 

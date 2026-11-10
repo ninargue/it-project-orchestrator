@@ -13,6 +13,7 @@ Versionado siguiendo [Semantic Versioning](https://semver.org/).
 - **Contraste en Mermaid:** Estilos universales de alto contraste en diagramas de dependencias para temas oscuros y claros.
 - **Trazabilidad evolutiva:** Prefijo incremental `NNNN-` en alcance, PRD y backlog, con numeración continua de épicas (`E<N>`) e historias (`US-<XX>`).
 - **Agrupación y trazabilidad de backlog:** Encapsulación en subcarpetas homónimas al PRD (`docs/backlog/<NNNN>-<proyecto>-<sufijo>/`) con enlaces bidireccionales al PRD/alcance y enlaces directos a cada ticket en la tabla de sizing.
+- **Gobernanza de PRs:** Regla de Oro 11 en `AGENTS.md` y plantillas oficiales (`.github/`) para estandarizar la creación de Pull Requests.
 
 ---
 

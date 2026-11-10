@@ -1,7 +1,7 @@
 <!--
 ¿Es un PR de release/* o hotfix/* hacia master? Usa el template de release
 agregando ?template=release.md a la URL de creación del PR:
-https://github.com/ninargue/registro-venta-micro/compare/master...release/X.Y.Z?template=release.md
+https://github.com/ninargue/it-project-orchestrator/compare/master...release/X.Y.Z?template=release.md
 -->
 
 ## 📋 Descripción
@@ -19,8 +19,8 @@ Closes #<!-- número del issue -->
 
 ## 🔧 Cambios realizados
 <!-- Lista los cambios principales -->
--
--
+- 
+- 
 
 ## 🌿 Rama base
 <!-- ¿Hacia dónde va este PR? -->
@@ -29,33 +29,17 @@ Closes #<!-- número del issue -->
 - [ ] otra, si corresponde
 
 ## ✅ Checklist
-- [ ] Lint y tests en verde en **backend (FastAPI)** y **frontend (PWA)**
-- [ ] Se probó manualmente el flujo principal
-- [ ] No se incluyen credenciales ni archivos `.env`
-- [ ] El nombre del branch sigue la convención (`feature/`, `fix/`, `hotfix/`, `chore/`, `refactor/`, `docs/`, `test/`, `release/`)
+- [ ] Lint y validaciones en verde en CI
+- [ ] Se probó manualmente el flujo o comando modificado
+- [ ] No se incluyen credenciales, secretos ni archivos temporales
+- [ ] El nombre del branch sigue la convención Git Flow (`feature/`, `fix/`, `hotfix/`, `chore/`, `refactor/`, `docs/`, `test/`, `release/`)
+- [ ] Título del PR sigue Conventional Commits (`feat(...)`, `fix(...)`, etc.)
 
-### 🏢 Si toca datos de negocio (multitenant)
-- [ ] Toda tabla operativa nueva tiene `tenant_id` **NOT NULL**, política **RLS** activa y `FORCE ROW LEVEL SECURITY`
-- [ ] Las FK entre tablas operativas son compuestas `(tenant_id, id)`
-- [ ] Hay prueba de aislamiento: un usuario de otro tenant no puede leer ni modificar el recurso
-
-### 🗄️ Si toca el esquema
-- [ ] La migración la generó **Alembic** y se revisó el script generado
-- [ ] Montos en `numeric(12,2)`, cantidades en `numeric(12,3)`, fechas en `timestamptz`
-- [ ] Un `NOT NULL` sobre una tabla con datos se verificó antes contra filas nulas
-- [ ] Se actualizó el diccionario de datos en `docs/04-modelo-de-datos/`
-
-### 📶 Si toca ventas, caja o sincronización
-- [ ] Las operaciones creadas offline siguen siendo **idempotentes** (UUID de cliente)
-- [ ] El cálculo de totales y stock sigue siendo determinista (sin IA en el flujo transaccional)
-
-### 🔍 Si cambia comportamiento
-- [ ] **Ninguna aserción sobre la respuesta fue modificada.** Si hubo que tocar una, el PR cambia comportamiento y va separado
-- [ ] Ninguna tabla ni dato se borró sin pedido explícito
-- [ ] Si cambia una decisión de diseño, se agregó o actualizó el ADR correspondiente
-
-## 📸 Screenshots (si aplica)
-<!-- Agrega capturas de pantalla si hay cambios visuales (idealmente celular y PC) -->
+### 🤖 Gobernanza de Agentes y Skills (si aplica)
+- [ ] Se respetó la Única Fuente de Verdad (SSOT en `agents/`) sin duplicar prompts
+- [ ] Se mantuvieron los límites duros de fin de turno (`🛑 FIN DE TURNO OBLIGATORIO`) en pausas
+- [ ] Rutas de persistencia alineadas con la estructura canónica (`docs/prd/`, `docs/backlog/<NNNN>-.../`)
+- [ ] Se actualizó `CHANGELOG.md` con descripción concisa y versión correspondiente
 
 ## 💬 Notas adicionales
-<!-- Contexto extra, decisiones tomadas, deuda técnica pendiente -->
+<!-- Contexto extra, decisiones tomadas, trade-offs -->
