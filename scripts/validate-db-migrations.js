@@ -26,6 +26,7 @@ const args = process.argv.slice(2);
 let migrationsDir = '';
 let securityDir = '';
 let engine = 'postgres';
+let noRls = false;
 
 for (let i = 0; i < args.length; i++) {
   const arg = args[i];
@@ -35,7 +36,14 @@ for (let i = 0; i < args.length; i++) {
     securityDir = args[++i];
   } else if (arg === '--engine' || arg === '-e') {
     engine = args[++i];
+  } else if (arg === '--no-rls' || arg === '--disable-rls' || arg === '--rls=false') {
+    noRls = true;
   }
+}
+
+if (securityDir && ['none', 'disabled', 'false'].includes(securityDir.toLowerCase())) {
+  noRls = true;
+  securityDir = '';
 }
 
 const engineLower = (engine || 'postgres').toLowerCase().trim();
@@ -82,10 +90,11 @@ if (!migrationsDir || !fs.existsSync(migrationsDir)) {
 }
 
 // 2. Manejo y Auto-descubrimiento del directorio de seguridad / RLS
-const isInSituExplicit = securityDir && ['in-situ', 'none', 'inline'].includes(securityDir.toLowerCase());
+const isRlsAuditActive = !noRls;
+const isInSituExplicit = securityDir && ['in-situ', 'inline'].includes(securityDir.toLowerCase());
 if (isInSituExplicit) {
   securityDir = '';
-} else if (!securityDir || !fs.existsSync(securityDir)) {
+} else if (isRlsAuditActive && (!securityDir || !fs.existsSync(securityDir))) {
   const parent = path.dirname(migrationsDir);
   const candidateSecDirs = [
     path.join(parent, 'security'),
@@ -106,7 +115,9 @@ if (isInSituExplicit) {
 
 console.log(`${colors.cyan}🔍 Iniciando validación mecánica determinista de migraciones...${colors.reset}`);
 console.log(`Directorio Migraciones: ${migrationsDir}`);
-if (securityDir) {
+if (!isRlsAuditActive) {
+  console.log(`Seguridad RLS en BD:    ${colors.yellow}Desactivada (seguridad gestionada en capa de aplicación / sin RLS)${colors.reset}`);
+} else if (securityDir) {
   console.log(`Directorio Seguridad:   ${securityDir}`);
 } else {
   console.log(`Directorio Seguridad:   (no detectado separado, se inspeccionarán migraciones in-situ)`);
@@ -185,6 +196,31 @@ if (isSymmetricMode) {
         } else {
           passedChecks.push(`✅ [REVERSIBILIDAD]: Tabla '${tbl}' correctamente eliminada en ${matchingDown.name}.`);
         }
+      }
+    }
+  }
+}
+
+// Validación de Simetría en Directorio de Seguridad (si existe y RLS está activo)
+if (isRlsAuditActive && securityDir && fs.existsSync(securityDir)) {
+  const secFiles = getFilesRecursively(securityDir, /\.sql$/i);
+  const secUpFiles = secFiles.filter(f => !/\.down\.sql$/i.test(f.name) && !/\.test\.sql$/i.test(f.name));
+  const secDownFiles = secFiles.filter(f => /\.down\.sql$/i.test(f.name));
+
+  for (const sUp of secUpFiles) {
+    const baseName = sUp.name.replace(/\.(up\.)?sql$/i, '');
+    const expectedSecDown = `${baseName}.down.sql`;
+    const matchingSecDown = secDownFiles.find(d => d.name === expectedSecDown);
+
+    if (!matchingSecDown) {
+      warnings.push(`⚠️ [SIMETRÍA SEGURIDAD]: Script de seguridad '${sUp.name}' no tiene archivo de reversión simétrico '${expectedSecDown}' en '${securityDir}'.`);
+    } else {
+      passedChecks.push(`✅ [SIMETRÍA SEGURIDAD]: Pareja de seguridad simétrica detectada: ${sUp.name} <-> ${expectedSecDown}`);
+      const secDownContent = fs.readFileSync(matchingSecDown.path, 'utf8');
+      if (!/DROP\s+POLICY/i.test(secDownContent) && !/REVOKE/i.test(secDownContent) && !/DISABLE\s+ROW\s+LEVEL\s+SECURITY/i.test(secDownContent)) {
+        warnings.push(`⚠️ [REVERSIBILIDAD SEGURIDAD]: El archivo de rollback '${matchingSecDown.name}' no parece contener DROP POLICY ni REVOKE.`);
+      } else {
+        passedChecks.push(`✅ [REVERSIBILIDAD SEGURIDAD]: Rollback de seguridad contiene sentencias de revocación/eliminación de políticas.`);
       }
     }
   }
@@ -273,53 +309,106 @@ for (const sqlFile of targetFiles) {
 
   // C. Verificaciones Específicas por Motor
   if (engineLower === 'postgres' || engineLower === 'supabase') {
-    const createdTables = [];
-    const tblRegex = /CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?([a-zA-Z0-9_\.]+)/gi;
-    let tMatch;
-    while ((tMatch = tblRegex.exec(content)) !== null) {
-      createdTables.push(tMatch[1].split('.').pop().replace(/[`"\[\]]/g, ''));
-    }
+    if (!isRlsAuditActive) {
+      passedChecks.push(`ℹ️ [RLS GATE]: Validación de RLS desactivada para este proyecto (seguridad a nivel aplicación).`);
+    } else {
+      const createdTables = [];
+      const tblRegex = /CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?([a-zA-Z0-9_\.]+)/gi;
+      let tMatch;
+      while ((tMatch = tblRegex.exec(content)) !== null) {
+        createdTables.push(tMatch[1].split('.').pop().replace(/[`"\[\]]/g, ''));
+      }
 
-    for (const tbl of createdTables) {
-      if (/^(__|schema_migrations|pg_)/i.test(tbl)) continue;
+      // Recolectar todo el SQL relevante de seguridad (directorio de seguridad + migraciones)
+      let allSecuritySql = '';
+      if (securityDir && fs.existsSync(securityDir)) {
+        const secSqlFiles = getFilesRecursively(securityDir, /\.sql$/i).filter((f) => !/\.down\.sql$/i.test(f.name));
+        allSecuritySql = secSqlFiles.map((f) => fs.readFileSync(f.path, 'utf8')).join('\n');
+      }
+      const combinedSqlForRls = content + '\n' + allSecuritySql;
 
-      const rlsPattern = new RegExp(`ALTER\\s+TABLE\\s+(?:[a-zA-Z0-9_\\.]+\\.)?${tbl}\\s+ENABLE\\s+ROW\\s+LEVEL\\s+SECURITY`, 'i');
-      if (!rlsPattern.test(content)) {
-        let foundInSecurity = false;
-        let matchedSecFile = '';
+      for (const tbl of createdTables) {
+        if (/^(__|schema_migrations|pg_)/i.test(tbl)) continue;
 
-        if (securityDir && fs.existsSync(securityDir)) {
-          const secFiles = getFilesRecursively(securityDir, /\.sql$/i);
-          for (const sf of secFiles) {
-            const secContent = fs.readFileSync(sf.path, 'utf8');
-            if (rlsPattern.test(secContent)) {
-              foundInSecurity = true;
-              matchedSecFile = sf.name;
-              break;
-            }
-          }
-        }
+        const rlsPattern = new RegExp(`ALTER\\s+TABLE\\s+(?:[a-zA-Z0-9_\\.]+\\.)?${tbl}\\s+ENABLE\\s+ROW\\s+LEVEL\\s+SECURITY`, 'i');
+        let isRlsEnabled = rlsPattern.test(content) || rlsPattern.test(allSecuritySql);
 
-        // Buscar también en los otros archivos de migración
-        if (!foundInSecurity) {
+        if (!isRlsEnabled) {
+          // Buscar en otros archivos de migración
           for (const tf of targetFiles) {
             if (tf.path === sqlFile.path) continue;
             const otherContent = fs.readFileSync(tf.path, 'utf8');
             if (rlsPattern.test(otherContent)) {
-              foundInSecurity = true;
-              matchedSecFile = tf.name;
+              isRlsEnabled = true;
               break;
             }
           }
         }
 
-        if (!foundInSecurity) {
-          warnings.push(`⚠️ [RLS]: La tabla '${tbl}' creada en '${fileName}' no tiene un comando 'ENABLE ROW LEVEL SECURITY' explícito en la migración ni en scripts de seguridad.`);
+        // GATE CONDICIONAL DE RLS:
+        // Si la tabla activa RLS, se audita exhaustivamente la cobertura de políticas y cláusulas de seguridad
+        if (isRlsEnabled) {
+          passedChecks.push(`✅ [RLS GATE]: RLS activado para tabla '${tbl}'. Evaluando cobertura y defensas...`);
+
+          // 1. Detección de políticas
+          const hasPolicyForAll =
+            new RegExp(`CREATE\\s+POLICY\\s+[a-zA-Z0-9_]+\\s+ON\\s+(?:[a-zA-Z0-9_\\.]+\\.)?${tbl}\\s+[^;]*?\\bFOR\\s+ALL\\b`, 'i').test(combinedSqlForRls) ||
+            new RegExp(`CREATE\\s+POLICY\\s+[a-zA-Z0-9_]+\\s+ON\\s+(?:[a-zA-Z0-9_\\.]+\\.)?${tbl}\\s+(?:AS\\s+[a-zA-Z0-9_]+\\s+)?(?:TO\\s+[a-zA-Z0-9_]+\\s+)?USING`, 'i').test(combinedSqlForRls);
+
+          const hasSelectPolicy = hasPolicyForAll || new RegExp(`CREATE\\s+POLICY\\s+[a-zA-Z0-9_]+\\s+ON\\s+(?:[a-zA-Z0-9_\\.]+\\.)?${tbl}\\s+[^;]*?\\bFOR\\s+SELECT\\b`, 'i').test(combinedSqlForRls);
+          const hasInsertPolicy = hasPolicyForAll || new RegExp(`CREATE\\s+POLICY\\s+[a-zA-Z0-9_]+\\s+ON\\s+(?:[a-zA-Z0-9_\\.]+\\.)?${tbl}\\s+[^;]*?\\bFOR\\s+INSERT\\b`, 'i').test(combinedSqlForRls);
+          const hasUpdatePolicy = hasPolicyForAll || new RegExp(`CREATE\\s+POLICY\\s+[a-zA-Z0-9_]+\\s+ON\\s+(?:[a-zA-Z0-9_\\.]+\\.)?${tbl}\\s+[^;]*?\\bFOR\\s+UPDATE\\b`, 'i').test(combinedSqlForRls);
+          const hasDeletePolicy = hasPolicyForAll || new RegExp(`CREATE\\s+POLICY\\s+[a-zA-Z0-9_]+\\s+ON\\s+(?:[a-zA-Z0-9_\\.]+\\.)?${tbl}\\s+[^;]*?\\bFOR\\s+DELETE\\b`, 'i').test(combinedSqlForRls);
+
+          // 2. Extracción de privilegios otorgados mediante GRANT sobre la tabla
+          const grantTableRegex = new RegExp(`GRANT\\s+([^;]+?)\\s+ON\\s+(?:TABLE\\s+)?(?:[a-zA-Z0-9_\\.]+\\.)?${tbl}\\s+TO\\s+([a-zA-Z0-9_]+)`, 'gi');
+          let gMatch;
+          const grantedOps = new Set();
+          while ((gMatch = grantTableRegex.exec(combinedSqlForRls)) !== null) {
+            const opsStr = gMatch[1].toUpperCase();
+            if (opsStr.includes('ALL')) {
+              grantedOps.add('SELECT');
+              grantedOps.add('INSERT');
+              grantedOps.add('UPDATE');
+              grantedOps.add('DELETE');
+            } else {
+              if (opsStr.includes('SELECT')) grantedOps.add('SELECT');
+              if (opsStr.includes('INSERT')) grantedOps.add('INSERT');
+              if (opsStr.includes('UPDATE')) grantedOps.add('UPDATE');
+              if (opsStr.includes('DELETE')) grantedOps.add('DELETE');
+            }
+          }
+
+          // Si se otorgó GRANT a roles pero faltan políticas RLS que acoten la operación:
+          if (grantedOps.has('UPDATE') && !hasUpdatePolicy) {
+            failures.push(`❌ [RLS COBERTURA]: Privilegio UPDATE otorgado sobre '${tbl}' pero no existe política RLS 'FOR UPDATE' (ni 'FOR ALL').`);
+          } else if (hasUpdatePolicy) {
+            passedChecks.push(`✅ [RLS UPDATE]: Política de actualización detectada para '${tbl}'.`);
+          }
+
+          if (grantedOps.has('DELETE') && !hasDeletePolicy) {
+            failures.push(`❌ [RLS COBERTURA]: Privilegio DELETE otorgado sobre '${tbl}' pero no existe política RLS 'FOR DELETE' (ni 'FOR ALL').`);
+          } else if (hasDeletePolicy) {
+            passedChecks.push(`✅ [RLS DELETE]: Política de eliminación detectada para '${tbl}'.`);
+          }
+
+          // 3. Verificación de WITH CHECK en UPDATE (Prevención de Tenant Hijacking)
+          if (hasUpdatePolicy) {
+            const updatePolicyBlockRegex = new RegExp(`CREATE\\s+POLICY\\s+[a-zA-Z0-9_]+\\s+ON\\s+(?:[a-zA-Z0-9_\\.]+\\.)?${tbl}\\s+[^;]*?\\bFOR\\s+UPDATE\\b([^;]+);`, 'gi');
+            let upm;
+            while ((upm = updatePolicyBlockRegex.exec(combinedSqlForRls)) !== null) {
+              const body = upm[1];
+              if (!/\bWITH\s+CHECK\b/i.test(body)) {
+                warnings.push(`⚠️ [RLS UPDATE INSEGURO]: La política FOR UPDATE en '${tbl}' carece de cláusula 'WITH CHECK'. Esto permite que un usuario modifique un registro y cambie su tenant_id a otro cliente.`);
+              } else {
+                passedChecks.push(`✅ [RLS UPDATE]: Política FOR UPDATE en '${tbl}' blindada con 'WITH CHECK'.`);
+              }
+            }
+          }
         } else {
-          passedChecks.push(`✅ [RLS]: RLS habilitado para tabla '${tbl}' en ${matchedSecFile}.`);
+          // Gate condicional inactivo para esta tabla (no bloquea si es tabla maestra o catálogo)
+          passedChecks.push(`ℹ️ [RLS GATE]: Tabla '${tbl}' sin RLS activado (exención técnica o tabla maestra/catálogo).`);
         }
-      } else {
-        passedChecks.push(`✅ [RLS]: RLS habilitado directamente para tabla '${tbl}' en '${fileName}'.`);
       }
     }
   } else if (engineLower === 'sqlite') {

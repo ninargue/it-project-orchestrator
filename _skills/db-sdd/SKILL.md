@@ -30,6 +30,7 @@ outputs:
   - database/migrations/<timestamp>_<change-name>.up.sql
   - database/migrations/<timestamp>_<change-name>.down.sql
   - database/security/<timestamp>_security_rls.sql
+  - database/security/<timestamp>_security_rls.down.sql
   - database/seeds/<timestamp>_seeds.sql
   - database/reports/<change-name>-mutation-report.md
   - database/reports/<change-name>-qa-report.md
@@ -62,7 +63,10 @@ Skill especializado en el desarrollo e implementación de bases de datos mediant
 2. Explorar activamente el repositorio destino para detectar su configuración y arquitectura:
    - **Motor de BD (`engine`)**: Inspeccionar archivos de configuración (`supabase/config.toml`, `prisma/schema.prisma`, `docker-compose.yml`, `package.json`, `.env.example`, `docs/tech-briefing.md` u `openspec/config.yaml`). Por defecto: `postgres`.
    - **Directorio de migraciones (`migrations_dir`)**: Detectar si existe `supabase/migrations`, `database/migrations`, `src/database/migrations`, `prisma/migrations`, `db/migrations`, `migrations`, etc. Si no existe aún, proponer la convención adecuada según el motor/stack detectado.
-   - **Convención de seguridad (`security_dir`)**: Detectar si el proyecto tiene un directorio dedicado de políticas (`supabase/security`, `database/security`, `security/`, `policies/`) o si las políticas RLS y DCL se gestionan *in-situ* dentro de las propias migraciones.
+   - **Estrategia de Seguridad / RLS en BD (`rls_mode`)**: Detectar si el proyecto requiere Row-Level Security a nivel de base de datos o si la seguridad se gestiona exclusivamente en la capa de aplicación:
+     - `dedicated`: Directorio dedicado (`supabase/security`, `database/security`, `security/`, `policies/`).
+     - `in-situ`: Políticas RLS y DCL gestionadas dentro de las propias migraciones.
+     - `none`: **No requerido** (seguridad, autenticación y multi-tenancy delegados a la capa de aplicación/backend con ORM o servicios; la BD no usa RLS).
    - **Comandos de Validación Estándar del Proyecto (`validation_cmd`)**: Inspeccionar si el proyecto ya cuenta con tareas o scripts estándar para validación, linting o testing de base de datos en `package.json` (`npm run db:validate`, `npm run db:lint`), `Makefile` (`make db-validate`, `make test-db`), `pyproject.toml` (`uv run db-validate`, `poetry run ...`) o CLIs del stack (`supabase db lint`, `atlas migrate validate`, `sqlfluff lint`). Si se detecta alguno, registrarlo para ejecutarlo de forma complementaria en la fase de verificación.
 3. Definir el identificador único del cambio en `kebab-case`: `<change-name>` (ej. `0017-crear-esquema-usuarios`, o `<ticket_id>-db` si forma parte de un ticket multi-capa).
 
@@ -71,7 +75,7 @@ Skill especializado en el desarrollo e implementación de bases de datos mediant
 - Ticket: <ID o título>
 - Motor de BD: <engine detectado o configurado>
 - Directorio de migraciones: <migrations_dir detectado>
-- Directorio de seguridad/RLS: <security_dir detectado o 'in-situ'>
+- Seguridad en BD (RLS): <'dedicado' | 'in-situ' | 'no requerido (seguridad a nivel aplicación)'>
 - Comando de validación del proyecto: <validation_cmd detectado o 'ninguno (usar validador nativo)'>
 - Cambio OpenSpec: <change-name>
 
@@ -139,7 +143,7 @@ Skill especializado en el desarrollo e implementación de bases de datos mediant
 2. El agente deriva la suite de pruebas unitarias/estructurales directamente de la especificación:
    - Mapeo 1:1 de escenarios Given/When/Then en aserciones ejecutables.
    - Casos negativos estructurados para constraints (`NOT NULL`, `CHECK`, `UNIQUE`) y foreign keys sin romper el runner.
-   - Pruebas de aislamiento de políticas RLS y privilegios DCL.
+   - Pruebas de aislamiento de políticas RLS y privilegios DCL (únicamente si `rls_mode` es `dedicated` o `in-situ`; si `rls_mode = 'none'`, se omiten pruebas de RLS y la suite se enfoca en integridad referencial, tipos, constraints y triggers).
 3. Persistir el script de pruebas en disco:
    - `database/tests/<change-name>-test.sql` (o formato de runner detectado)
 4. Notificar al usuario con enlace al test y solicitar paso a la implementación:
@@ -147,10 +151,7 @@ Skill especializado en el desarrollo e implementación de bases de datos mediant
 ```text
 🧪 Suite DB-TDD preparada a partir de spec.md:
 - Archivo de pruebas: [test.sql](file:///<ruta>/database/tests/<change-name>-test.sql)
-- Cobertura: 100% de escenarios Given/When/Then especificados (integridad, unicidad y aislamiento RLS).
-
-¿Procedemos a ejecutar la fase Apply para generar el código DDL y las migraciones?
-```
+- Cobertura: 100% de escenarios Given/When/Then especificados (integridad, unicidad y reglas de datos).
 
 ¿Procedemos a ejecutar la fase Apply para generar el código DDL y las migraciones?
 ```
@@ -186,21 +187,30 @@ Skill especializado en el desarrollo e implementación de bases de datos mediant
 
 ### Paso 4 — Seguridad, RLS y Control de Acceso (OpenSpec Apply: Security)
 
-1. Invocar a `db-security-agent` entregando:
+> [!NOTE] Gate Condicional de Seguridad y RLS
+> Este paso opera como un **Gate Condicional**:
+> - **Si el proyecto NO requiere RLS (`rls_mode = 'none'`)**: La seguridad y autorización se gestionan en la capa de aplicación (backend / ORM / servicios) o la base de datos es single-tenant. **Este paso se omite completamente** (o se define DCL técnico mínimo si el proyecto usa roles de conexión separados) y se avanza directamente al Paso 5 sin invocar a `db-security-agent`.
+> - **Si el proyecto requiere RLS (`rls_mode` = 'dedicated' o 'in-situ')**: Se ejecuta si el motor soporta RLS (PostgreSQL, Supabase) **Y** el ticket o `design.md` especifica tablas con datos multi-tenant o información sensible (PII). Si el cambio específico solo involucra tablas maestras o catálogos técnicos, se documenta la exención y se avanza al Paso 5.
+
+1. Si el gate condicional está activo, invocar a `db-security-agent` entregando:
    - `design.md` (especificación de PII y multi-tenancy).
    - Scripts DDL generados y validados en el Paso 3.
-2. El agente genera:
-   - Políticas RLS e índices de aceleración de seguridad: `<timestamp>_security_rls.sql`
+2. El agente genera la suite completa y simétrica de seguridad:
+   - Políticas RLS con cobertura explícita para las 4 operaciones (`SELECT`, `INSERT`, `UPDATE` con `USING` y `WITH CHECK`, `DELETE` con `USING`) e índices de aceleración: `<timestamp>_security_rls.sql`
+   - Script simétrico de reversión (rollback de seguridad): `<timestamp>_security_rls.down.sql` (con `DROP POLICY IF EXISTS`, `REVOKE ...` y `DROP INDEX IF EXISTS`).
    - Control de acceso DCL (roles, usuarios y grants de mínimo privilegio).
 3. Persistir los scripts en disco según la convención del proyecto:
-   - **Directorio dedicado (`security_dir`):** `<security_dir>/<timestamp>_security_rls.sql` (ej. `database/security/`, `supabase/security/`, `security/`).
-   - **Convención *in-situ*:** `<migrations_dir>/<timestamp>_security_rls.sql` o incorporado directamente en la migración DDL.
+   - **Directorio dedicado (`security_dir`):**
+     - `<security_dir>/<timestamp>_security_rls.sql`
+     - `<security_dir>/<timestamp>_security_rls.down.sql`
+   - **Convención *in-situ*:** incorporado simétricamente en `<migrations_dir>/<timestamp>_<change-name>.up.sql` y `<migrations_dir>/<timestamp>_<change-name>.down.sql`.
 4. Presentar resumen ejecutivo en chat:
 
 ```text
 🔒 Políticas de Seguridad y RLS generadas (Fase Apply: Security):
 - Script RLS: [security_rls.sql](file:///<ruta>/<security_dir_o_migraciones>/<timestamp>_security_rls.sql)
-- Tablas protegidas: <lista_de_tablas_con_RLS>
+- Rollback RLS: [security_rls.down.sql](file:///<ruta>/<security_dir_o_migraciones>/<timestamp>_security_rls.down.sql)
+- Tablas protegidas: <lista_de_tablas_con_RLS> (cobertura SELECT, INSERT, UPDATE, DELETE)
 - Control de acceso: Roles DCL y grants de mínimo privilegio aplicados.
 
 ¿Procedemos a ejecutar la validación mecánica determinista y la auditoría adversarial de QA?
@@ -214,10 +224,15 @@ Skill especializado en el desarrollo e implementación de bases de datos mediant
 
 1. **Validación Mecánica Determinista Multiplataforma (Node.js):**
    - Ejecutar el validador universal en Node.js (compatible de forma nativa con **Linux, macOS y Windows** sin dependencias externas ni herramientas adicionales), pasando los parámetros explorados y confirmados en el Paso 0:
-     ```bash
-     node "<plugin-root>/scripts/validate-db-migrations.js" --migrations-dir "<repo-destino>/<migrations_dir>" --security-dir "<repo-destino>/<security_dir>" --engine "<engine>"
-     ```
-   - *Nota:* Si el proyecto no tiene una carpeta de seguridad separada (`security_dir = 'in-situ'`), el validador inspecciona automáticamente las políticas RLS y DCL dentro de los propios archivos de migración.
+     - **Si el proyecto usa RLS (`dedicated` o `in-situ`):**
+       ```bash
+       node "<plugin-root>/scripts/validate-db-migrations.js" --migrations-dir "<repo-destino>/<migrations_dir>" --security-dir "<repo-destino>/<security_dir>" --engine "<engine>"
+       ```
+     - **Si el proyecto NO requiere RLS (`rls_mode = 'none'`):**
+       ```bash
+       node "<plugin-root>/scripts/validate-db-migrations.js" --migrations-dir "<repo-destino>/<migrations_dir>" --no-rls --engine "<engine>"
+       ```
+   - *Nota:* Si el proyecto no tiene una carpeta de seguridad separada (`security_dir = 'in-situ'`), el validador inspecciona automáticamente las políticas RLS y DCL dentro de los propios archivos de migración. Si se pasa `--no-rls`, la verificación de RLS se desactiva por completo evitando advertencias o bloqueos en proyectos donde la seguridad reside en la capa de aplicación.
 2. **Ejecución de Validadores Estándar del Proyecto (si fueron detectados en Paso 0):**
    - Si el proyecto destino cuenta con comandos o runners propios para base de datos (`validation_cmd`), ejecutarlos complementariamente para respetar el estándar nativo del equipo:
      - En Node/TS: `npm run db:validate` o `pnpm / yarn db:lint`

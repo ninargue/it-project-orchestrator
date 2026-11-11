@@ -10,6 +10,7 @@ Versionado siguiendo [Semantic Versioning](https://semver.org/).
 
 ### Añadido
 - **Sistema Multi-Agente de Base de Datos (`agents/db/`):** 5 subagentes especializados (`db-architect-agent`, `db-developer-agent`, `db-security-agent`, `db-mutation-tester`, `db-qa-agent`) bajo arquitectura SSOT y mínimo privilegio.
+- **Adaptabilidad de Seguridad y Gate Condicional de RLS:** Soporte para proyectos sin RLS (seguridad en backend/ORM) vía flag `--no-rls` y parámetro `rls_mode = 'none'`; y para proyectos con RLS, cobertura completa de 4 operaciones (con `WITH CHECK` anti-hijacking) y rollback simétrico (`.down.sql`).
 - **Mutation Testing en Base de Datos (`agents/db/db-mutation-tester.md`):** Subagente para validar la robustez de la suite de tests contra 5 mutantes canónicos antes de la aprobación de QA.
 - **Comandos Nativos OpenSpec CLI:** Integración de `openspec new change`, `openspec instructions` y `openspec validate` en `_skills/db-sdd/` y `db-architect-agent`.
 - **Skill de Ciclo SDD de Base de Datos (`_skills/db-sdd/`):** Runbook Spec-First con metodología DB-TDD, fases Apply desacopladas (DDL y Security) y pausas HITL obligatorias (§7.5.2).
