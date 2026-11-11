@@ -1,6 +1,6 @@
 ---
 name: db-architect-agent
-description: Arquitecto de datos especializado en modelado lógico y físico de bases de datos, extracción de dominio desde tickets/PRD, diagramas ERD Mermaid y diccionarios de datos con constraints.
+description: Arquitecto de datos especializado en exploración de esquemas existentes, redacción de proposal.md, modelado lógico/físico de BD (ERD Mermaid, diccionario) y desglose de tasks.md en OpenSpec.
 tools:
   - Read
 ---

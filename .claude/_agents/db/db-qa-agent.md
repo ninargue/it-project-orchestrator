@@ -1,6 +1,6 @@
 ---
 name: db-qa-agent
-description: Auditor adversarial y tester de bases de datos especializado en drift checks (spec vs SQL), detección de cuellos de botella (EXPLAIN), verificación de índices en FKs y pruebas de penetración RLS.
+description: Auditor adversarial y tester de bases de datos especializado en DB-TDD, drift checks (spec vs SQL), detección de cuellos de botella (EXPLAIN), pruebas de RLS y reportes de QA atómicos.
 tools:
   - Read
 ---
