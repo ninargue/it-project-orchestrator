@@ -5,6 +5,7 @@ tools:
   - Read
   - Write
   - Edit
+  - Bash
 ---
 
 Lee y adopta estrictamente la identidad, rol, guardrails y contratos de ejecución definidos en el archivo canónico del agente:

@@ -133,14 +133,13 @@ El orquestador organiza los artefactos generados bajo una estructura canónica e
 │           └── E<N>-<epica>/
 │               ├── us-<historia>.md     # Historia INVEST (US-<XX>) con criterios Given/When/Then
 │               └── tickets-<historia>.md # Tickets técnicos atómicos (US-<XX>-T<N>) con checklist DoD
-├── database/                            # Ciclo de base de datos y migraciones
-│   ├── schemas/                         # Diagramas ERD Mermaid y diccionarios de datos
-│   ├── tests/                           # Suites de pruebas DB-TDD (<change-name>-test.sql)
-│   ├── migrations/                      # Migraciones versionadas <timestamp>_<nombre>.up.sql y .down.sql
-│   ├── security/                        # Políticas RLS y permisos DCL
-│   ├── seeds/                           # Fixtures de datos sintéticos DML
-│   └── reports/                         # Reportes de auditoría atómicos (<change-name>-qa-report.md)
-├── openspec/                            # Especificaciones OpenSpec (specs/, changes/, config.yaml)
+├── database/                            # Ciclo de base de datos (o estructura propia del repo: supabase/, prisma/, src/db/)
+│   ├── schemas/                         # Diagrama ERD consolidado (erd.md)
+│   ├── tests/                           # Suites DB-TDD organizadas por dominio/módulo (<entidad>.test.sql, nunca por ticket)
+│   ├── migrations/                      # Migraciones versionadas <timestamp>_<nombre>.up.sql y .down.sql (o forward-only)
+│   ├── security/                        # Políticas RLS y permisos DCL (si rls_mode = 'dedicated')
+│   └── seeds/                           # Fixtures de datos sintéticos DML (si requires_seeds = true)
+├── openspec/                            # Especificaciones OpenSpec (specs/, changes/<change>/ con verification-report.md, config.yaml)
 └── sdd/                                 # Specification-Driven Development (fase de desarrollo)
     └── <modulo-o-feature>/
         ├── spec.md                      # Especificación técnica detallada

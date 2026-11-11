@@ -120,7 +120,7 @@ Reglas generales, tono y convenciones de archivos: ver `AGENTS.md`.
 
 4. **Despacho y Ejecución por Capa:**
    - Una vez aprobado el plan:
-     - **Capa Base de Datos (`capa:db`):** Conducir `_skills/db-sdd/SKILL.md` paso a paso (Propuesta, especificación y tareas con `db-architect-agent` vía comandos OpenSpec → Suite DB-TDD verificada en ROJO con `db-qa-agent` → Implementación DDL con `db-developer-agent` → Seguridad RLS con `db-security-agent` (si aplica) → Validación mecánica determinista con `scripts/validate-db-migrations.js` → Verificación en VERDE con `db-qa-agent` → Mutation Testing con `db-mutation-tester` (si aplica)).
+     - **Capa Base de Datos (`capa:db`):** Conducir `_skills/db-sdd/SKILL.md` paso a paso (Exploración y propuesta vía `opsx:propose` con `db-architect-agent` → Suite DB-TDD por dominio en ROJO con `db-qa-agent` → Implementación DDL vía `opsx:apply` con `db-developer-agent` → Seguridad RLS vía `opsx:apply` con `db-security-agent` (si aplica) → Validación mecánica determinista con `scripts/validate-db-migrations.js` y verificación en VERDE vía `opsx:verify` con `db-qa-agent` → Mutation Testing con `db-mutation-tester` (si aplica)).
      - **Capa Backend (`capa:backend`):** Conducir el flujo SDD correspondiente para backend.
      - **Capa Frontend (`capa:frontend`):** Conducir el flujo SDD correspondiente para frontend.
 
@@ -158,26 +158,25 @@ El orquestador evalúa el grafo de dependencias de la User Story o de las tareas
 3. **Barrera de Sincronización (Join Barrier):**
    - Al despachar agentes en paralelo, el orquestador mantiene una barrera de sincronización: recopila todos los resultados y no avanza a la siguiente fase ni emite pausas al usuario hasta que todos los subagentes concurrentes hayan concluido sus análisis.
 
-5. **Archivado en OpenSpec y Commit de la Entrega (Ticket Mono-Capa):**
-   - Al recibir la señal `[LISTO PARA COMMIT Y ARCHIVE] database/ openspec/changes/<change-name>/`:
+5. **Archivado en OpenSpec (`opsx:archive`) y Commit de la Entrega (Ticket Mono-Capa):**
+   - Al recibir la señal `[LISTO PARA COMMIT Y ARCHIVE] <migrations_dir> <security_dir> <seeds_dir> <tests_dir> <schemas_dir> openspec/changes/<change-name>/`:
      ```text
-     ⏸️ Ciclo SDD de Base de Datos completado y validado mediante DB-TDD.
-     Archivos:
-     - database/schemas/
-     - database/tests/
-     - database/migrations/
-     - database/security/
-     - database/seeds/
-     - database/reports/<change-name>-qa-report.md
-     - openspec/changes/<change-name>/
+     ⏸️ Ciclo SDD de Base de Datos completado y validado mediante DB-TDD y opsx:verify.
+     Archivos impactados:
+     - <schemas_dir>/ (si se actualizó erd.md)
+     - <tests_dir>/ (tests organizados por dominio/entidad)
+     - <migrations_dir>/
+     - <security_dir>/ (si aplica RLS/DCL)
+     - <seeds_dir>/ (si aplica seeds)
+     - openspec/changes/<change-name>/ (incluyendo verification-report.md y mutation-report.md)
 
-     ¿Confirmás archivar el cambio en OpenSpec y realizar el commit?
+     ¿Confirmás ejecutar opsx:archive para archivar el cambio en OpenSpec y realizar el commit?
      ```
    - Tras confirmación explícita del usuario:
-     1. Archivar el cambio en OpenSpec (mueve a `openspec/changes/archive/` y consolida en `openspec/specs/`).
-     2. Ejecutar el commit de Git:
+     1. Ejecutar el workflow **[`opsx:archive`](.claude/commands/opsx/archive.md)** (sincroniza delta specs en `openspec/specs/` vía `opsx:sync` y mueve el cambio a `openspec/changes/archive/YYYY-MM-DD-<change-name>/`).
+     2. Ejecutar el commit de Git agregando las rutas impactadas del repositorio y `openspec/`:
         ```bash
-        git add database/ openspec/
+        git add <rutas-bd-impactadas> openspec/
         git commit -m "feat(db): schema, migraciones y tests para <ticket>"
         ```
 
