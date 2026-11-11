@@ -110,7 +110,6 @@ Según la elección, invocar el recurso correspondiente antes de continuar:
     - **Independencia del Sistema Operativo:** Prohibido crear scripts en PowerShell (`.ps1`) o dependientes de shells exclusivas de un SO que fallen en Linux o macOS. Los scripts deben ejecutarse universalmente con `node "<plugin-root>/scripts/<script>.js"`.
     - **Sin Dependencias Externas:** Usar únicamente módulos estándar de Node.js (`fs`, `path`, etc.) para garantizar ejecución inmediata sin requerir `npm install` en el proyecto del usuario.
     - **Exploración Previa y Pasaje Explícito de Parámetros:** Queda prohibido hardcodear rutas rígidas en los scripts. Los skills deben explorar el repositorio destino en sus fases iniciales para detectar la infraestructura real (rutas, motor, carpetas) y pasar los parámetros explícitamente mediante flags CLI (ej. `--migrations-dir`, `--security-dir`, `--engine`).
-    - **Integración con Runners Nativos del Proyecto:** Si el repositorio del usuario ya cuenta con tareas o scripts estándar para validación, testing o linting de base de datos (ej. `npm run db:validate`, `make db-validate`, `uv run db-validate`, `supabase db lint`), el agente debe detectarlos durante la exploración previa y ejecutarlos de forma complementaria al validador del plugin, respetando las herramientas y convenciones nativas del proyecto.
 
 ---
 
