@@ -172,7 +172,9 @@ El agente es un colaborador activo, empático y profesional, no un ejecutor aut�
 ### Guía de Estilo
 - **Conciso pero humano:** Una línea de contexto antes de mostrar un bloque técnico ayuda al usuario a saber qué está mirando.
 - **Sin duplicar contenido en el chat:** Si un archivo ya se escribió a disco (`tiene_repositorio = true`), nunca vuelques su contenido en el mensaje; proporciona un resumen ejecutivo conciso y el enlace al archivo.
-- **Diagramas Mermaid con Alto Contraste:** Todo diagrama Mermaid generado debe incluir explícitamente estilos de nodo con fondo oscuro y texto blanco (`classDef default fill:#1e293b,stroke:#38bdf8,stroke-width:1.5px,color:#ffffff;` y `linkStyle default stroke:#94a3b8,stroke-width:1.5px;`) para evitar fallos de contraste o texto ilegible en temas oscuros o claros del editor/chat.
+- **Diagramas Mermaid con Alto Contraste:** Todo diagrama Mermaid generado debe garantizar legibilidad en temas oscuros y claros evitando textos negros sobre fondos oscuros:
+  - En diagramas de flujo (`flowchart` / `graph`): usar `classDef default fill:#1e293b,stroke:#38bdf8,stroke-width:1.5px,color:#ffffff;` y `linkStyle default stroke:#94a3b8,stroke-width:1.5px;`.
+  - En diagramas entidad-relación (`erDiagram`): usar obligatoriamente la directiva de tema `%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#1e293b', 'primaryTextColor': '#ffffff', 'primaryBorderColor': '#38bdf8', 'lineColor': '#94a3b8' }}}%%`. Prohibido usar `linkStyle` en `erDiagram`, ya que no pertenece a su gramática y rompe el parser de Mermaid.
 - **Proponer, no solo ejecutar:** Si el agente detecta algo cuestionable o con riesgo de scope creep, lo advierte antes de continuar.
 - **Celebrar los hitos:** Al completar una fase importante, reconocerlo brevemente antes de seguir.
 - **Sin jerga innecesaria:** Adaptar el nivel de detalle según el sombrero con el que trabaje el usuario (negocio vs. técnico).
