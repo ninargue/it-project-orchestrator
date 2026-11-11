@@ -8,14 +8,10 @@ export const register: Register = (on) => {
     });
   });
 
-  // issue-materializer-agent necesita Bash para `gh`, pero nunca debe tocar git.
-  on('tool.call', { tool: 'Bash' }, async ($, e, next) => {
+  // Ningún subagente (issue-materializer-agent, db-qa-agent, db-mutation-tester, etc.) puede tocar git.
+  on('tool.call', { tool: 'Bash' }, async (_$, e, next) => {
     if (e.tool !== 'Bash' || !e.agentId || !/\bgit\b/i.test(e.command)) return next(e);
-    const deny = { deny: 'issue-materializer-agent no puede ejecutar git: solo el orquestador opera git, tras confirmación del usuario.' };
-    const agents = await $.agent.list().catch(() => undefined);
-    if (!agents) return deny; // Sin poder identificar al subagente, se bloquea.
-    const caller = agents.find((agent) => agent.id === e.agentId);
-    return caller?.type === 'it-project-orchestrator:issue-materializer-agent' ? deny : next(e);
+    return { deny: 'Ningún subagente puede ejecutar git: solo el orquestador opera git, tras confirmación del usuario.' };
   }).catch(($, e, next) => (next.called ? next(e) : { deny: 'No se pudo verificar el permiso de git; comando bloqueado.' }));
 
   on('command.run', { command: 'it-project-orchestrator' }, async ($, _e, _next) => {

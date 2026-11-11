@@ -5,7 +5,7 @@ tools:
   - Read
   - Write
   - Edit
-  - bash
+  - Bash
 ---
 
 # db-qa-agent

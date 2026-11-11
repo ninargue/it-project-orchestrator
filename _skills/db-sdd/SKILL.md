@@ -7,7 +7,7 @@ tools_required:
   - Read
   - Write
   - AskUserQuestion
-  - bash
+  - Bash
 subagents:
   - db-architect-agent
   - db-developer-agent
@@ -67,7 +67,7 @@ Si alguna de estas variables no está en memoria de sesión (usuario invocó dir
 
 ## 📋 REGLAS GENERALES
 
-1. **Límite Estricto de Fin de Turno (Hard Turn Boundary):** Toda pausa `🛑 **FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:**` marca el fin absoluto de tu turno de respuesta.
+1. **Límite Estricto de Fin de Turno (Hard Turn Boundary):** Toda pausa `**🛑 FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:**` marca el fin absoluto de tu turno de respuesta.
    - Presenta únicamente el resultado o preguntas del paso actual.
    - **DETÉN tu respuesta inmediatamente.** No agregues texto anticipando el paso siguiente ni simules respuestas del usuario.
 2. **Gobernanza de Git:** Ningún subagente ni skill ejecuta commits directamente. Solo el orquestador principal interactúa con Git, siempre tras confirmación explícita del usuario.
@@ -89,7 +89,7 @@ Si alguna de estas variables no está en memoria de sesión (usuario invocó dir
 
 ## 👣 PROCEDIMIENTO PASO A PASO
 
-### Paso 0 — Verificación de Pre-condiciones (Input Gate) y Exploración
+### Paso 0 — Verificación de Pre-condiciones (Input Gate)
 
 1. **Input Gate — Verificación de Pre-condiciones (§7.3.3):**
    - **Pre-condición A (OpenSpec Config):**
@@ -99,7 +99,7 @@ Si alguna de estas variables no está en memoria de sesión (usuario invocó dir
        ❌ [INPUT GATE]: El entorno de Specification-Driven Development (OpenSpec) no está inicializado en este repositorio (falta 'openspec/config.yaml').
        Debes ejecutar primero el skill '_skills/sdd-init/SKILL.md' (o la opción [4] del orquestador) para configurar OpenSpec antes de iniciar el ciclo de base de datos.
        ```
-       🛑 **FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:** Detén tu turno aquí e instruye al usuario inicializar SDD primero.
+       **🛑 FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:** Detén tu turno aquí e instruye al usuario a inicializar SDD primero.
    - **Pre-condición B (Ticket Técnico de BD):**
      - Verificar que el usuario haya indicado o seleccionado un ticket técnico de base de datos (`capa:db`) con ID, título o criterios de aceptación.
      - Si no se indicó ningún ticket:
@@ -107,71 +107,45 @@ Si alguna de estas variables no está en memoria de sesión (usuario invocó dir
        ❓ [INPUT GATE]: No se ha especificado un ticket técnico para el desarrollo de base de datos.
        Por favor, indica el ID del ticket (ej. US-03-T1 o issue #17) o describe el requerimiento de base de datos a desarrollar.
        ```
-       🛑 **FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:** Detén tu turno aquí y espera a que el usuario provea el requerimiento.
+       **🛑 FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:** Detén tu turno aquí y espera a que el usuario provea el requerimiento.
 
-2. Obtener los datos del ticket técnico (`capa:db`):
-   - ID del ticket (ej. `US-03-T1` o issue #17), título y criterios de aceptación.
-3. Explorar activamente el repositorio destino para detectar su configuración y arquitectura:
-   - **Motor de BD (`engine`)**: Inspeccionar archivos de configuración (`supabase/config.toml`, `prisma/schema.prisma`, `docker-compose.yml`, `package.json`, `.env.example`, `docs/tech-briefing.md` u `openspec/config.yaml`). Por defecto: `postgres`.
-   - **Directorio de migraciones (`migrations_dir`)**: Detectar si existe `supabase/migrations`, `database/migrations`, `src/database/migrations`, `prisma/migrations`, `db/migrations`, `migrations`, etc. Si no existe aún, proponer la convención adecuada según el motor/stack detectado.
-   - **Modo de Migración (`migration_mode`)**: Detectar si el proyecto usa pares simétricos (`symmetric`: `.up.sql` y `.down.sql`) o migraciones unidireccionales (`forward-only`: un único archivo `.sql` por cambio, común en Prisma, Flyway o Supabase mono-file).
-   - **Estrategia de Seguridad / RLS en BD (`rls_mode`)**: Detectar si el proyecto requiere Row-Level Security a nivel de base de datos o si la seguridad se gestiona exclusivamente en la capa de aplicación:
-     - `dedicated`: Directorio dedicado (`supabase/security`, `database/security`, `security/`, `policies/`).
-     - `in-situ`: Políticas RLS y DCL gestionadas dentro de las propias migraciones.
-     - `none`: **No requerido** (seguridad, autenticación y multi-tenancy delegados a la capa de aplicación/backend con ORM o servicios; la BD no usa RLS).
-   - **Datos de Prueba / Fixtures (`requires_seeds`)**: Determinar si el ticket solicita datos iniciales o mocks (`true`) o si es un cambio de esquema puro sin seeds (`false`). Por defecto: `false`.
-   - **Runner Estándar de Pruebas (`test_cmd`)**: Inspeccionar si existe un `Makefile` con targets para testing de BD (`make test-db`, `make db-test`, `make test`). Si no existe, detectar el runner nativo (`supabase test db`, `npm test`, `pytest`).
-   - **Comandos de Validación Estándar del Proyecto (`validation_cmd`)**: Inspeccionar si el proyecto cuenta con tareas de validación/linting en `Makefile` (`make db-validate`), `package.json` (`npm run db:validate`) o CLIs del stack (`supabase db lint`, `atlas migrate validate`).
-3. Definir el identificador único del cambio en `kebab-case`: `<change-name>` (ej. `0017-crear-esquema-usuarios`, o `<ticket_id>-db` si forma parte de un ticket multi-capa).
-
-```text
-💡 Iniciando ciclo SDD de Base de Datos:
-- Ticket: <ID o título>
-- Motor de BD: <engine detectado o configurado>
-- Directorio de migraciones: <migrations_dir detectado> (modo: <symmetric | forward-only>)
-- Seguridad en BD (RLS): <'dedicado' | 'in-situ' | 'no requerido (seguridad a nivel aplicación)'>
-- Runner de pruebas DB-TDD: <test_cmd detectado, ej: 'make test-db'>
-- Comando de validación: <validation_cmd detectado o 'ninguno (usar validador nativo)'>
-- Datos iniciales (seeds): <'requerido' | 'no requerido'>
-- Cambio OpenSpec: <change-name>
-
-¿Confirmas estos parámetros para iniciar la exploración y propuesta técnica?
-```
-
-🛑 **FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:** Detén tu turno aquí y espera la confirmación explícita del usuario.
+2. **Handoff Inmediato al Paso 1:**
+   - Cumplidas las pre-condiciones, definir el identificador del cambio `<change-name>` en `kebab-case` (ej. `0017-crear-esquema-usuarios` o `<ticket_id>-db`).
+   - El orquestador **NO realiza pausas ni exploraciones técnicas redundantes**: avanza inmediatamente al Paso 1 delegando la exploración de base de datos y diseño a `db-architect-agent`.
 
 ---
 
-### Paso 1 — Exploración, Propuesta y Tareas (OpenSpec Propose)
+### Paso 1 — Exploración del Repositorio, Propuesta y Tareas (OpenSpec Propose)
 
-1. Explorar migraciones y esquemas existentes en `database/migrations/` o `schema.sql`.
-2. Inicializar formalmente el cambio en el framework OpenSpec:
+1. Inicializar formalmente el cambio en el framework OpenSpec:
    ```bash
    openspec new change "<change-name>"
    ```
    Esto crea el directorio `openspec/changes/<change-name>/` con su archivo de metadatos `.openspec.yaml`.
-3. Consultar las instrucciones y plantillas oficiales del framework OpenSpec:
+2. Consultar las instrucciones y plantillas oficiales del framework OpenSpec:
    - `openspec instructions proposal --change "<change-name>" --json`
    - `openspec instructions specs --change "<change-name>" --json`
    - `openspec instructions design --change "<change-name>" --json`
    - `openspec instructions tasks --change "<change-name>" --json`
-4. Invocar a `db-architect-agent` entregando:
-   - Las plantillas y reglas de esquema oficiales extraídas de `openspec instructions`.
-   - El ticket técnico, contexto de dominio y esquema preexistente.
-5. El agente genera y escribe directamente los artefactos en disco:
-   - `openspec/changes/<change-name>/proposal.md`: Why, What, Non-goals y análisis de riesgos.
-   - `openspec/changes/<change-name>/specs/<capability>/spec.md`: Requisitos formales de datos y escenarios Given/When/Then.
-   - `openspec/changes/<change-name>/design.md`: ERD Mermaid del cambio (alto contraste), diccionario físico, tipos, constraints e índices.
-   - `openspec/changes/<change-name>/tasks.md`: Lista de tareas atómicas ordenadas topológicamente.
-   - **ERD Consolidado (`database/schemas/erd.md`):** Actualizado directamente **únicamente si el cambio crea nuevas tablas o altera relaciones (FKs)**. Para índices, triggers o alteraciones de columnas, no se modifica `erd.md`.
-6. Validar formalmente el cambio con el CLI de OpenSpec:
+3. Invocar a `db-architect-agent` entregando el ticket técnico y las plantillas oficiales de OpenSpec.
+4. `db-architect-agent` asume la exploración técnica del repositorio y la concepción arquitectónica:
+   - **Exploración del Entorno:** Detecta el motor de BD (`engine`), directorio de migraciones (`migrations_dir`), modo de migración (`symmetric` vs `forward-only`), estrategia de seguridad (`rls_mode`), seeds requeridos y runner de tests (`Makefile` / `test_cmd`).
+   - **Redacción y Persistencia Directa:** Escribe directamente en disco los 4 artefactos de OpenSpec:
+     - `openspec/changes/<change-name>/proposal.md`: Why, What, Non-goals y análisis de riesgos.
+     - `openspec/changes/<change-name>/specs/<capability>/spec.md`: Requisitos formales de datos y escenarios Given/When/Then.
+     - `openspec/changes/<change-name>/design.md`: Documentando las convenciones detectadas, ERD Mermaid del cambio (alto contraste), diccionario físico, tipos, constraints e índices.
+     - `openspec/changes/<change-name>/tasks.md`: Lista de tareas atómicas ordenadas topológicamente.
+     - **ERD Consolidado (`database/schemas/erd.md`):** Actualizado directamente **únicamente si el cambio crea nuevas tablas o altera relaciones (FKs)**. Para índices, triggers o alteraciones de columnas, no se modifica `erd.md`.
+5. Validar formalmente el cambio con el CLI de OpenSpec:
    ```bash
    openspec validate "<change-name>"
    ```
-7. Presentar en chat el **resumen ejecutivo** de la propuesta y diseño con sus enlaces:
+6. Presentar en chat el **resumen ejecutivo unificado** de la propuesta, convenciones y diseño para validación humana (primera y única pausa antes de DB-TDD):
 
 ```text
-📐 Paquete de Propuesta y Especificación preparado (OpenSpec):
+📐 Paquete de Propuesta, Convenciones y Diseño preparado (OpenSpec Propose):
+- Ticket: <ID o título>
+- Convenciones detectadas: Motor <engine>, Migraciones <migrations_dir> (<modo>), RLS: <rls_mode>
 - Propuesta: [proposal.md](file:///<ruta>/openspec/changes/<change-name>/proposal.md)
 - Especificación: [spec.md](file:///<ruta>/openspec/changes/<change-name>/specs/<capability>/spec.md)
 - Modelo y Diccionario: [design.md](file:///<ruta>/openspec/changes/<change-name>/design.md)
@@ -181,7 +155,7 @@ Si alguna de estas variables no está en memoria de sesión (usuario invocó dir
 ¿Apruebas esta especificación, diseño y plan de tareas para avanzar a la suite DB-TDD e implementación?
 ```
 
-🛑 **FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:** Detén tu turno aquí y espera la confirmación explícita del usuario.
+**🛑 FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:** Detén tu turno aquí y espera la confirmación explícita del usuario.
 
 ---
 
@@ -209,7 +183,7 @@ Si alguna de estas variables no está en memoria de sesión (usuario invocó dir
 ¿Procedemos a ejecutar la fase Apply para generar el código DDL y las migraciones?
 ```
 
-🛑 **FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:** Detén tu turno aquí y espera la confirmación explícita del usuario.
+**🛑 FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:** Detén tu turno aquí y espera la confirmación explícita del usuario.
 
 ---
 
@@ -234,7 +208,7 @@ Si alguna de estas variables no está en memoria de sesión (usuario invocó dir
 ¿Validás el DDL generado para proceder con el diseño de políticas de seguridad y RLS?
 ```
 
-🛑 **FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:** Detén tu turno aquí y espera la confirmación explícita del usuario.
+**🛑 FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:** Detén tu turno aquí y espera la confirmación explícita del usuario.
 
 ---
 
@@ -264,11 +238,11 @@ Si alguna de estas variables no está en memoria de sesión (usuario invocó dir
 ¿Procedemos a ejecutar la validación mecánica determinista y la verificación de tests en VERDE?
 ```
 
-🛑 **FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:** Detén tu turno aquí y espera la confirmación explícita del usuario.
+**🛑 FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:** Detén tu turno aquí y espera la confirmación explícita del usuario.
 
 ---
 
-### Paso 5 — Validación Mecánica y Verificación en VERDE (OpenSpec Verify)
+### Paso 5 — Validación Mecánica y Verificación en VERDE (OpenSpec Verify: QA)
 
 1. **Validación Mecánica Determinista Multiplataforma (Node.js):**
    - Ejecutar el validador universal en Node.js, pasando los parámetros explorados y confirmados en el Paso 0:
@@ -282,62 +256,88 @@ Si alguna de estas variables no está en memoria de sesión (usuario invocó dir
        ```
 2. **Ejecución de Validadores Estándar del Proyecto (si existen):**
    - Ejecutar `validation_cmd` (`make db-validate`, `npm run db:validate`, etc.) si fue detectado.
-3. **Verificación en VERDE con `db-qa-agent`:**
-   - Invocar a `db-qa-agent` (Fase B):
-     - Ejecuta `make test-db` (o `test_cmd`) mediante `bash` y comprueba que **todos los tests pasen exitosamente a VERDE** contra el DDL y RLS implementados.
+3. **Gate de Validación Mecánica:**
+   - **Si el validador mecánico devuelve `exit 1` o falla `validation_cmd`:** **NO se invoca a `db-qa-agent`** para evitar consumo innecesario de contexto sobre código defectuoso. Se informa el fallo en chat y se re-despacha a la fase Apply correspondiente (Paso 3 para DDL o Paso 4 para RLS) para corregir el código SQL.
+4. **Verificación en VERDE y Auditoría Adversarial con `db-qa-agent` (un solo subagente en este turno, §7.5.2):**
+   - Si la validación mecánica pasó en verde, invocar únicamente a `db-qa-agent` (Fase B):
+     - Ejecuta `make test-db` (o `test_cmd`) mediante `Bash` y comprueba que **todos los tests pasen exitosamente a VERDE** contra el DDL y RLS implementados.
      - Realiza el *Drift Check* estricto (`spec.md` y `design.md` vs código SQL generado).
      - Escribe directamente `database/reports/<change-name>-qa-report.md`.
-4. **Pruebas de Mutación Condicionales (`db-mutation-tester`):**
-   - **Condición de activación:** Si el cambio introduce restricciones de integridad (`UNIQUE`, `CHECK`, FKs) o políticas RLS:
-     - Invocar a `db-mutation-tester` para evaluar la falsabilidad contra los mutantes canónicos (M1 a M5).
-     - El agente escribe directamente `database/reports/<change-name>-mutation-report.md`.
-     - Si algún mutante sobrevive (test complaciente), se reporta para blindar las aserciones.
-   - **Exención:** Si el cambio es solo de índices, vistas o rendimiento sin constraints de negocio, se documenta la exención y se omite.
-5. **Validación Formal OpenSpec:**
-   - Ejecutar la validación del framework para confirmar que el change cumple todas las reglas:
-     ```bash
-     openspec validate "<change-name>"
-     ```
-6. **Evaluación de Resultados y Bifurcación:**
+5. **Evaluación del Dictamen de QA y Bifurcación:**
 
-   - **Escenario A — Fallo en Validación Mecánica o Runner del Proyecto:**
-     - Si el validador mecánico (`scripts/validate-db-migrations.js`) devuelve `exit 1` o falla el comando nativo del proyecto (`validation_cmd`), **NO se invoca a `db-qa-agent`** para evitar consumo innecesario de contexto sobre código defectuoso.
-     - Se informa el fallo en chat y se re-despacha automáticamente a la fase Apply correspondiente (Paso 3 para DDL o Paso 4 para RLS) con el log de errores para corregir el código.
-     - Tras la corrección, se re-ejecuta el Paso 5.
-
-   - **Escenario B — Dictamen `[OBSERVADO CON CORRECCIONES REQUERIDAS]` en QA:**
+   - **Escenario A — Dictamen `[OBSERVADO CON CORRECCIONES REQUERIDAS]` en QA:**
      - Si `db-qa-agent` detecta *Drift*, fallos en la ejecución de tests DB-TDD o problemas de rendimiento:
-     - Se presenta el resumen de observaciones en el chat:
        ```text
        ⚠️ Auditoría de Calidad OBSERVADA (Correcciones Requeridas):
        - Reporte: [qa-report.md](file:///<ruta>/database/reports/<change-name>-qa-report.md)
        - Veredicto: [OBSERVADO CON CORRECCIONES REQUERIDAS]
        - Hallazgos críticos: <lista de fallos de tests o discrepancias de drift>
-       - Invariante TDD: Los tests DB-TDD se mantienen inmutables (se corrige el código SQL para satisfacer la spec).
+       - Invariante TDD: Los tests DB-TDD no se relajan ante fallos de implementación (se corrige el código SQL para satisfacer la spec).
        
        ¿Autorizas re-despachar a desarrollo/seguridad para aplicar las correcciones sobre la implementación?
        ```
-     - 🛑 **FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO**
-     - Tras la aprobación del usuario, se re-invoca a `db-developer-agent` (Paso 3) y/o `db-security-agent` (Paso 4) entregándoles los hallazgos de `qa-report.md`. **Los tests NO se tocan**, se corrige el código SQL hasta que la suite pase limpiamente.
+     - **🛑 FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:** Detén tu turno aquí y espera la confirmación explícita del usuario.
+     - Tras la aprobación del usuario, se re-invoca a `db-developer-agent` (Paso 3) y/o `db-security-agent` (Paso 4) entregándoles los hallazgos de `qa-report.md`. Se corrige el código SQL y se re-ejecuta el Paso 5.
 
-   - **Escenario C — Dictamen `[APROBADO]`:**
-     - Solo cuando la validación mecánica, el runner del proyecto y la auditoría de QA están 100% en verde:
+   - **Escenario B — Dictamen `[APROBADO]` en QA:**
+     - Cuando la validación mecánica, el runner del proyecto y la auditoría de `db-qa-agent` están 100% en verde:
        ```text
-       📊 Auditoría de Calidad y DB-TDD completada (Verify):
-       - Reporte: [qa-report.md](file:///<ruta>/database/reports/<change-name>-qa-report.md)
-       - Veredicto: [APROBADO]
+       📊 Auditoría de Calidad y DB-TDD en VERDE completada:
+       - Reporte QA: [qa-report.md](file:///<ruta>/database/reports/<change-name>-qa-report.md)
+       - Veredicto QA: [APROBADO]
        - Validación mecánica universal: Superada (simetría, índices FK y RLS verificados)
-       - Validador nativo del proyecto: <Superado / Omitido si no existe>
-       - Cobertura de Requisitos: 100% de escenarios Given/When/Then verificados
+       - Cobertura de Requisitos: 100% de escenarios Given/When/Then en VERDE
        - Drift Check: 100% concordancia con spec.md y design.md
        
-       ¿Confirmas la entrega para que el Orquestador archive el cambio en OpenSpec y realice el commit?
+       ¿Procedemos al Paso 6 (Mutation Testing de falsabilidad de tests / validación final de OpenSpec)?
        ```
-     - 🛑 **FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO**
+     - **🛑 FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:** Detén tu turno aquí y espera la confirmación explícita del usuario.
 
 ---
 
-### Paso 6 — Handoff al Orquestador (Archive y Commit)
+### Paso 6 — Pruebas de Mutación Condicionales y Falsabilidad (OpenSpec Verify: Mutation)
+
+> [!NOTE] Gate Condicional de Mutation Testing
+> - **Activación:** Se ejecuta únicamente si el cambio introduce restricciones de integridad (`UNIQUE`, `CHECK`, FKs) o políticas RLS.
+> - **Exención:** Si el cambio es puramente de índices, vistas o rendimiento sin constraints ni políticas falsables, se documenta la exención, se ejecuta `openspec validate "<change-name>"` y se avanza al Paso 7.
+
+1. Si el gate condicional está activo, invocar únicamente a `db-mutation-tester` (§7.5.2):
+   - Evalúa la falsabilidad de `database/tests/<change-name>-test.sql` frente al catálogo de mutantes canónicos (M1 a M5) en transacciones efímeras sin dejar mutaciones persistidas en los archivos `.sql`.
+   - Escribe directamente `database/reports/<change-name>-mutation-report.md`.
+2. Ejecutar la validación formal del framework OpenSpec:
+   ```bash
+   openspec validate "<change-name>"
+   ```
+3. **Evaluación de Falsabilidad y Bifurcación:**
+
+   - **Escenario A — `[TESTS COMPLACIENTES DETECTADOS]` (Mutantes Sobrevivientes):**
+     - Si algún mutante sobrevive (falso positivo por aserción tautológica o excepción genérica enmascarada):
+       ```text
+       🧟 Mutation Testing detectó Tests Complacientes:
+       - Reporte de Mutación: [mutation-report.md](file:///<ruta>/database/reports/<change-name>-mutation-report.md)
+       - Estado: [TESTS COMPLACIENTES DETECTADOS]
+       - Mutantes sobrevivientes: <lista de mutantes M1..M5 no atrapados>
+       
+       ¿Autorizas re-despachar a db-qa-agent para blindar las aserciones complacientes indicadas?
+       ```
+     - **🛑 FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:** Detén tu turno aquí y espera la confirmación explícita del usuario.
+     - Tras la aprobación del usuario, se re-invoca a `db-qa-agent` (exclusivamente para reforzar y hacer falsables las aserciones señaladas en `mutation-report.md`, nunca para relajar requisitos de la `spec.md`) y se re-verifica el paso.
+
+   - **Escenario B — `[TESTS BLINDADOS]` (100% Mutantes Abatidos o Exención Aplicada):**
+     - Presentar el resumen final de verificación y solicitar confirmación para el cierre:
+       ```text
+       🔬 Verificación de Falsabilidad y OpenSpec Completada:
+       - Reporte de Mutación: [mutation-report.md](file:///<ruta>/database/reports/<change-name>-mutation-report.md) (o exención documentada)
+       - Estado de Falsabilidad: [TESTS BLINDADOS]
+       - Validación OpenSpec CLI: Superada (openspec validate "<change-name>")
+       
+       ¿Confirmas la entrega para que el Orquestador archive el cambio en OpenSpec y realice el commit?
+       ```
+     - **🛑 FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:** Detén tu turno aquí y espera la confirmación explícita del usuario.
+
+---
+
+### Paso 7 — Handoff al Orquestador (Archive y Commit)
 
 1. Emitir la señal hacia el orquestador principal:
    ```text

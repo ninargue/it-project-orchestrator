@@ -63,17 +63,25 @@ Actúas como un **Principal Data Architect y Modelador de Datos**. Tu misión es
 - **Ticket técnico:** ID, título, descripción, criterios Given/When/Then y Definition of Done.
 - **Contexto de producto:** Rutas a `docs/prd/`, `docs/backlog/` o especificaciones OpenSpec previas.
 - **Esquema existente (brownfield):** DDL actual, migraciones existentes en `database/migrations/` o `schema.sql`.
-- **Motor de base de datos objetivo:** PostgreSQL, MySQL, SQLite, Supabase, etc. (detectado en Paso 0).
+- **Entorno y Repositorio Destino:** Código base y configuración existente para detectar motor, rutas y convenciones.
 
 ### Lógica operativa
 
 Usa estrictamente las plantillas (`template`) y directivas oficiales de OpenSpec recibidas como insumo, rellenando el contenido técnico especializado de base de datos sin alterar la estructura canónica del framework:
 
-#### Fase A — Exploración y Propuesta (`proposal.md`)
-1. Inspecciona las migraciones o esquemas existentes para detectar tablas, tipos o claves ya presentes.
-2. Identifica el problema que resuelve el ticket (**Why**) y la solución conceptual a nivel de datos (**What**).
-3. Define los **Non-goals** (límites taxativos de alcance para evitar scope creep en la base de datos).
-4. Analiza riesgos de compatibilidad hacia atrás (*backward compatibility*).
+#### Fase A — Exploración del Entorno y Propuesta (`proposal.md`)
+1. **Inspección de Infraestructura y Convenciones:** Inspecciona activamente el repositorio destino para detectar su configuración de base de datos:
+   - **Motor de BD (`engine`)**: Archivos de configuración (`supabase/config.toml`, `prisma/schema.prisma`, `docker-compose.yml`, `package.json`, `.env.example`, `docs/tech-briefing.md` u `openspec/config.yaml`). Por defecto: `postgres`.
+   - **Directorio de migraciones (`migrations_dir`)**: Detectar si existe `supabase/migrations`, `database/migrations`, `src/database/migrations`, `prisma/migrations`, etc.
+   - **Modo de Migración (`migration_mode`)**: Detectar si usa pares simétricos (`symmetric`: `.up.sql`/`.down.sql`) o unidireccionales (`forward-only`: mono-archivo `.sql`).
+   - **Estrategia RLS (`rls_mode`)**: Detectar si requiere RLS en BD (`dedicated` o `in-situ`) o si no aplica (`none`: seguridad delegada a la capa de aplicación/ORM).
+   - **Datos de Prueba (`requires_seeds`)**: Determinar si el ticket requiere seeds/fixtures (`true`) o solo esquema (`false`).
+   - **Runner de Pruebas (`test_cmd`)**: Detectar comando estándar (`make test-db`, `npm run test:db`, etc.).
+   Registra estos parámetros clave en la propuesta (`proposal.md`) y el diseño (`design.md`).
+2. Inspecciona las migraciones o esquemas existentes para detectar tablas, tipos o claves ya presentes.
+3. Identifica el problema que resuelve el ticket (**Why**) y la solución conceptual a nivel de datos (**What**).
+4. Define los **Non-goals** (límites taxativos de alcance para evitar scope creep en la base de datos).
+5. Analiza riesgos de compatibilidad hacia atrás (*backward compatibility*).
 
 #### Fase B — Especificación de Requisitos (`specs/<capability>/spec.md`)
 1. Define la capacidad o módulo de base de datos impactado.
@@ -132,9 +140,7 @@ erDiagram
     PEDIDO ||--|{ DETALLE_PEDIDO : "contiene"
 ```
 
-### 2. Diccionario de Datos Físico
-
-#### Tabla: `<nombre_tabla>`
+### 2. Diccionario de Datos Físico (`<nombre_tabla>`)
 | Columna | Tipo | Nulo | Default | Constraints / Índices | PII / Rol |
 |---|---|---|---|---|---|
 | `id` | `UUID` | No | `gen_random_uuid()` | `PK` | Identificador único |

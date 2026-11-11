@@ -133,7 +133,7 @@ Presentar al usuario el resumen del archivo y pedir su visto bueno:
 ¿Confirmas la creación de las carpetas y este archivo config.yaml?
 ```
 
-🛑 **FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:** Detén tu turno aquí y espera la confirmación explícita del usuario.
+**🛑 FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:** Detén tu turno aquí y espera la confirmación explícita del usuario.
 
 ---
 

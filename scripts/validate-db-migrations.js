@@ -140,9 +140,15 @@ function getFilesRecursively(dir, filterRegex) {
   return results;
 }
 
+// Helper para limpiar comentarios SQL (-- de línea y /* */ de bloque) antes de parsear DDL
+function stripSqlComments(sql) {
+  return sql.replace(/\/\*[\s\S]*?\*\//g, '').replace(/--.*$/gm, '');
+}
+
 // 3. Detección de archivos SQL a validar
 const upFiles = getFilesRecursively(migrationsDir, /\.up\.sql$/i);
 const downFiles = getFilesRecursively(migrationsDir, /\.down\.sql$/i);
+const nonMigrationSqlFilter = /(?:[._-]down|[._-]tests?|[._-]seeds?)\.sql$/i;
 
 let targetFiles = [];
 let isSymmetricMode = false;
@@ -152,7 +158,7 @@ if (upFiles.length > 0) {
   isSymmetricMode = true;
 } else {
   targetFiles = getFilesRecursively(migrationsDir, /\.sql$/i).filter(
-    (f) => !/\.down\.sql$/i.test(f.name) && !/\.test\.sql$/i.test(f.name)
+    (f) => !nonMigrationSqlFilter.test(f.name)
   );
 }
 
@@ -177,11 +183,11 @@ if (isSymmetricMode) {
     } else {
       passedChecks.push(`✅ [SIMETRÍA]: Pareja simétrica detectada: ${upFile.name} <-> ${expectedDownName}`);
 
-      const upContent = fs.readFileSync(upFile.path, 'utf8');
-      const downContent = fs.readFileSync(matchingDown.path, 'utf8');
+      const upContent = stripSqlComments(fs.readFileSync(upFile.path, 'utf8'));
+      const downContent = stripSqlComments(fs.readFileSync(matchingDown.path, 'utf8'));
 
-      // Extraer tablas creadas
-      const createTableRegex = /CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?([a-zA-Z0-9_\.]+)/gi;
+      // Extraer tablas creadas (soportando identificadores con o sin comillas)
+      const createTableRegex = /CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?([a-zA-Z0-9_\."`\[\]]+)/gi;
       let match;
       const createdTables = [];
       while ((match = createTableRegex.exec(upContent)) !== null) {
@@ -190,7 +196,7 @@ if (isSymmetricMode) {
       }
 
       for (const tbl of createdTables) {
-        const dropPattern = new RegExp(`DROP\\s+TABLE\\s+(?:IF\\s+EXISTS\\s+)?(?:[a-zA-Z0-9_\\.]+\\.)?${tbl}\\b`, 'i');
+        const dropPattern = new RegExp(`DROP\\s+TABLE\\s+(?:IF\\s+EXISTS\\s+)?(?:[a-zA-Z0-9_\\."\`\\[\\]]+\\.)?["\`\\[]?${tbl}["\`\\]]?\\b`, 'i');
         if (!dropPattern.test(downContent)) {
           failures.push(`❌ [REVERSIBILIDAD]: La tabla '${tbl}' se crea en ${upFile.name} pero no tiene DROP TABLE en ${matchingDown.name}.`);
         } else {
@@ -202,25 +208,29 @@ if (isSymmetricMode) {
 }
 
 // Validación de Simetría en Directorio de Seguridad (si existe y RLS está activo)
-if (isRlsAuditActive && securityDir && fs.existsSync(securityDir)) {
+let allSecuritySql = '';
+if (securityDir && fs.existsSync(securityDir)) {
   const secFiles = getFilesRecursively(securityDir, /\.sql$/i);
-  const secUpFiles = secFiles.filter(f => !/\.down\.sql$/i.test(f.name) && !/\.test\.sql$/i.test(f.name));
+  const secUpFiles = secFiles.filter(f => !nonMigrationSqlFilter.test(f.name));
   const secDownFiles = secFiles.filter(f => /\.down\.sql$/i.test(f.name));
+  allSecuritySql = stripSqlComments(secUpFiles.map((f) => fs.readFileSync(f.path, 'utf8')).join('\n'));
 
-  for (const sUp of secUpFiles) {
-    const baseName = sUp.name.replace(/\.(up\.)?sql$/i, '');
-    const expectedSecDown = `${baseName}.down.sql`;
-    const matchingSecDown = secDownFiles.find(d => d.name === expectedSecDown);
+  if (isRlsAuditActive) {
+    for (const sUp of secUpFiles) {
+      const baseName = sUp.name.replace(/\.(up\.)?sql$/i, '');
+      const expectedSecDown = `${baseName}.down.sql`;
+      const matchingSecDown = secDownFiles.find(d => d.name === expectedSecDown);
 
-    if (!matchingSecDown) {
-      warnings.push(`⚠️ [SIMETRÍA SEGURIDAD]: Script de seguridad '${sUp.name}' no tiene archivo de reversión simétrico '${expectedSecDown}' en '${securityDir}'.`);
-    } else {
-      passedChecks.push(`✅ [SIMETRÍA SEGURIDAD]: Pareja de seguridad simétrica detectada: ${sUp.name} <-> ${expectedSecDown}`);
-      const secDownContent = fs.readFileSync(matchingSecDown.path, 'utf8');
-      if (!/DROP\s+POLICY/i.test(secDownContent) && !/REVOKE/i.test(secDownContent) && !/DISABLE\s+ROW\s+LEVEL\s+SECURITY/i.test(secDownContent)) {
-        warnings.push(`⚠️ [REVERSIBILIDAD SEGURIDAD]: El archivo de rollback '${matchingSecDown.name}' no parece contener DROP POLICY ni REVOKE.`);
+      if (!matchingSecDown) {
+        warnings.push(`⚠️ [SIMETRÍA SEGURIDAD]: Script de seguridad '${sUp.name}' no tiene archivo de reversión simétrico '${expectedSecDown}' en '${securityDir}'.`);
       } else {
-        passedChecks.push(`✅ [REVERSIBILIDAD SEGURIDAD]: Rollback de seguridad contiene sentencias de revocación/eliminación de políticas.`);
+        passedChecks.push(`✅ [SIMETRÍA SEGURIDAD]: Pareja de seguridad simétrica detectada: ${sUp.name} <-> ${expectedSecDown}`);
+        const secDownContent = stripSqlComments(fs.readFileSync(matchingSecDown.path, 'utf8'));
+        if (!/DROP\s+POLICY/i.test(secDownContent) && !/REVOKE/i.test(secDownContent) && !/DISABLE\s+ROW\s+LEVEL\s+SECURITY/i.test(secDownContent)) {
+          warnings.push(`⚠️ [REVERSIBILIDAD SEGURIDAD]: El archivo de rollback '${matchingSecDown.name}' no parece contener DROP POLICY ni REVOKE.`);
+        } else {
+          passedChecks.push(`✅ [REVERSIBILIDAD SEGURIDAD]: Rollback de seguridad contiene sentencias de revocación/eliminación de políticas.`);
+        }
       }
     }
   }
@@ -228,70 +238,80 @@ if (isRlsAuditActive && securityDir && fs.existsSync(securityDir)) {
 
 // 5. Análisis de Contenido SQL por archivo
 for (const sqlFile of targetFiles) {
-  const content = fs.readFileSync(sqlFile.path, 'utf8');
+  const rawContent = fs.readFileSync(sqlFile.path, 'utf8');
+  const content = stripSqlComments(rawContent);
+  const combinedSqlWithSecurity = content + '\n' + allSecuritySql;
   const fileName = sqlFile.name;
 
-  // A. Índices en Foreign Keys (Parser por ámbito de tabla)
+  // A. Índices en Foreign Keys (Parser por ámbito de tabla sin interferencia de comentarios SQL)
   const detectedFks = [];
 
   // 1. Extracción desde bloques CREATE TABLE (inline y table constraints)
-  const tableBlockRegex = /CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?([a-zA-Z0-9_\.]+)\s*\(([\s\S]*?)\)\s*;/gi;
+  const tableBlockRegex = /CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?([a-zA-Z0-9_\."`\[\]]+)\s*\(([\s\S]*?)\)\s*;/gi;
   let tbMatch;
   while ((tbMatch = tableBlockRegex.exec(content)) !== null) {
     const sourceTbl = tbMatch[1].split('.').pop().replace(/[`"\[\]]/g, '');
     const body = tbMatch[2];
 
     // Constraint explícita: FOREIGN KEY (col) REFERENCES target(id)
-    const explicitFkRegex = /(?:CONSTRAINT\s+[a-zA-Z0-9_]+\s+)?FOREIGN\s+KEY\s*\(\s*([a-zA-Z0-9_]+)\s*\)\s*REFERENCES\s+([a-zA-Z0-9_\.]+)/gi;
+    const explicitFkRegex = /(?:CONSTRAINT\s+[a-zA-Z0-9_"`\[\]]+\s+)?FOREIGN\s+KEY\s*\(\s*([a-zA-Z0-9_"`\[\]]+)\s*\)\s*REFERENCES\s+([a-zA-Z0-9_\."`\[\]]+)/gi;
     let efk;
     while ((efk = explicitFkRegex.exec(body)) !== null) {
+      const fkColClean = efk[1].trim().replace(/[`"\[\]]/g, '');
+      const hasTableUniqueOrPk = new RegExp(`\\b(?:PRIMARY\\s+KEY|UNIQUE)\\s*\\(\\s*["\`\\[]?${fkColClean}["\`\\]]?\\b`, 'i').test(body);
       detectedFks.push({
         sourceTable: sourceTbl,
-        fkCol: efk[1].trim(),
-        targetTable: efk[2].split('.').pop().replace(/[`"\[\]]/g, '')
+        fkCol: fkColClean,
+        targetTable: efk[2].split('.').pop().replace(/[`"\[\]]/g, ''),
+        hasImplicitIndex: hasTableUniqueOrPk
       });
     }
 
-    // Constraint inline: col type [NOT NULL] REFERENCES target(id)
+    // Constraint inline: col type [NOT NULL] [UNIQUE] REFERENCES target(id)
     // Dividir por comas que no estén dentro de paréntesis (ej. evitar partir DECIMAL(10,2))
     const columnDefs = body.split(/,\s*(?![^\(]*\))/);
     for (const cdef of columnDefs) {
       const trimmed = cdef.trim();
-      if (/^\s*(?:CONSTRAINT|FOREIGN\s+KEY|PRIMARY\s+KEY|CHECK|UNIQUE|KEY|INDEX)\b/i.test(trimmed) || /^\s*--/.test(trimmed)) {
+      if (!trimmed || /^\s*(?:CONSTRAINT|FOREIGN\s+KEY|PRIMARY\s+KEY|CHECK|UNIQUE|KEY|INDEX)\b/i.test(trimmed)) {
         continue;
       }
-      const inlineFkMatch = trimmed.match(/^\s*([a-zA-Z0-9_]+)\s+[a-zA-Z0-9_\(\)]+[\s\S]*?\bREFERENCES\s+([a-zA-Z0-9_\.]+)/i);
+      const inlineFkMatch = trimmed.match(/^\s*([a-zA-Z0-9_"`\[\]]+)\s+[a-zA-Z0-9_\(\)]+[\s\S]*?\bREFERENCES\s+([a-zA-Z0-9_\."`\[\]]+)/i);
       if (inlineFkMatch) {
+        const fkColClean = inlineFkMatch[1].trim().replace(/[`"\[\]]/g, '');
+        const hasInlineUniqueOrPk = /\b(?:UNIQUE|PRIMARY\s+KEY)\b/i.test(trimmed) ||
+          new RegExp(`\\b(?:PRIMARY\\s+KEY|UNIQUE)\\s*\\(\\s*["\`\\[]?${fkColClean}["\`\\]]?\\b`, 'i').test(body);
         detectedFks.push({
           sourceTable: sourceTbl,
-          fkCol: inlineFkMatch[1].trim(),
-          targetTable: inlineFkMatch[2].split('.').pop().replace(/[`"\[\]]/g, '')
+          fkCol: fkColClean,
+          targetTable: inlineFkMatch[2].split('.').pop().replace(/[`"\[\]]/g, ''),
+          hasImplicitIndex: hasInlineUniqueOrPk
         });
       }
     }
   }
 
   // 2. Extracción desde sentencias ALTER TABLE ... ADD FOREIGN KEY
-  const alterFkRegex = /ALTER\s+TABLE\s+(?:ONLY\s+)?([a-zA-Z0-9_\.]+)\s+ADD\s+(?:CONSTRAINT\s+[a-zA-Z0-9_]+\s+)?FOREIGN\s+KEY\s*\(\s*([a-zA-Z0-9_]+)\s*\)\s*REFERENCES\s+([a-zA-Z0-9_\.]+)/gi;
+  const alterFkRegex = /ALTER\s+TABLE\s+(?:ONLY\s+)?([a-zA-Z0-9_\."`\[\]]+)\s+ADD\s+(?:CONSTRAINT\s+[a-zA-Z0-9_"`\[\]]+\s+)?FOREIGN\s+KEY\s*\(\s*([a-zA-Z0-9_"`\[\]]+)\s*\)\s*REFERENCES\s+([a-zA-Z0-9_\."`\[\]]+)/gi;
   let afk;
   while ((afk = alterFkRegex.exec(content)) !== null) {
     detectedFks.push({
       sourceTable: afk[1].split('.').pop().replace(/[`"\[\]]/g, ''),
-      fkCol: afk[2].trim(),
-      targetTable: afk[3].split('.').pop().replace(/[`"\[\]]/g, '')
+      fkCol: afk[2].trim().replace(/[`"\[\]]/g, ''),
+      targetTable: afk[3].split('.').pop().replace(/[`"\[\]]/g, ''),
+      hasImplicitIndex: false
     });
   }
 
-  // 3. Verificación de índice correspondiente (con ámbito estricto por tabla)
+  // 3. Verificación de índice correspondiente (con ámbito estricto por tabla, incluyendo security_rls.sql y USING btree)
   for (const fk of detectedFks) {
-    const { sourceTable, fkCol, targetTable } = fk;
+    const { sourceTable, fkCol, targetTable, hasImplicitIndex } = fk;
     const indexPattern = new RegExp(
-      `(?:CREATE\\s+(?:UNIQUE\\s+)?INDEX\\s+(?:IF\\s+NOT\\s+EXISTS\\s+)?[a-zA-Z0-9_]+\\s+ON\\s+(?:[a-zA-Z0-9_\\.]+\\.)?${sourceTable}\\s*\\([^\\)]*?\\b${fkCol}\\b[^\\)]*?\\))|` +
-      `(?:\\b(?:KEY|INDEX)\\s+(?:[a-zA-Z0-9_]+\\s*)?\\([^\\)]*?\\b${fkCol}\\b[^\\)]*?\\))`,
+      `(?:CREATE\\s+(?:UNIQUE\\s+)?INDEX\\s+(?:CONCURRENTLY\\s+)?(?:IF\\s+NOT\\s+EXISTS\\s+)?[a-zA-Z0-9_"\`\\[\\]]+\\s+ON\\s+(?:ONLY\\s+)?(?:[a-zA-Z0-9_\\."\`\\[\\]]+\\.)?["\`\\[]?${sourceTable}["\`\\]]?(?:\\s+USING\\s+[a-zA-Z0-9_]+)?\\s*\\([^\\)]*?\\b${fkCol}\\b[^\\)]*?\\))|` +
+      `(?:\\b(?:KEY|INDEX)\\s+(?:[a-zA-Z0-9_"\`\\[\\]]+\\s*)?\\([^\\)]*?\\b${fkCol}\\b[^\\)]*?\\))`,
       'i'
     );
 
-    if (!indexPattern.test(content)) {
+    if (!hasImplicitIndex && !indexPattern.test(combinedSqlWithSecurity)) {
       failures.push(`❌ [MISSING INDEX]: Clave foránea en '${sourceTable}.${fkCol}' (referenciando a '${targetTable}') en '${fileName}' no tiene un índice sobre '${sourceTable}'.`);
     } else {
       passedChecks.push(`✅ [INDEX FK]: Índice detectado para '${sourceTable}.${fkCol}' -> '${targetTable}' en '${fileName}'.`);
@@ -313,19 +333,13 @@ for (const sqlFile of targetFiles) {
       passedChecks.push(`ℹ️ [RLS GATE]: Validación de RLS desactivada para este proyecto (seguridad a nivel aplicación).`);
     } else {
       const createdTables = [];
-      const tblRegex = /CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?([a-zA-Z0-9_\.]+)/gi;
+      const tblRegex = /CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?([a-zA-Z0-9_\."`\[\]]+)/gi;
       let tMatch;
       while ((tMatch = tblRegex.exec(content)) !== null) {
         createdTables.push(tMatch[1].split('.').pop().replace(/[`"\[\]]/g, ''));
       }
 
-      // Recolectar todo el SQL relevante de seguridad (directorio de seguridad + migraciones)
-      let allSecuritySql = '';
-      if (securityDir && fs.existsSync(securityDir)) {
-        const secSqlFiles = getFilesRecursively(securityDir, /\.sql$/i).filter((f) => !/\.down\.sql$/i.test(f.name));
-        allSecuritySql = secSqlFiles.map((f) => fs.readFileSync(f.path, 'utf8')).join('\n');
-      }
-      const combinedSqlForRls = content + '\n' + allSecuritySql;
+      const combinedSqlForRls = combinedSqlWithSecurity;
 
       for (const tbl of createdTables) {
         if (/^(__|schema_migrations|pg_)/i.test(tbl)) continue;
@@ -421,13 +435,13 @@ for (const sqlFile of targetFiles) {
     passedChecks.push(`✅ [MYSQL]: Chequeos de sintaxis e índices compatibles con MySQL/MariaDB.`);
   }
 
-  // D. Detección de Datos Sensibles (PII / Secrets)
+  // D. Detección de Datos Sensibles (PII / Secrets) — se evalúa sobre rawContent para detectar comentarios de justificación de hash/cifrado
   const sensitiveRegex = /\b(password|passwd|contrasena|token|secret|tarjeta|credit_card|cvv|ssn)\b\s+([a-zA-Z0-9_]+)/gi;
   let sm;
   while ((sm = sensitiveRegex.exec(content)) !== null) {
     const colName = sm[1];
     const type = sm[2].toUpperCase();
-    if (['VARCHAR', 'TEXT', 'CHAR'].includes(type) && !/hash|cifrado|encrypt|argon2|bcrypt/i.test(content)) {
+    if (['VARCHAR', 'TEXT', 'CHAR'].includes(type) && !/hash|cifrado|encrypt|argon2|bcrypt/i.test(rawContent)) {
       warnings.push(`⚠️ [PII / COMPLIANCE]: Columna sensible sospechosa '${colName}' con tipo plano '${type}' en '${fileName}'. Verificar si debe almacenar hash (bcrypt/argon2) o cifrado.`);
     }
   }

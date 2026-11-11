@@ -9,6 +9,7 @@ Versionado siguiendo [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Añadido
+- **Simplificación de Paso 0 y Delegación de Exploración:** Reducción del Paso 0 en `_skills/db-sdd/` estrictamente a Input Gate (§7.3.3) sin pausas redundantes; la exploración técnica del repositorio (`engine`, `migrations_dir`, `migration_mode`, `rls_mode`, `requires_seeds`, `test_cmd`) se delega a `db-architect-agent` en la Fase A.
 - **Sistema Multi-Agente de Base de Datos (`agents/db/`):** 5 subagentes especializados (`db-architect-agent`, `db-developer-agent`, `db-security-agent`, `db-mutation-tester`, `db-qa-agent`) bajo arquitectura SSOT y autonomía de persistencia (`tools: [Read, Write, Edit, bash]`).
 - **Input Gate y Variables de Sesión Globales (§7.3.3 y §7.3.4):** Verificación de pre-condiciones en `_skills/db-sdd/` (bloqueo estricto ante ausencia de `openspec/config.yaml` o ticket) y gobierno de variables de sesión en modo dual (`tiene_repositorio`).
 - **Estandarización de `_skills/sdd-init/`:** Frontmatter canónico (`subagents: []`, `commits:`), plantilla obligatoria de fin de turno (§7.5.1) y variables de sesión.
