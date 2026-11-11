@@ -43,10 +43,10 @@ Skill especializado en el desarrollo e implementación de bases de datos mediant
 ## 🎯 OBJETIVO Y FILOSOFÍA
 
 1. **Exploración Previa y Non-Goals (`proposal.md`):** Todo cambio parte de la inspección del esquema actual para delimitar estrictamente el alcance y prevenir breaking changes.
-2. **Apply-Ready en un Solo Hito (`proposal.md` + `design.md` + `tasks.md`):** `db-architect-agent` entrega el paquete completo de propuesta, modelo físico y desglose de tareas atómicas para aprobación humana en un solo punto de control.
-3. **DB-TDD (Database Test-Driven Development):** Se generan los casos de prueba de fallo esperado (`database/tests/<change-name>-test.sql`) para constraints, integridad referencial y aislamiento RLS antes de dar por cerrada la implementación.
+2. **Apply-Ready en un Solo Hito (`proposal.md` + `specs/` + `design.md` + `tasks.md`):** `db-architect-agent` entrega el paquete completo de propuesta, especificación formal con escenarios Given/When/Then, modelo físico y desglose de tareas atómicas para aprobación humana en un solo punto de control.
+3. **DB-TDD Guiado por Especificaciones (Spec-Driven TDD):** Los casos de prueba (`database/tests/<change-name>-test.sql`) se derivan directamente de los requisitos y escenarios Given/When/Then de la `spec.md` antes de implementar el código DDL. Si los tests fallan en Verify, se retroalimenta y corrige el desarrollo, nunca los tests.
 4. **Reportes Atómicos Versionados:** Cada cambio cuenta con su propio reporte inmutable en `database/reports/<change-name>-qa-report.md`.
-5. **Gobernanza de Cierre (`Archive` y `Commit`):** La skill entrega el cambio verificado al Orquestador principal, quien ejecuta el archivado en OpenSpec y el commit en Git.
+5. **Gobernanza de Cierre (`Archive` y `Commit`):** La skill entrega el cambio verificado al Orquestador principal, quien ejecuta el archivado en OpenSpec (consolidando `spec.md` en `openspec/specs/`) y el commit en Git.
 
 ---
 
@@ -85,23 +85,26 @@ Skill especializado en el desarrollo e implementación de bases de datos mediant
 2. Invocar a `db-architect-agent` entregando el ticket y el contexto de dominio.
 3. El agente genera el paquete completo de concepción técnica:
    - `proposal.md`: Why, What, Non-goals y análisis de riesgos.
+   - `specs/<capability>/spec.md`: Requisitos formales de datos y escenarios Given/When/Then.
    - `design.md`: ERD Mermaid (alto contraste), diccionario físico, tipos, constraints y RLS.
    - `tasks.md`: Lista de tareas atómicas ordenadas topológicamente.
 4. Persistir los artefactos en disco:
    - `openspec/changes/<change-name>/proposal.md`
+   - `openspec/changes/<change-name>/specs/<capability>/spec.md`
    - `openspec/changes/<change-name>/design.md`
    - `openspec/changes/<change-name>/tasks.md`
    - `database/schemas/<change-name>-erd.md`
 5. Presentar en chat el **resumen ejecutivo** de la propuesta y diseño con sus enlaces:
 
 ```text
-📐 Paquete de Propuesta y Diseño preparado (OpenSpec):
+📐 Paquete de Propuesta y Especificación preparado (OpenSpec):
 - Propuesta: [proposal.md](file:///<ruta>/openspec/changes/<change-name>/proposal.md)
+- Especificación: [spec.md](file:///<ruta>/openspec/changes/<change-name>/specs/<capability>/spec.md)
 - Modelo y Diccionario: [design.md](file:///<ruta>/openspec/changes/<change-name>/design.md)
 - Diagrama ERD: [erd.md](file:///<ruta>/database/schemas/<change-name>-erd.md)
 - Plan de Tareas: [tasks.md](file:///<ruta>/openspec/changes/<change-name>/tasks.md)
 
-¿Apruebas este diseño y plan de tareas para avanzar a la suite DB-TDD e implementación?
+¿Apruebas esta especificación, diseño y plan de tareas para avanzar a la suite DB-TDD e implementación?
 ```
 
 🛑 **FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:** Detén tu turno aquí y espera la confirmación explícita del usuario.
@@ -110,19 +113,25 @@ Skill especializado en el desarrollo e implementación de bases de datos mediant
 
 ### Paso 2 — Suite DB-TDD (Red Phase)
 
-1. Invocar a `db-qa-agent` (Fase A) entregando `design.md` y criterios del ticket.
-2. El agente genera la suite de pruebas unitarias/estructurales:
-   - Aserciones de constraints (`NOT NULL`, `CHECK`, `UNIQUE`).
-   - Pruebas negativas de claves foráneas.
-   - Pruebas de penetración de políticas RLS (aislamiento entre tenants).
+1. Invocar a `db-qa-agent` (Fase A) entregando:
+   - `specs/<capability>/spec.md` (fuente de verdad funcional con requisitos y escenarios Given/When/Then).
+   - `design.md` (modelo físico para tipos y nombres de columnas).
+   - Motor de BD (`engine`) y herramientas de prueba detectadas en el repositorio.
+2. El agente deriva la suite de pruebas unitarias/estructurales directamente de la especificación:
+   - Mapeo 1:1 de escenarios Given/When/Then en aserciones ejecutables.
+   - Casos negativos estructurados para constraints (`NOT NULL`, `CHECK`, `UNIQUE`) y foreign keys sin romper el runner.
+   - Pruebas de aislamiento de políticas RLS y privilegios DCL.
 3. Persistir el script de pruebas en disco:
-   - `database/tests/<change-name>-test.sql`
+   - `database/tests/<change-name>-test.sql` (o formato de runner detectado)
 4. Notificar al usuario con enlace al test y solicitar paso a la implementación:
 
 ```text
-🧪 Suite DB-TDD preparada:
+🧪 Suite DB-TDD preparada a partir de spec.md:
 - Archivo de pruebas: [test.sql](file:///<ruta>/database/tests/<change-name>-test.sql)
-- Cobertura: Restricciones de integridad, unicidad y aislamiento RLS.
+- Cobertura: 100% de escenarios Given/When/Then especificados (integridad, unicidad y aislamiento RLS).
+
+¿Procedemos a ejecutar la fase Apply para generar el código DDL y las migraciones?
+```
 
 ¿Procedemos a ejecutar la fase Apply para generar el código DDL y las migraciones?
 ```
@@ -199,26 +208,49 @@ Skill especializado en el desarrollo e implementación de bases de datos mediant
    - Ambas validaciones (la mecánica universal y la del runner del proyecto) deben finalizar con éxito antes de pasar a la auditoría adversarial.
 3. **Auditoría Adversarial:**
    - Invocar a `db-qa-agent` (Fase B) entregando:
+     - `specs/<capability>/spec.md` (fuente de verdad de requisitos y escenarios Given/When/Then).
      - `design.md` vs código SQL generado.
      - Suite `database/tests/<change-name>-test.sql`.
      - Salida de la validación mecánica y del runner del proyecto.
-   - El agente ejecuta el *Drift Check*, simulación de planes `EXPLAIN` y negative testing de RLS.
-4. Persistir el reporte de calidad atómico:
+   - El agente ejecuta el *Drift Check*, simulación de planes `EXPLAIN`, verificación de suite DB-TDD y negative testing de RLS.
+4. **Persistencia del Reporte Atómico:**
    - `database/reports/<change-name>-qa-report.md`
-5. Presentar el veredicto en chat:
+5. **Evaluación de Resultados y Bifurcación:**
 
-```text
-📊 Auditoría de Calidad y DB-TDD completada (Verify):
-- Reporte: [qa-report.md](file:///<ruta>/database/reports/<change-name>-qa-report.md)
-- Veredicto: [APROBADO]
-- Validación mecánica universal: Superada (simetría, índices FK y RLS verificados)
-- Validador nativo del proyecto: <Superado / Omitido si no existe>
-- Drift Check: 100% concordancia con el modelo
+   - **Escenario A — Fallo en Validación Mecánica o Runner del Proyecto:**
+     - Si el validador mecánico (`scripts/validate-db-migrations.js`) devuelve `exit 1` o falla el comando nativo del proyecto (`validation_cmd`), **NO se invoca a `db-qa-agent`** para evitar consumo innecesario de contexto sobre código defectuoso.
+     - Se informa el fallo en chat y se re-despacha automáticamente a la fase Apply correspondiente (Paso 3 para DDL o Paso 4 para RLS) con el log de errores para corregir el código.
+     - Tras la corrección, se re-ejecuta el Paso 5.
 
-¿Confirmas la entrega para que el Orquestador archive el cambio en OpenSpec y realice el commit?
-```
+   - **Escenario B — Dictamen `[OBSERVADO CON CORRECCIONES REQUERIDAS]` en QA:**
+     - Si `db-qa-agent` detecta *Drift*, fallos en la ejecución de tests DB-TDD o problemas de rendimiento:
+     - Se presenta el resumen de observaciones en el chat:
+       ```text
+       ⚠️ Auditoría de Calidad OBSERVADA (Correcciones Requeridas):
+       - Reporte: [qa-report.md](file:///<ruta>/database/reports/<change-name>-qa-report.md)
+       - Veredicto: [OBSERVADO CON CORRECCIONES REQUERIDAS]
+       - Hallazgos críticos: <lista de fallos de tests o discrepancias de drift>
+       - Invariante TDD: Los tests DB-TDD se mantienen inmutables (se corrige el código SQL para satisfacer la spec).
+       
+       ¿Autorizas re-despachar a desarrollo/seguridad para aplicar las correcciones sobre la implementación?
+       ```
+     - 🛑 **FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO**
+     - Tras la aprobación del usuario, se re-invoca a `db-developer-agent` (Paso 3) y/o `db-security-agent` (Paso 4) entregándoles los hallazgos de `qa-report.md`. **Los tests NO se tocan**, se corrige el código SQL hasta que la suite pase limpiamente.
 
-🛑 **FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:** Detén tu turno aquí y espera la confirmación explícita del usuario.
+   - **Escenario C — Dictamen `[APROBADO]`:**
+     - Solo cuando la validación mecánica, el runner del proyecto y la auditoría de QA están 100% en verde:
+       ```text
+       📊 Auditoría de Calidad y DB-TDD completada (Verify):
+       - Reporte: [qa-report.md](file:///<ruta>/database/reports/<change-name>-qa-report.md)
+       - Veredicto: [APROBADO]
+       - Validación mecánica universal: Superada (simetría, índices FK y RLS verificados)
+       - Validador nativo del proyecto: <Superado / Omitido si no existe>
+       - Cobertura de Requisitos: 100% de escenarios Given/When/Then verificados
+       - Drift Check: 100% concordancia con spec.md y design.md
+       
+       ¿Confirmas la entrega para que el Orquestador archive el cambio en OpenSpec y realice el commit?
+       ```
+     - 🛑 **FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO**
 
 ---
 
@@ -228,4 +260,7 @@ Skill especializado en el desarrollo e implementación de bases de datos mediant
    ```text
    [LISTO PARA COMMIT Y ARCHIVE] database/ openspec/changes/<change-name>/
    ```
-2. El orquestador principal tomará el control para ejecutar el archivado en OpenSpec (`openspec archive <change-name>`) y realizar el `git commit`.
+2. El orquestador principal tomará el control para ejecutar el archivado en OpenSpec (`openspec archive <change-name>`), el cual:
+   - Consolida automáticamente `openspec/changes/<change-name>/specs/` en las especificaciones maestras vivas de `openspec/specs/`.
+   - Mueve la carpeta del cambio a `openspec/changes/archive/`.
+   - Realiza el `git commit` atómico de la entrega.

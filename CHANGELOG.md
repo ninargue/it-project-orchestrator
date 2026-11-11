@@ -11,6 +11,8 @@ Versionado siguiendo [Semantic Versioning](https://semver.org/).
 ### Añadido
 - **Sistema Multi-Agente de Base de Datos (`agents/db/`):** 4 subagentes especializados (`db-architect-agent`, `db-developer-agent`, `db-security-agent`, `db-qa-agent`) bajo arquitectura SSOT y mínimo privilegio.
 - **Skill de Ciclo SDD de Base de Datos (`_skills/db-sdd/`):** Runbook Spec-First con metodología DB-TDD, fases Apply desacopladas (DDL y Security) y pausas HITL obligatorias (§7.5.2).
+- **Especificación de Datos en OpenSpec (`specs/`):** Generación formal de `specs/<capability>/spec.md` con requisitos y escenarios Given/When/Then como contrato de verdad para DB-TDD.
+- **Feedback Loop y Resiliencia en DB-TDD:** Bifurcación en Verify con retroalimentación a desarrollo/seguridad ante fallos (sin modificar tests) y eliminación de sesgo de Postgres en QA.
 - **Validador Mecánico Multiplataforma (`scripts/validate-db-migrations.js`):** Script universal en Node.js para validación determinista de FKs con ámbito por tabla, simetría up/down, RLS y PII en múltiples motores.
 - **Exploración e Integración de Runners:** Detección de infraestructura (motor, directorios) y ejecución complementaria de runners nativos del proyecto (`npm run db:validate`, `make db-validate`, `uv run db-validate`).
 - **Gobernanza de Tickets Multi-Capa:** Protocolo en el orquestador para particionar tickets cross-cutting (`<ticket_id>-<capa>/`), secuenciación topológica y archivado atómico con OpenSpec Bulk Archive.
