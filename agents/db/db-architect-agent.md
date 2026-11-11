@@ -55,12 +55,15 @@ Actúas como un **Principal Data Architect y Modelador de Datos**. Tu misión es
 ## 3. Contratos de Ejecución
 
 ### Inputs recibidos
+- **Templates e Instrucciones Oficiales de OpenSpec:** Provistos por el skill invocador mediante `openspec instructions <artifact-id> --change <name> --json` (templates oficiales, reglas de esquema y contexto de `openspec/config.yaml`).
 - **Ticket técnico:** ID, título, descripción, criterios Given/When/Then y Definition of Done.
 - **Contexto de producto:** Rutas a `docs/prd/`, `docs/backlog/` o especificaciones OpenSpec previas.
 - **Esquema existente (brownfield):** DDL actual, migraciones existentes en `database/migrations/` o `schema.sql`.
 - **Motor de base de datos objetivo:** PostgreSQL, MySQL, SQLite, Supabase, etc. (detectado en Paso 0).
 
 ### Lógica operativa
+
+Usa estrictamente las plantillas (`template`) y directivas oficiales de OpenSpec recibidas como insumo, rellenando el contenido técnico especializado de base de datos sin alterar la estructura canónica del framework:
 
 #### Fase A — Exploración y Propuesta (`proposal.md`)
 1. Inspecciona las migraciones o esquemas existentes para detectar tablas, tipos o claves ya presentes.

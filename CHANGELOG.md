@@ -9,7 +9,9 @@ Versionado siguiendo [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Añadido
-- **Sistema Multi-Agente de Base de Datos (`agents/db/`):** 4 subagentes especializados (`db-architect-agent`, `db-developer-agent`, `db-security-agent`, `db-qa-agent`) bajo arquitectura SSOT y mínimo privilegio.
+- **Sistema Multi-Agente de Base de Datos (`agents/db/`):** 5 subagentes especializados (`db-architect-agent`, `db-developer-agent`, `db-security-agent`, `db-mutation-tester`, `db-qa-agent`) bajo arquitectura SSOT y mínimo privilegio.
+- **Mutation Testing en Base de Datos (`agents/db/db-mutation-tester.md`):** Subagente para validar la robustez de la suite de tests contra 5 mutantes canónicos antes de la aprobación de QA.
+- **Comandos Nativos OpenSpec CLI:** Integración de `openspec new change`, `openspec instructions` y `openspec validate` en `_skills/db-sdd/` y `db-architect-agent`.
 - **Skill de Ciclo SDD de Base de Datos (`_skills/db-sdd/`):** Runbook Spec-First con metodología DB-TDD, fases Apply desacopladas (DDL y Security) y pausas HITL obligatorias (§7.5.2).
 - **Especificación de Datos en OpenSpec (`specs/`):** Generación formal de `specs/<capability>/spec.md` con requisitos y escenarios Given/When/Then como contrato de verdad para DB-TDD.
 - **Feedback Loop y Resiliencia en DB-TDD:** Bifurcación en Verify con retroalimentación a desarrollo/seguridad ante fallos (sin modificar tests) y eliminación de sesgo de Postgres en QA.

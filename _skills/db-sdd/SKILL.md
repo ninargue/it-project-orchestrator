@@ -13,6 +13,7 @@ subagents:
   - db-developer-agent
   - db-security-agent
   - db-qa-agent
+  - db-mutation-tester
 inputs:
   - Ticket técnico de base de datos (US-XX-TN o issue de GitHub)
   - docs/prd/*.md (opcional, contexto de dominio existente)
@@ -21,6 +22,7 @@ inputs:
   - openspec/config.yaml (configuración SDD del proyecto)
 outputs:
   - openspec/changes/<change-name>/proposal.md
+  - openspec/changes/<change-name>/specs/<capability>/spec.md
   - openspec/changes/<change-name>/design.md
   - openspec/changes/<change-name>/tasks.md
   - database/schemas/<change-name>-erd.md
@@ -29,6 +31,7 @@ outputs:
   - database/migrations/<timestamp>_<change-name>.down.sql
   - database/security/<timestamp>_security_rls.sql
   - database/seeds/<timestamp>_seeds.sql
+  - database/reports/<change-name>-mutation-report.md
   - database/reports/<change-name>-qa-report.md
 commits:
   - "El orquestador (nunca este skill ni sus subagentes) hace todos los commits, siempre tras confirmación explícita del usuario."
@@ -82,19 +85,35 @@ Skill especializado en el desarrollo e implementación de bases de datos mediant
 ### Paso 1 — Exploración, Propuesta y Tareas (OpenSpec Propose)
 
 1. Explorar migraciones y esquemas existentes en `database/migrations/` o `schema.sql`.
-2. Invocar a `db-architect-agent` entregando el ticket y el contexto de dominio.
-3. El agente genera el paquete completo de concepción técnica:
+2. Inicializar formalmente el cambio en el framework OpenSpec:
+   ```bash
+   openspec new change "<change-name>"
+   ```
+   Esto crea el directorio `openspec/changes/<change-name>/` con su archivo de metadatos `.openspec.yaml`.
+3. Consultar las instrucciones y plantillas oficiales del framework OpenSpec:
+   - `openspec instructions proposal --change "<change-name>" --json`
+   - `openspec instructions specs --change "<change-name>" --json`
+   - `openspec instructions design --change "<change-name>" --json`
+   - `openspec instructions tasks --change "<change-name>" --json`
+4. Invocar a `db-architect-agent` entregando:
+   - Las plantillas y reglas de esquema oficiales extraídas de `openspec instructions`.
+   - El ticket técnico, contexto de dominio y esquema preexistente.
+5. El agente genera el paquete completo rellenando las plantillas oficiales de OpenSpec:
    - `proposal.md`: Why, What, Non-goals y análisis de riesgos.
    - `specs/<capability>/spec.md`: Requisitos formales de datos y escenarios Given/When/Then.
-   - `design.md`: ERD Mermaid (alto contraste), diccionario físico, tipos, constraints y RLS.
+   - `design.md`: ERD Mermaid (alto contraste), diccionario físico, tipos, constraints e índices.
    - `tasks.md`: Lista de tareas atómicas ordenadas topológicamente.
-4. Persistir los artefactos en disco:
+6. Persistir los artefactos en disco:
    - `openspec/changes/<change-name>/proposal.md`
    - `openspec/changes/<change-name>/specs/<capability>/spec.md`
    - `openspec/changes/<change-name>/design.md`
    - `openspec/changes/<change-name>/tasks.md`
    - `database/schemas/<change-name>-erd.md`
-5. Presentar en chat el **resumen ejecutivo** de la propuesta y diseño con sus enlaces:
+7. Validar formalmente el cambio con el CLI de OpenSpec:
+   ```bash
+   openspec validate "<change-name>"
+   ```
+8. Presentar en chat el **resumen ejecutivo** de la propuesta y diseño con sus enlaces:
 
 ```text
 📐 Paquete de Propuesta y Especificación preparado (OpenSpec):
@@ -206,16 +225,29 @@ Skill especializado en el desarrollo e implementación de bases de datos mediant
      - En proyectos con Makefile: `make db-validate` o `make test-db`
      - En stacks específicos: `supabase db lint`, `atlas migrate validate`, `sqlfluff lint`
    - Ambas validaciones (la mecánica universal y la del runner del proyecto) deben finalizar con éxito antes de pasar a la auditoría adversarial.
-3. **Auditoría Adversarial:**
-   - Invocar a `db-qa-agent` (Fase B) entregando:
+3. **Pruebas de Mutación y Falsabilidad (Mutation Testing):**
+   - Invocar a `db-mutation-tester` entregando:
+     - Suite `database/tests/<change-name>-test.sql`.
+     - `specs/<capability>/spec.md` y `design.md`.
+     - Scripts DDL y de seguridad generados en la fase Apply.
+   - El agente somete la suite a la batería de mutaciones destructivas (M1 a M5) para comprobar que los tests no sean tautologías ni tengan falsos positivos.
+   - Persistir el reporte de mutación: `database/reports/<change-name>-mutation-report.md`.
+   - Si se detectan mutantes vivos (tests complacientes): se devuelve la suite a `db-qa-agent` para blindar las aserciones antes de continuar.
+4. **Auditoría Adversarial y Drift Check:**
+   - Una vez comprobada la falsabilidad de la suite, invocar a `db-qa-agent` (Fase B) entregando:
      - `specs/<capability>/spec.md` (fuente de verdad de requisitos y escenarios Given/When/Then).
      - `design.md` vs código SQL generado.
-     - Suite `database/tests/<change-name>-test.sql`.
+     - Suite `database/tests/<change-name>-test.sql` y reporte de mutación.
      - Salida de la validación mecánica y del runner del proyecto.
    - El agente ejecuta el *Drift Check*, simulación de planes `EXPLAIN`, verificación de suite DB-TDD y negative testing de RLS.
-4. **Persistencia del Reporte Atómico:**
+5. **Validación Formal OpenSpec:**
+   - Ejecutar la validación del framework para confirmar que el change cumple todas las reglas:
+     ```bash
+     openspec validate "<change-name>"
+     ```
+6. **Persistencia del Reporte Atómico de QA:**
    - `database/reports/<change-name>-qa-report.md`
-5. **Evaluación de Resultados y Bifurcación:**
+7. **Evaluación de Resultados y Bifurcación:**
 
    - **Escenario A — Fallo en Validación Mecánica o Runner del Proyecto:**
      - Si el validador mecánico (`scripts/validate-db-migrations.js`) devuelve `exit 1` o falla el comando nativo del proyecto (`validation_cmd`), **NO se invoca a `db-qa-agent`** para evitar consumo innecesario de contexto sobre código defectuoso.

@@ -45,7 +45,7 @@ Según la elección, invocar el recurso correspondiente antes de continuar:
 | Tipo | Ubicación | Responsabilidad |
 |---|---|---|
 | **Subagentes Core** | `agents/<nombre>.md` | Discovery, análisis de producto, backlog, tickets y materialización |
-| **Subagentes de Base de Datos** | `agents/db/<nombre>.md` | Equipo especializado de BD: Architect, Developer, Security DBA y QA Adversarial |
+| **Subagentes de Base de Datos** | `agents/db/<nombre>.md` | Equipo especializado de BD: Architect, Developer, Security DBA, Mutation Tester y QA |
 | **Skills** | `_skills/<nombre>/SKILL.md` | Runbooks y procedimientos operativos paso a paso con interacción humana |
 | **Orquestador** | `orchestrator/ORCHESTRATOR.md` | Secuenciación de flujos completos punta a punta, dispatching de tickets y gobernanza Git |
 | **Especificaciones SDD** | `openspec/` y `sdd/` | Framework OpenSpec, planes y especificaciones técnicas de desarrollo guiado |
