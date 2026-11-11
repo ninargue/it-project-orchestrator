@@ -7,6 +7,7 @@ tools_required:
   - Read
   - Write
   - AskUserQuestion
+subagents: []
 inputs:
   - Ruta del repositorio de desarrollo (o directorio actual si se opera sobre él)
   - docs/tech-briefing.md (opcional, para extraer stack y contexto)
@@ -18,11 +19,25 @@ outputs:
   - openspec/specs/
   - openspec/changes/
   - openspec/changes/archive/
+commits:
+  - "El orquestador (nunca este skill ni sus subagentes) hace todos los commits, siempre tras confirmación explícita del usuario."
 ---
 
 # sdd-init
 
 Skill para inicializar el entorno de **Specification-Driven Development (SDD / OpenSpec)** en un repositorio de código de destino.
+
+---
+
+## 🧭 VARIABLES DE SESIÓN
+
+Este skill recibe o inicializa las variables de sesión globales (§7.3.4):
+
+| Variable | Valores | Uso en este skill |
+|---|---|---|
+| `idioma` | `español` / `inglés` | Idioma de los textos y reglas generadas |
+| `tiene_repositorio` | `true` / `false` | Determina si se crea la estructura en disco o solo se expone en chat |
+| `tipo_proyecto` | `greenfield` / `brownfield` | Detección de manifiestos y stack para el bloque context de config.yaml |
 
 ---
 
@@ -118,26 +133,30 @@ Presentar al usuario el resumen del archivo y pedir su visto bueno:
 ¿Confirmas la creación de las carpetas y este archivo config.yaml?
 ```
 
-🛑 **PAUSA OBLIGATORIA (FIN DE TURNO):** Detén tu respuesta aquí y espera la confirmación explícita del usuario.
+🛑 **FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:** Detén tu turno aquí y espera la confirmación explícita del usuario.
 
 ---
 
-### Paso 4 — Creación de la Estructura en Disco
+### Paso 4 — Creación de la Estructura (Modo Dual)
 
 Tras recibir la confirmación del usuario:
 
-1. **Crear directorios:**
-   - `<repo>/openspec/`
-   - `<repo>/openspec/specs/`
-   - `<repo>/openspec/changes/`
-   - `<repo>/openspec/changes/archive/`
-   *(Sin crear archivos `.gitkeep`).*
+- **Si `tiene_repositorio = true`:**
+  1. **Crear directorios:**
+     - `<repo>/openspec/`
+     - `<repo>/openspec/specs/`
+     - `<repo>/openspec/changes/`
+     - `<repo>/openspec/changes/archive/`
+     *(Sin crear archivos `.gitkeep`).*
 
-2. **Crear archivo de configuración:**
-   - Escribir `<repo>/openspec/config.yaml` con el contenido aprobado.
+  2. **Crear archivo de configuración:**
+     - Escribir `<repo>/openspec/config.yaml` con el contenido aprobado.
 
-3. **Verificación:**
-   - Confirmar que `openspec/config.yaml` existe y no tiene errores de sintaxis YAML.
+  3. **Verificación:**
+     - Confirmar que `openspec/config.yaml` existe y no tiene errores de sintaxis YAML.
+
+- **Si `tiene_repositorio = false`:**
+  - Mostrar el archivo completo en chat y notificar al usuario que para el desarrollo asistido por OpenSpec se requerirá crear esta estructura en disco al momento de inicializar un repositorio.
 
 ---
 

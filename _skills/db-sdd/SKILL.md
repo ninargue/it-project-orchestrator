@@ -44,6 +44,39 @@ Skill especializado en el desarrollo e implementación de bases de datos mediant
 
 ---
 
+## 🧭 VARIABLES DE SESIÓN HEREDADAS
+
+Este skill recibe del Orquestador o de skills previos las siguientes variables en memoria de sesión (§7.3.4):
+
+| Variable | Valores | Uso en este skill |
+|---|---|---|
+| `idioma` | `español` / `inglés` | Idioma de los artefactos y mensajes |
+| `tiene_repositorio` | `true` / `false` | Determina si los subagentes escriben a disco o vuelcan contenido en chat |
+| `prefijo_avance` | ej: `0001`, `0002` | Prefijo numérico incremental de la entrega/avance |
+| `sufijo` | ej: `crear-esquema-usuarios` | Sufijo en kebab-case para el change-name |
+| `tipo_proyecto` | `greenfield` / `brownfield` | Contexto de exploración (existencia de esquemas previos) |
+
+Si alguna de estas variables no está en memoria de sesión (usuario invocó directamente este skill):
+- `idioma`: Detectar de `docs/` o asumir `español`.
+- `tiene_repositorio`: Comprobar si existe directorio de trabajo local (`true` si opera sobre repo; si no, `false`).
+- `tipo_proyecto`: Detectar si existen migraciones en disco (`brownfield`) o si el directorio de BD está vacío (`greenfield`).
+- `prefijo_avance`: Inspeccionar `openspec/changes/` o `docs/prd/` para detectar el mayor prefijo numérico existente (o `0001` si no hay previos).
+- `sufijo`: Derivar del ticket técnico o requerimiento del usuario.
+
+---
+
+## 📋 REGLAS GENERALES
+
+1. **Límite Estricto de Fin de Turno (Hard Turn Boundary):** Toda pausa `🛑 **FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:**` marca el fin absoluto de tu turno de respuesta.
+   - Presenta únicamente el resultado o preguntas del paso actual.
+   - **DETÉN tu respuesta inmediatamente.** No agregues texto anticipando el paso siguiente ni simules respuestas del usuario.
+2. **Gobernanza de Git:** Ningún subagente ni skill ejecuta commits directamente. Solo el orquestador principal interactúa con Git, siempre tras confirmación explícita del usuario.
+3. **Modo Dual (Concisión en Chat vs. Persistencia en Disco):**
+   - **Si `tiene_repositorio = true`:** Los subagentes persisten directamente sus entregables en disco. En chat se muestra únicamente un resumen ejecutivo conciso con enlaces directos (`file:///...`).
+   - **Si `tiene_repositorio = false` (modo conversación):** Los subagentes vuelcan el contenido completo en el chat para que el usuario pueda validarlo; las validaciones mecánicas y runners se realizan de forma estática conversacional al no existir entorno de base de datos en disco.
+
+---
+
 ## 🎯 OBJETIVO Y FILOSOFÍA
 
 1. **Exploración Previa y Non-Goals (`proposal.md`):** Todo cambio parte de la inspección del esquema actual para delimitar estrictamente el alcance y prevenir breaking changes.
@@ -56,11 +89,29 @@ Skill especializado en el desarrollo e implementación de bases de datos mediant
 
 ## 👣 PROCEDIMIENTO PASO A PASO
 
-### Paso 0 — Identificación del Ticket, Exploración del Repositorio y Parámetros
+### Paso 0 — Verificación de Pre-condiciones (Input Gate) y Exploración
 
-1. Obtener los datos del ticket técnico (`capa:db`):
+1. **Input Gate — Verificación de Pre-condiciones (§7.3.3):**
+   - **Pre-condición A (OpenSpec Config):**
+     - Si `tiene_repositorio = true`, verificar la existencia de `openspec/config.yaml` en el proyecto destino.
+     - Si `openspec/config.yaml` **NO existe en disco**:
+       ```text
+       ❌ [INPUT GATE]: El entorno de Specification-Driven Development (OpenSpec) no está inicializado en este repositorio (falta 'openspec/config.yaml').
+       Debes ejecutar primero el skill '_skills/sdd-init/SKILL.md' (o la opción [4] del orquestador) para configurar OpenSpec antes de iniciar el ciclo de base de datos.
+       ```
+       🛑 **FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:** Detén tu turno aquí e instruye al usuario inicializar SDD primero.
+   - **Pre-condición B (Ticket Técnico de BD):**
+     - Verificar que el usuario haya indicado o seleccionado un ticket técnico de base de datos (`capa:db`) con ID, título o criterios de aceptación.
+     - Si no se indicó ningún ticket:
+       ```text
+       ❓ [INPUT GATE]: No se ha especificado un ticket técnico para el desarrollo de base de datos.
+       Por favor, indica el ID del ticket (ej. US-03-T1 o issue #17) o describe el requerimiento de base de datos a desarrollar.
+       ```
+       🛑 **FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:** Detén tu turno aquí y espera a que el usuario provea el requerimiento.
+
+2. Obtener los datos del ticket técnico (`capa:db`):
    - ID del ticket (ej. `US-03-T1` o issue #17), título y criterios de aceptación.
-2. Explorar activamente el repositorio destino para detectar su configuración y arquitectura:
+3. Explorar activamente el repositorio destino para detectar su configuración y arquitectura:
    - **Motor de BD (`engine`)**: Inspeccionar archivos de configuración (`supabase/config.toml`, `prisma/schema.prisma`, `docker-compose.yml`, `package.json`, `.env.example`, `docs/tech-briefing.md` u `openspec/config.yaml`). Por defecto: `postgres`.
    - **Directorio de migraciones (`migrations_dir`)**: Detectar si existe `supabase/migrations`, `database/migrations`, `src/database/migrations`, `prisma/migrations`, `db/migrations`, `migrations`, etc. Si no existe aún, proponer la convención adecuada según el motor/stack detectado.
    - **Modo de Migración (`migration_mode`)**: Detectar si el proyecto usa pares simétricos (`symmetric`: `.up.sql` y `.down.sql`) o migraciones unidireccionales (`forward-only`: un único archivo `.sql` por cambio, común en Prisma, Flyway o Supabase mono-file).

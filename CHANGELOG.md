@@ -10,6 +10,8 @@ Versionado siguiendo [Semantic Versioning](https://semver.org/).
 
 ### Añadido
 - **Sistema Multi-Agente de Base de Datos (`agents/db/`):** 5 subagentes especializados (`db-architect-agent`, `db-developer-agent`, `db-security-agent`, `db-mutation-tester`, `db-qa-agent`) bajo arquitectura SSOT y autonomía de persistencia (`tools: [Read, Write, Edit, bash]`).
+- **Input Gate y Variables de Sesión Globales (§7.3.3 y §7.3.4):** Verificación de pre-condiciones en `_skills/db-sdd/` (bloqueo estricto ante ausencia de `openspec/config.yaml` o ticket) y gobierno de variables de sesión en modo dual (`tiene_repositorio`).
+- **Estandarización de `_skills/sdd-init/`:** Frontmatter canónico (`subagents: []`, `commits:`), plantilla obligatoria de fin de turno (§7.5.1) y variables de sesión.
 - **Autonomía de Subagentes (Invariante 7.2):** Los subagentes técnicos generan y editan directamente sus archivos en disco en lugar de delegar la escritura en el skill.
 - **Ciclo DB-TDD Bifásico en QA:** `db-qa-agent` redacta la suite y valida estado ROJO en la fase Red antes del desarrollo; tras la implementación, ejecuta el runner (`make test-db`) para certificar el paso a VERDE y auditar drift.
 - **Condicionalidades del Ciclo SDD:** Soporte para proyectos sin RLS (`--no-rls`), migraciones *forward-only* o simétricas, seeds opcionales (`requires_seeds`), actualización de ERD consolidado solo ante tablas/FKs nuevas y mutation testing condicional ante constraints/RLS.
