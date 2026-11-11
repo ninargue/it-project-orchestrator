@@ -7,7 +7,7 @@ tools_required:
   - Read
   - Write
   - AskUserQuestion
-  - bash (PowerShell para scripts de validación mecánica)
+  - bash
 subagents:
   - db-architect-agent
   - db-developer-agent
@@ -25,14 +25,14 @@ outputs:
   - openspec/changes/<change-name>/specs/<capability>/spec.md
   - openspec/changes/<change-name>/design.md
   - openspec/changes/<change-name>/tasks.md
-  - database/schemas/<change-name>-erd.md
-  - database/tests/<change-name>-test.sql
-  - database/migrations/<timestamp>_<change-name>.up.sql
-  - database/migrations/<timestamp>_<change-name>.down.sql
-  - database/security/<timestamp>_security_rls.sql
-  - database/security/<timestamp>_security_rls.down.sql
-  - database/seeds/<timestamp>_seeds.sql
-  - database/reports/<change-name>-mutation-report.md
+  - database/schemas/erd.md (actualizado si hay tablas nuevas o FKs alteradas)
+  - database/tests/<change-name>-test.sql (o formato de runner nativo)
+  - database/migrations/<timestamp>_<change-name>.up.sql (o archivo único en forward-only)
+  - database/migrations/<timestamp>_<change-name>.down.sql (en modo simétrico)
+  - database/security/<timestamp>_security_rls.sql (si rls_mode != 'none')
+  - database/security/<timestamp>_security_rls.down.sql (si rls_mode != 'none' y simétrico)
+  - database/seeds/<timestamp>_seeds.sql (si requires_seeds = true)
+  - database/reports/<change-name>-mutation-report.md (si hay constraints o RLS a falsar)
   - database/reports/<change-name>-qa-report.md
 commits:
   - "El orquestador (nunca este skill ni sus subagentes) hace todos los commits, siempre tras confirmación explícita del usuario."
@@ -63,20 +63,25 @@ Skill especializado en el desarrollo e implementación de bases de datos mediant
 2. Explorar activamente el repositorio destino para detectar su configuración y arquitectura:
    - **Motor de BD (`engine`)**: Inspeccionar archivos de configuración (`supabase/config.toml`, `prisma/schema.prisma`, `docker-compose.yml`, `package.json`, `.env.example`, `docs/tech-briefing.md` u `openspec/config.yaml`). Por defecto: `postgres`.
    - **Directorio de migraciones (`migrations_dir`)**: Detectar si existe `supabase/migrations`, `database/migrations`, `src/database/migrations`, `prisma/migrations`, `db/migrations`, `migrations`, etc. Si no existe aún, proponer la convención adecuada según el motor/stack detectado.
+   - **Modo de Migración (`migration_mode`)**: Detectar si el proyecto usa pares simétricos (`symmetric`: `.up.sql` y `.down.sql`) o migraciones unidireccionales (`forward-only`: un único archivo `.sql` por cambio, común en Prisma, Flyway o Supabase mono-file).
    - **Estrategia de Seguridad / RLS en BD (`rls_mode`)**: Detectar si el proyecto requiere Row-Level Security a nivel de base de datos o si la seguridad se gestiona exclusivamente en la capa de aplicación:
      - `dedicated`: Directorio dedicado (`supabase/security`, `database/security`, `security/`, `policies/`).
      - `in-situ`: Políticas RLS y DCL gestionadas dentro de las propias migraciones.
      - `none`: **No requerido** (seguridad, autenticación y multi-tenancy delegados a la capa de aplicación/backend con ORM o servicios; la BD no usa RLS).
-   - **Comandos de Validación Estándar del Proyecto (`validation_cmd`)**: Inspeccionar si el proyecto ya cuenta con tareas o scripts estándar para validación, linting o testing de base de datos en `package.json` (`npm run db:validate`, `npm run db:lint`), `Makefile` (`make db-validate`, `make test-db`), `pyproject.toml` (`uv run db-validate`, `poetry run ...`) o CLIs del stack (`supabase db lint`, `atlas migrate validate`, `sqlfluff lint`). Si se detecta alguno, registrarlo para ejecutarlo de forma complementaria en la fase de verificación.
+   - **Datos de Prueba / Fixtures (`requires_seeds`)**: Determinar si el ticket solicita datos iniciales o mocks (`true`) o si es un cambio de esquema puro sin seeds (`false`). Por defecto: `false`.
+   - **Runner Estándar de Pruebas (`test_cmd`)**: Inspeccionar si existe un `Makefile` con targets para testing de BD (`make test-db`, `make db-test`, `make test`). Si no existe, detectar el runner nativo (`supabase test db`, `npm test`, `pytest`).
+   - **Comandos de Validación Estándar del Proyecto (`validation_cmd`)**: Inspeccionar si el proyecto cuenta con tareas de validación/linting en `Makefile` (`make db-validate`), `package.json` (`npm run db:validate`) o CLIs del stack (`supabase db lint`, `atlas migrate validate`).
 3. Definir el identificador único del cambio en `kebab-case`: `<change-name>` (ej. `0017-crear-esquema-usuarios`, o `<ticket_id>-db` si forma parte de un ticket multi-capa).
 
 ```text
 💡 Iniciando ciclo SDD de Base de Datos:
 - Ticket: <ID o título>
 - Motor de BD: <engine detectado o configurado>
-- Directorio de migraciones: <migrations_dir detectado>
+- Directorio de migraciones: <migrations_dir detectado> (modo: <symmetric | forward-only>)
 - Seguridad en BD (RLS): <'dedicado' | 'in-situ' | 'no requerido (seguridad a nivel aplicación)'>
-- Comando de validación del proyecto: <validation_cmd detectado o 'ninguno (usar validador nativo)'>
+- Runner de pruebas DB-TDD: <test_cmd detectado, ej: 'make test-db'>
+- Comando de validación: <validation_cmd detectado o 'ninguno (usar validador nativo)'>
+- Datos iniciales (seeds): <'requerido' | 'no requerido'>
 - Cambio OpenSpec: <change-name>
 
 ¿Confirmas estos parámetros para iniciar la exploración y propuesta técnica?
@@ -102,29 +107,24 @@ Skill especializado en el desarrollo e implementación de bases de datos mediant
 4. Invocar a `db-architect-agent` entregando:
    - Las plantillas y reglas de esquema oficiales extraídas de `openspec instructions`.
    - El ticket técnico, contexto de dominio y esquema preexistente.
-5. El agente genera el paquete completo rellenando las plantillas oficiales de OpenSpec:
-   - `proposal.md`: Why, What, Non-goals y análisis de riesgos.
-   - `specs/<capability>/spec.md`: Requisitos formales de datos y escenarios Given/When/Then.
-   - `design.md`: ERD Mermaid (alto contraste), diccionario físico, tipos, constraints e índices.
-   - `tasks.md`: Lista de tareas atómicas ordenadas topológicamente.
-6. Persistir los artefactos en disco:
-   - `openspec/changes/<change-name>/proposal.md`
-   - `openspec/changes/<change-name>/specs/<capability>/spec.md`
-   - `openspec/changes/<change-name>/design.md`
-   - `openspec/changes/<change-name>/tasks.md`
-   - `database/schemas/<change-name>-erd.md`
-7. Validar formalmente el cambio con el CLI de OpenSpec:
+5. El agente genera y escribe directamente los artefactos en disco:
+   - `openspec/changes/<change-name>/proposal.md`: Why, What, Non-goals y análisis de riesgos.
+   - `openspec/changes/<change-name>/specs/<capability>/spec.md`: Requisitos formales de datos y escenarios Given/When/Then.
+   - `openspec/changes/<change-name>/design.md`: ERD Mermaid del cambio (alto contraste), diccionario físico, tipos, constraints e índices.
+   - `openspec/changes/<change-name>/tasks.md`: Lista de tareas atómicas ordenadas topológicamente.
+   - **ERD Consolidado (`database/schemas/erd.md`):** Actualizado directamente **únicamente si el cambio crea nuevas tablas o altera relaciones (FKs)**. Para índices, triggers o alteraciones de columnas, no se modifica `erd.md`.
+6. Validar formalmente el cambio con el CLI de OpenSpec:
    ```bash
    openspec validate "<change-name>"
    ```
-8. Presentar en chat el **resumen ejecutivo** de la propuesta y diseño con sus enlaces:
+7. Presentar en chat el **resumen ejecutivo** de la propuesta y diseño con sus enlaces:
 
 ```text
 📐 Paquete de Propuesta y Especificación preparado (OpenSpec):
 - Propuesta: [proposal.md](file:///<ruta>/openspec/changes/<change-name>/proposal.md)
 - Especificación: [spec.md](file:///<ruta>/openspec/changes/<change-name>/specs/<capability>/spec.md)
 - Modelo y Diccionario: [design.md](file:///<ruta>/openspec/changes/<change-name>/design.md)
-- Diagrama ERD: [erd.md](file:///<ruta>/database/schemas/<change-name>-erd.md)
+- ERD Consolidado: [erd.md](file:///<ruta>/database/schemas/erd.md) (si fue actualizado)
 - Plan de Tareas: [tasks.md](file:///<ruta>/openspec/changes/<change-name>/tasks.md)
 
 ¿Apruebas esta especificación, diseño y plan de tareas para avanzar a la suite DB-TDD e implementación?
@@ -134,24 +134,26 @@ Skill especializado en el desarrollo e implementación de bases de datos mediant
 
 ---
 
-### Paso 2 — Suite DB-TDD (Red Phase)
+### Paso 2 — Suite DB-TDD y Verificación en ROJO (Red Phase)
 
 1. Invocar a `db-qa-agent` (Fase A) entregando:
    - `specs/<capability>/spec.md` (fuente de verdad funcional con requisitos y escenarios Given/When/Then).
    - `design.md` (modelo físico para tipos y nombres de columnas).
-   - Motor de BD (`engine`) y herramientas de prueba detectadas en el repositorio.
-2. El agente deriva la suite de pruebas unitarias/estructurales directamente de la especificación:
+   - Motor de BD (`engine`) y runner de pruebas (`test_cmd`, ej. `make test-db`).
+2. El agente deriva y escribe directamente la suite en disco:
+   - `database/tests/<change-name>-test.sql` (o formato de runner nativo detectado).
    - Mapeo 1:1 de escenarios Given/When/Then en aserciones ejecutables.
    - Casos negativos estructurados para constraints (`NOT NULL`, `CHECK`, `UNIQUE`) y foreign keys sin romper el runner.
    - Pruebas de aislamiento de políticas RLS y privilegios DCL (únicamente si `rls_mode` es `dedicated` o `in-situ`; si `rls_mode = 'none'`, se omiten pruebas de RLS y la suite se enfoca en integridad referencial, tipos, constraints y triggers).
-3. Persistir el script de pruebas en disco:
-   - `database/tests/<change-name>-test.sql` (o formato de runner detectado)
-4. Notificar al usuario con enlace al test y solicitar paso a la implementación:
+3. **Verificación en ROJO:**
+   - El agente ejecuta `make test-db` (o el runner del proyecto) mediante `bash` y confirma que los tests fallen con **ROJO** (fallo esperado porque el DDL aún no existe), comprobando que las aserciones son válidas y no tautológicas.
+4. Notificar al usuario con enlace al test y confirmación del estado Rojo:
 
 ```text
-🧪 Suite DB-TDD preparada a partir de spec.md:
+🧪 Suite DB-TDD preparada y verificada en ROJO:
 - Archivo de pruebas: [test.sql](file:///<ruta>/database/tests/<change-name>-test.sql)
-- Cobertura: 100% de escenarios Given/When/Then especificados (integridad, unicidad y reglas de datos).
+- Estado inicial: 🔴 ROJO verificado (las aserciones fallan esperadamente antes del DDL).
+- Cobertura: 100% de escenarios Given/When/Then especificados.
 
 ¿Procedemos a ejecutar la fase Apply para generar el código DDL y las migraciones?
 ```
@@ -162,21 +164,21 @@ Skill especializado en el desarrollo e implementación de bases de datos mediant
 
 ### Paso 3 — Implementación DDL y Migraciones (OpenSpec Apply: DDL)
 
-1. Invocar a `db-developer-agent` para ejecutar las tareas DDL de `tasks.md`:
-   - Migración UP: `<timestamp>_<change-name>.up.sql`
-   - Migración DOWN: `<timestamp>_<change-name>.down.sql` (o archivo unificado `.sql` si el motor/framework del proyecto no utiliza pares simétricos).
-   - Mock Data / Fixtures: `<timestamp>_seeds.sql`
-2. Persistir los scripts en disco en la ruta detectada en el Paso 0:
-   - `<migrations_dir>/<timestamp>_<change-name>.up.sql`
-   - `<migrations_dir>/<timestamp>_<change-name>.down.sql`
-   - `<migrations_dir>/../seeds/<timestamp>_seeds.sql` (o `database/seeds/`)
+1. Invocar a `db-developer-agent` para ejecutar las tareas DDL de `tasks.md`.
+2. El agente escribe directamente los archivos de migración en `<migrations_dir>`:
+   - **Si `migration_mode = 'symmetric'`:**
+     - `<migrations_dir>/<timestamp>_<change-name>.up.sql`
+     - `<migrations_dir>/<timestamp>_<change-name>.down.sql`
+   - **Si `migration_mode = 'forward-only'`:**
+     - `<migrations_dir>/<timestamp>_<change-name>.sql`
+   - **Seeds / Fixtures:** Escribe `<seeds_dir>/<timestamp>_seeds.sql` **únicamente si `requires_seeds` es true**.
 3. Presentar resumen ejecutivo en chat:
 
 ```text
 🛠️ Scripts DDL y migraciones generados (Fase Apply: DDL):
-- Migración UP: [up.sql](file:///<ruta>/<migrations_dir>/<timestamp>_<change-name>.up.sql)
-- Rollback DOWN: [down.sql](file:///<ruta>/<migrations_dir>/<timestamp>_<change-name>.down.sql)
-- Datos sintéticos: [seeds.sql](file:///<ruta>/<seeds_dir>/<timestamp>_seeds.sql)
+- Migración: [up.sql o migration.sql](file:///<ruta>/<migrations_dir>/<archivo_migracion>)
+- Rollback DOWN: [down.sql](file:///<ruta>/<migrations_dir>/<timestamp>_<change-name>.down.sql) (si aplica)
+- Datos sintéticos (seeds): [seeds.sql](file:///<ruta>/<seeds_dir>/<timestamp>_seeds.sql) (si aplica)
 
 ¿Validás el DDL generado para proceder con el diseño de políticas de seguridad y RLS?
 ```
@@ -195,16 +197,11 @@ Skill especializado en el desarrollo e implementación de bases de datos mediant
 1. Si el gate condicional está activo, invocar a `db-security-agent` entregando:
    - `design.md` (especificación de PII y multi-tenancy).
    - Scripts DDL generados y validados en el Paso 3.
-2. El agente genera la suite completa y simétrica de seguridad:
+2. El agente genera y escribe directamente los scripts de seguridad en disco:
    - Políticas RLS con cobertura explícita para las 4 operaciones (`SELECT`, `INSERT`, `UPDATE` con `USING` y `WITH CHECK`, `DELETE` con `USING`) e índices de aceleración: `<timestamp>_security_rls.sql`
    - Script simétrico de reversión (rollback de seguridad): `<timestamp>_security_rls.down.sql` (con `DROP POLICY IF EXISTS`, `REVOKE ...` y `DROP INDEX IF EXISTS`).
    - Control de acceso DCL (roles, usuarios y grants de mínimo privilegio).
-3. Persistir los scripts en disco según la convención del proyecto:
-   - **Directorio dedicado (`security_dir`):**
-     - `<security_dir>/<timestamp>_security_rls.sql`
-     - `<security_dir>/<timestamp>_security_rls.down.sql`
-   - **Convención *in-situ*:** incorporado simétricamente en `<migrations_dir>/<timestamp>_<change-name>.up.sql` y `<migrations_dir>/<timestamp>_<change-name>.down.sql`.
-4. Presentar resumen ejecutivo en chat:
+3. Presentar resumen ejecutivo en chat:
 
 ```text
 🔒 Políticas de Seguridad y RLS generadas (Fase Apply: Security):
@@ -213,17 +210,17 @@ Skill especializado en el desarrollo e implementación de bases de datos mediant
 - Tablas protegidas: <lista_de_tablas_con_RLS> (cobertura SELECT, INSERT, UPDATE, DELETE)
 - Control de acceso: Roles DCL y grants de mínimo privilegio aplicados.
 
-¿Procedemos a ejecutar la validación mecánica determinista y la auditoría adversarial de QA?
+¿Procedemos a ejecutar la validación mecánica determinista y la verificación de tests en VERDE?
 ```
 
 🛑 **FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:** Detén tu turno aquí y espera la confirmación explícita del usuario.
 
 ---
 
-### Paso 5 — Validación Mecánica y Auditoría Adversarial (OpenSpec Verify)
+### Paso 5 — Validación Mecánica y Verificación en VERDE (OpenSpec Verify)
 
 1. **Validación Mecánica Determinista Multiplataforma (Node.js):**
-   - Ejecutar el validador universal en Node.js (compatible de forma nativa con **Linux, macOS y Windows** sin dependencias externas ni herramientas adicionales), pasando los parámetros explorados y confirmados en el Paso 0:
+   - Ejecutar el validador universal en Node.js, pasando los parámetros explorados y confirmados en el Paso 0:
      - **Si el proyecto usa RLS (`dedicated` o `in-situ`):**
        ```bash
        node "<plugin-root>/scripts/validate-db-migrations.js" --migrations-dir "<repo-destino>/<migrations_dir>" --security-dir "<repo-destino>/<security_dir>" --engine "<engine>"
@@ -232,37 +229,25 @@ Skill especializado en el desarrollo e implementación de bases de datos mediant
        ```bash
        node "<plugin-root>/scripts/validate-db-migrations.js" --migrations-dir "<repo-destino>/<migrations_dir>" --no-rls --engine "<engine>"
        ```
-   - *Nota:* Si el proyecto no tiene una carpeta de seguridad separada (`security_dir = 'in-situ'`), el validador inspecciona automáticamente las políticas RLS y DCL dentro de los propios archivos de migración. Si se pasa `--no-rls`, la verificación de RLS se desactiva por completo evitando advertencias o bloqueos en proyectos donde la seguridad reside en la capa de aplicación.
-2. **Ejecución de Validadores Estándar del Proyecto (si fueron detectados en Paso 0):**
-   - Si el proyecto destino cuenta con comandos o runners propios para base de datos (`validation_cmd`), ejecutarlos complementariamente para respetar el estándar nativo del equipo:
-     - En Node/TS: `npm run db:validate` o `pnpm / yarn db:lint`
-     - En Python: `uv run db-validate` o `poetry run ...`
-     - En proyectos con Makefile: `make db-validate` o `make test-db`
-     - En stacks específicos: `supabase db lint`, `atlas migrate validate`, `sqlfluff lint`
-   - Ambas validaciones (la mecánica universal y la del runner del proyecto) deben finalizar con éxito antes de pasar a la auditoría adversarial.
-3. **Pruebas de Mutación y Falsabilidad (Mutation Testing):**
-   - Invocar a `db-mutation-tester` entregando:
-     - Suite `database/tests/<change-name>-test.sql`.
-     - `specs/<capability>/spec.md` y `design.md`.
-     - Scripts DDL y de seguridad generados en la fase Apply.
-   - El agente somete la suite a la batería de mutaciones destructivas (M1 a M5) para comprobar que los tests no sean tautologías ni tengan falsos positivos.
-   - Persistir el reporte de mutación: `database/reports/<change-name>-mutation-report.md`.
-   - Si se detectan mutantes vivos (tests complacientes): se devuelve la suite a `db-qa-agent` para blindar las aserciones antes de continuar.
-4. **Auditoría Adversarial y Drift Check:**
-   - Una vez comprobada la falsabilidad de la suite, invocar a `db-qa-agent` (Fase B) entregando:
-     - `specs/<capability>/spec.md` (fuente de verdad de requisitos y escenarios Given/When/Then).
-     - `design.md` vs código SQL generado.
-     - Suite `database/tests/<change-name>-test.sql` y reporte de mutación.
-     - Salida de la validación mecánica y del runner del proyecto.
-   - El agente ejecuta el *Drift Check*, simulación de planes `EXPLAIN`, verificación de suite DB-TDD y negative testing de RLS.
+2. **Ejecución de Validadores Estándar del Proyecto (si existen):**
+   - Ejecutar `validation_cmd` (`make db-validate`, `npm run db:validate`, etc.) si fue detectado.
+3. **Verificación en VERDE con `db-qa-agent`:**
+   - Invocar a `db-qa-agent` (Fase B):
+     - Ejecuta `make test-db` (o `test_cmd`) mediante `bash` y comprueba que **todos los tests pasen exitosamente a VERDE** contra el DDL y RLS implementados.
+     - Realiza el *Drift Check* estricto (`spec.md` y `design.md` vs código SQL generado).
+     - Escribe directamente `database/reports/<change-name>-qa-report.md`.
+4. **Pruebas de Mutación Condicionales (`db-mutation-tester`):**
+   - **Condición de activación:** Si el cambio introduce restricciones de integridad (`UNIQUE`, `CHECK`, FKs) o políticas RLS:
+     - Invocar a `db-mutation-tester` para evaluar la falsabilidad contra los mutantes canónicos (M1 a M5).
+     - El agente escribe directamente `database/reports/<change-name>-mutation-report.md`.
+     - Si algún mutante sobrevive (test complaciente), se reporta para blindar las aserciones.
+   - **Exención:** Si el cambio es solo de índices, vistas o rendimiento sin constraints de negocio, se documenta la exención y se omite.
 5. **Validación Formal OpenSpec:**
    - Ejecutar la validación del framework para confirmar que el change cumple todas las reglas:
      ```bash
      openspec validate "<change-name>"
      ```
-6. **Persistencia del Reporte Atómico de QA:**
-   - `database/reports/<change-name>-qa-report.md`
-7. **Evaluación de Resultados y Bifurcación:**
+6. **Evaluación de Resultados y Bifurcación:**
 
    - **Escenario A — Fallo en Validación Mecánica o Runner del Proyecto:**
      - Si el validador mecánico (`scripts/validate-db-migrations.js`) devuelve `exit 1` o falla el comando nativo del proyecto (`validation_cmd`), **NO se invoca a `db-qa-agent`** para evitar consumo innecesario de contexto sobre código defectuoso.

@@ -120,7 +120,7 @@ Reglas generales, tono y convenciones de archivos: ver `AGENTS.md`.
 
 4. **Despacho y Ejecución por Capa:**
    - Una vez aprobado el plan:
-     - **Capa Base de Datos (`capa:db`):** Conducir `_skills/db-sdd/SKILL.md` paso a paso (Propuesta, modelo ERD y desglose de tareas con `db-architect-agent` vía comandos OpenSpec → Suite DB-TDD con `db-qa-agent` → Implementación DDL con `db-developer-agent` → Seguridad RLS con `db-security-agent` (si el proyecto requiere RLS a nivel de BD) → Validación mecánica determinista con `scripts/validate-db-migrations.js` → Mutation Testing de la suite de tests con `db-mutation-tester` → Auditoría de calidad y conformidad con `db-qa-agent`).
+     - **Capa Base de Datos (`capa:db`):** Conducir `_skills/db-sdd/SKILL.md` paso a paso (Propuesta, especificación y tareas con `db-architect-agent` vía comandos OpenSpec → Suite DB-TDD verificada en ROJO con `db-qa-agent` → Implementación DDL con `db-developer-agent` → Seguridad RLS con `db-security-agent` (si aplica) → Validación mecánica determinista con `scripts/validate-db-migrations.js` → Verificación en VERDE con `db-qa-agent` → Mutation Testing con `db-mutation-tester` (si aplica)).
      - **Capa Backend (`capa:backend`):** Conducir el flujo SDD correspondiente para backend.
      - **Capa Frontend (`capa:frontend`):** Conducir el flujo SDD correspondiente para frontend.
 
