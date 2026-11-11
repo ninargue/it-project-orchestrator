@@ -105,6 +105,12 @@ Según la elección, invocar el recurso correspondiente antes de continuar:
     - **Subcarpetas en OpenSpec por Capa:** Queda prohibido mezclar especificaciones heterogéneas en una única carpeta de change monolítica. El orquestador debe instruir la creación de una subcarpeta por cada capa afectada, compartiendo el identificador único del ticket: `openspec/changes/<ticket_id>-<capa>/` (ej: `E1-US03-T01-db/`, `E1-US03-T01-backend/`, `E1-US03-T01-frontend/`).
     - **Secuenciación Topológica Obligatoria:** Se ejecuta y valida primero la capa de datos (`-db`), luego la capa de servicios y lógica (`-backend`), y finalmente la interfaz de usuario (`-frontend`).
     - **Archivado Atómico en Lote (`Bulk Archive`):** Al finalizar la validación de todas las capas del ticket, el orquestador debe archivar en lote mediante **OpenSpec Bulk Archive** (`/opsx:bulk-archive` o `openspec bulk-archive`), garantizando la consolidación coherente de especificaciones en `openspec/specs/` y un único commit atómico de Git para la entrega completa.
+14. **Scripts Deterministas en Node.js y Pasaje Explícito de Parámetros (Agnóstico de SO):**
+    Todo script auxiliar de automatización o validador mecánico determinista incorporado en el proyecto (`scripts/`) DEBE implementarse en **Node.js nativo (`.js`)**:
+    - **Independencia del Sistema Operativo:** Prohibido crear scripts en PowerShell (`.ps1`) o dependientes de shells exclusivas de un SO que fallen en Linux o macOS. Los scripts deben ejecutarse universalmente con `node "<plugin-root>/scripts/<script>.js"`.
+    - **Sin Dependencias Externas:** Usar únicamente módulos estándar de Node.js (`fs`, `path`, etc.) para garantizar ejecución inmediata sin requerir `npm install` en el proyecto del usuario.
+    - **Exploración Previa y Pasaje Explícito de Parámetros:** Queda prohibido hardcodear rutas rígidas en los scripts. Los skills deben explorar el repositorio destino en sus fases iniciales para detectar la infraestructura real (rutas, motor, carpetas) y pasar los parámetros explícitamente mediante flags CLI (ej. `--migrations-dir`, `--security-dir`, `--engine`).
+    - **Integración con Runners Nativos del Proyecto:** Si el repositorio del usuario ya cuenta con tareas o scripts estándar para validación, testing o linting de base de datos (ej. `npm run db:validate`, `make db-validate`, `uv run db-validate`, `supabase db lint`), el agente debe detectarlos durante la exploración previa y ejecutarlos de forma complementaria al validador del plugin, respetando las herramientas y convenciones nativas del proyecto.
 
 ---
 
@@ -214,7 +220,12 @@ Cualquier agente o desarrollador que cree o modifique un Skill (`_skills/`), un 
 2. **Un Subagente por Turno Interactivo:** Prohibido encadenar dos subagentes en un mismo turno si el output del primero requiere validación humana o sirve de especificación (`spec.md` / `plan.md` / `PRD`) para el segundo.
 3. **Trazabilidad SDD 1:1 (Anti-Invención):** En flujos de desarrollo o base de datos (SDD), ningún agente de implementación puede agregar tablas, columnas, endpoints o lógica que no estén declarados en el `spec.md` aprobado. Cualquier omisión detectada durante la implementación o QA obliga a reportar el *drift* y actualizar el `spec.md` antes de regenerar código.
 
-### 7.6. Checklist de No-Regresión al Agregar un Nuevo Componente
+### 7.6. Scripts Deterministas y Validadores (Cross-Platform Node.js)
+1. **Runtime Universal en Node.js:** Todo script provisto en `scripts/` debe escribirse en Node.js (`.js`) usando módulos estándar (`fs`, `path`). Queda terminantemente prohibido utilizar scripts dependientes de sistemas operativos específicos (como PowerShell `.ps1` o scripts con sintaxis no portable de Bash).
+2. **Sin Dependencias Externas:** No exigir paquetes externos ni `npm install` para la ejecución de scripts en `scripts/`. Deben correr con la instalación nativa de Node.js del entorno del agente.
+3. **Exploración Previa y Pase de Parámetros:** Los skills deben explorar el proyecto del usuario en los pasos previos y pasar las rutas y parámetros detectados mediante flags CLI (`--flag valor`). Los scripts no deben hardcodear estructuras de carpetas asumidas ni rutas absolutas.
+
+### 7.7. Checklist de No-Regresión al Agregar un Nuevo Componente
 Antes de dar por terminado un nuevo Skill o Subagente, verificar:
 - [ ] ¿Se creó `agents/<nombre>.md` y su puntero exacto en `.claude/_agents/<nombre>.md`?
 - [ ] ¿El frontmatter del `SKILL.md` declara `name`, `version`, `description`, `trigger`, `tools_required`, `subagents`, `inputs`, `outputs` y `commits`?
@@ -222,3 +233,4 @@ Antes de dar por terminado un nuevo Skill o Subagente, verificar:
 - [ ] ¿Respeta el modo dual (`tiene_repositorio = true` escribe a disco y resume en chat vs. `tiene_repositorio = false` vuelca en chat)?
 - [ ] ¿Respeta la numeración incremental (`<NNNN>-`) sin sobrescribir entregas anteriores?
 - [ ] ¿Se registró en el Mapa de Componentes y Punto de Entrada de `AGENTS.md` y `orchestrator/ORCHESTRATOR.md` sin alterar los pasos de los skills existentes?
+- [ ] ¿Todo script auxiliar en `scripts/` está implementado en Node.js nativo (sin dependencias externas ni `.ps1`), y recibe parámetros vía flags CLI tras la exploración previa del repositorio?

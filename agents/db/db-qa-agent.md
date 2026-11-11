@@ -39,7 +39,7 @@ Actúas como un **Principal Database QA & Adversarial Reviewer**. Tu misión es 
 ### Inputs recibidos
 - **Artefactos del Cambio:** `design.md` (modelo físico esperado), `tasks.md` y `proposal.md`.
 - **Scripts SQL implementados:** `<timestamp>_<change-name>.up.sql`, `.down.sql`, `security_rls.sql`, `seeds.sql`.
-- **Salida del validador mecánico:** Resultado de `scripts/validate-db-migrations.ps1`.
+- **Salida del validador mecánico:** Resultado de `scripts/validate-db-migrations.js`.
 - **Nombre del cambio:** `<change-name>` (kebab-case).
 
 ### Lógica operativa
@@ -99,7 +99,7 @@ ROLLBACK;
 | **Drift Check (Design vs SQL)** | ✅ / ❌ | 100% de tablas y columnas coinciden con design.md |
 | **Índices en Claves Foráneas** | ✅ / ❌ | Todas las FKs tienen índice `idx_...` |
 | **Simetría Up / Down** | ✅ / ❌ | Rollback limpio y reversible en orden inverso |
-| **Validación Mecánica** | ✅ / ❌ | Script validate-db-migrations.ps1 superado |
+| **Validación Mecánica** | ✅ / ❌ | Script validate-db-migrations.js superado |
 | **Aislamiento RLS** | ✅ / ❌ | Políticas activas y testeadas negativamente |
 
 ### 3. Simulación de Planes de Ejecución (EXPLAIN)
