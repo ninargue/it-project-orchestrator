@@ -51,14 +51,14 @@ Este skill recibe del Orquestador o de skills previos las siguientes variables e
 | Variable | Valores | Uso en este skill |
 |---|---|---|
 | `idioma` | `español` / `inglés` | Idioma de los artefactos y mensajes |
-| `tiene_repositorio` | `true` / `false` | Determina si los subagentes escriben a disco o vuelcan contenido en chat |
+| `tiene_repositorio` | `true` (obligatorio) | Requiere un repositorio o workspace local para persistir especificaciones, migraciones, tests y ejecutar validaciones |
 | `prefijo_avance` | ej: `0001`, `0002` | Prefijo numérico incremental de la entrega/avance |
 | `sufijo` | ej: `crear-esquema-usuarios` | Sufijo en kebab-case para el change-name |
 | `tipo_proyecto` | `greenfield` / `brownfield` | Contexto de exploración (existencia de esquemas previos) |
 
 Si alguna de estas variables no está en memoria de sesión (usuario invocó directamente este skill):
 - `idioma`: Detectar de `docs/` o asumir `español`.
-- `tiene_repositorio`: Comprobar si existe directorio de trabajo local (`true` si opera sobre repo; si no, `false`).
+- `tiene_repositorio`: Comprobar que exista un directorio de trabajo/repositorio local (`true` obligatorio para ejecutar desarrollo SDD).
 - `tipo_proyecto`: Detectar si existen migraciones en disco (`brownfield`) o si el directorio de BD está vacío (`greenfield`).
 - `prefijo_avance`: Inspeccionar `openspec/changes/` o `docs/prd/` para detectar el mayor prefijo numérico existente (o `0001` si no hay previos).
 - `sufijo`: Derivar del ticket técnico o requerimiento del usuario.
@@ -73,9 +73,9 @@ Si alguna de estas variables no está en memoria de sesión (usuario invocó dir
 2. **Integración Nativa con Workflows OpenSpec (`opsx:*`):** Los subagentes NO inventan formatos ni plantillas propias para los artefactos de SDD; ejecutan directamente los workflows oficiales de OpenSpec del plugin (`.claude/commands/opsx/` o `.agent/workflows/opsx-*.md`): `opsx:explore`, `opsx:propose`, `opsx:apply`, `opsx:verify` y `opsx:archive` / `opsx:bulk-archive`.
 3. **Organización de Tests según la Estructura del Repositorio:** Queda **terminantemente prohibido** nombrar archivos de test con IDs de tickets (`US-XX-TN`) o nombres del cambio (`<change-name>-test.sql`). Los tests son activos vivos del repositorio y deben ubicarse y nombrarse por **dominio, módulo, esquema o entidad** respetando la estructura existente del proyecto (`<tests_dir>/<modulo_o_entidad>...`).
 4. **Gobernanza de Git:** Ningún subagente ni skill ejecuta commits directamente. Solo el orquestador principal interactúa con Git, siempre tras confirmación explícita del usuario.
-5. **Modo Dual (Concisión en Chat vs. Persistencia en Disco):**
-   - **Si `tiene_repositorio = true`:** Los subagentes persisten directamente sus entregables en disco. En chat se muestra únicamente un resumen ejecutivo conciso con enlaces directos (`file:///...`).
-   - **Si `tiene_repositorio = false` (modo conversación):** Los subagentes vuelcan el contenido completo en el chat para que el usuario pueda validarlo; las validaciones mecánicas y runners se realizan de forma estática conversacional.
+5. **Persistencia en Disco y Concisión en Chat (Repositorio Obligatorio):**
+   - El ciclo SDD de base de datos **requiere obligatoriamente un repositorio o workspace local** (`tiene_repositorio = true`) para operar con OpenSpec, escribir migraciones/tests y ejecutar las validaciones mecánicas.
+   - Los subagentes persisten directamente sus entregables en disco. En chat se muestra únicamente un resumen ejecutivo conciso con enlaces directos (`file:///...`).
 
 ---
 
@@ -94,15 +94,23 @@ Si alguna de estas variables no está en memoria de sesión (usuario invocó dir
 ### Paso 0 — Verificación de Pre-condiciones (Input Gate)
 
 1. **Input Gate — Verificación de Pre-condiciones (§7.3.3):**
-   - **Pre-condición A (OpenSpec Config):**
-     - Si `tiene_repositorio = true`, verificar la existencia de `openspec/config.yaml` en el proyecto destino.
+   - **Pre-condición A (Repositorio / Workspace Local Obligatorio):**
+     - Verificar que `tiene_repositorio = true` (que exista un repositorio o workspace local activo).
+     - Si `tiene_repositorio = false` o no existe workspace local:
+       ```text
+       ❌ [INPUT GATE]: El ciclo de desarrollo SDD para Base de Datos requiere obligatoriamente un repositorio o workspace local.
+       Por favor, abre o inicializa el repositorio/workspace del proyecto antes de continuar.
+       ```
+       **🛑 FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:** Detén tu turno aquí y espera a que el usuario provea un repositorio o workspace local.
+   - **Pre-condición B (OpenSpec Config):**
+     - Verificar la existencia de `openspec/config.yaml` en el proyecto destino.
      - Si `openspec/config.yaml` **NO existe en disco**:
        ```text
        ❌ [INPUT GATE]: El entorno de Specification-Driven Development (OpenSpec) no está inicializado en este repositorio (falta 'openspec/config.yaml').
        Debes ejecutar primero el skill '_skills/sdd-init/SKILL.md' (o la opción [4] del orquestador) para configurar OpenSpec antes de iniciar el ciclo de base de datos.
        ```
        **🛑 FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:** Detén tu turno aquí e instruye al usuario a inicializar SDD primero.
-   - **Pre-condición B (Ticket Técnico de BD):**
+   - **Pre-condición C (Ticket Técnico de BD):**
      - Verificar que el usuario haya indicado o seleccionado un ticket técnico de base de datos (`capa:db`) con ID, título o criterios de aceptación.
      - Si no se indicó ningún ticket:
        ```text

@@ -7,6 +7,7 @@ skills_invoked:
   - _skills/product-discovery/SKILL.md
   - _skills/stories-to-tickets/SKILL.md
   - _skills/db-sdd/SKILL.md
+  - _skills/backend-sdd/SKILL.md
   - _skills/sdd-init/SKILL.md
 ---
 
@@ -17,7 +18,7 @@ Los roles `[1]` y `[2]` van directo a su SKILL.md — ver `AGENTS.md`.
 
 Reglas generales, tono y convenciones de archivos: ver `AGENTS.md`.
 
-> 💡 **Concisión en Chat vs. Persistencia:** Cuando `tiene_repositorio = true`, todos los entregables se persisten directamente en disco (`docs/prd/`, `docs/backlog/`). En el chat solo se emiten resúmenes ejecutivos con enlaces; **queda terminantemente prohibido volcar el contenido íntegro de los archivos Markdown en los mensajes**. El volcado completo en chat queda reservado exclusivamente para cuando `tiene_repositorio = false` (modo sin repo / previo a PDF).
+> 💡 **Concisión en Chat vs. Persistencia (Alcance del Modo Dual):** Cuando `tiene_repositorio = true`, todos los entregables se persisten directamente en disco (`docs/prd/`, `docs/backlog/`, `openspec/`, código y tests). En el chat solo se emiten resúmenes ejecutivos con enlaces; **queda terminantemente prohibido volcar el contenido íntegro de los archivos Markdown en los mensajes**. El modo dual (`tiene_repositorio = false`, volcado completo en chat / previo a PDF) aplica **exclusivamente a la Fase 1 (`product-discovery`)**; a partir de la **Fase 2 (`stories-to-tickets`)** y durante toda la **Fase 3 (SDD)** es obligatorio contar con un repositorio o workspace local (`tiene_repositorio = true`).
 
 ---
 
@@ -53,6 +54,7 @@ Reglas generales, tono y convenciones de archivos: ver `AGENTS.md`.
 
 ## FASE 2 — Ejecutar Skill 2 (stories-to-tickets)
 
+> 🔒 **Repositorio Obligatorio:** Esta fase requiere `tiene_repositorio = true`. No opera en modo conversación sin repositorio.
 > 🛑 **PROHIBIDO EJECUTAR EN LOTE:** Al igual que en la Fase 1, cada paso (`Paso 9` a `Paso 14`) requiere validación interactiva y fin de turno antes de continuar.
 
 1. Verificar que `docs/backlog/<NNNN>-<proyecto>-<sufijo>/E<N>-<epica>/us-*.md` existen en disco.
@@ -83,6 +85,7 @@ Reglas generales, tono y convenciones de archivos: ver `AGENTS.md`.
 
 ## FASE 3 — Ejecutar Desarrollo con SDD (OpenSpec & Dispatcher por Capa)
 
+> 🔒 **Repositorio Obligatorio:** Esta fase requiere `tiene_repositorio = true` (directorio de trabajo del proyecto ya formalmente construido).
 > 🛑 **PROHIBIDO EJECUTAR EN LOTE:** Cada paso del ciclo de desarrollo requiere validación interactiva del usuario antes de continuar.
 
 1. **Verificación de Entorno OpenSpec:**
@@ -121,7 +124,7 @@ Reglas generales, tono y convenciones de archivos: ver `AGENTS.md`.
 4. **Despacho y Ejecución por Capa:**
    - Una vez aprobado el plan:
      - **Capa Base de Datos (`capa:db`):** Conducir `_skills/db-sdd/SKILL.md` paso a paso (Exploración y propuesta vía `opsx:propose` con `db-architect-agent` → Suite DB-TDD por dominio en ROJO con `db-qa-agent` → Implementación DDL vía `opsx:apply` con `db-developer-agent` → Seguridad RLS vía `opsx:apply` con `db-security-agent` (si aplica) → Validación mecánica determinista con `scripts/validate-db-migrations.js` y verificación en VERDE vía `opsx:verify` con `db-qa-agent` → Mutation Testing con `db-mutation-tester` (si aplica)).
-     - **Capa Backend (`capa:backend`):** Conducir el flujo SDD correspondiente para backend.
+     - **Capa Backend (`capa:backend`):** Conducir `_skills/backend-sdd/SKILL.md` paso a paso (Exploración adaptativa y Gate 1 de pre-condición BD e introspección con `scripts/validate-backend.js` → Propuesta, especificación y contrato vía `opsx:propose` con `api-architect-agent` + Gate 2 de validación OpenSpec/OpenAPI → Suite Backend-TDD en ROJO con `backend-qa-agent` (Fase A) → Implementación en capas vía `opsx:apply` con `backend-developer-agent` + Gate 3 de linter, typecheck e inmutabilidad No-DB-Diff con `scripts/validate-backend.js` → Gate 4 de ejecución de suite de tests y auditoría adversarial en VERDE vía `opsx:verify` con `backend-qa-agent` (Fase B)).
      - **Capa Frontend (`capa:frontend`):** Conducir el flujo SDD correspondiente para frontend.
 
 #### 4.1. Gestión de Tickets Multi-Capa (Cross-Cutting / Fullstack)
@@ -132,8 +135,8 @@ Si un ticket técnico impacta 2 o más capas (ej. Base de Datos + Backend + Fron
    - `openspec/changes/<ticket_id>-backend/` (ej. `E1-US03-T01-backend/`)
    - `openspec/changes/<ticket_id>-frontend/` (ej. `E1-US03-T01-frontend/`)
 2. **Ejecución Secuencial Topológica:**
-   - **Paso A (Datos):** Ejecuta `_skills/db-sdd/` para `<ticket_id>-db/`. La base de datos, migraciones, políticas RLS y tests DB-TDD se validan primero.
-   - **Paso B (Backend):** Con el esquema de datos validado, ejecuta el flujo de backend para `<ticket_id>-backend/` (endpoints, controladores, DTOs y lógica de negocio).
+   - **Paso A (Datos):** Ejecuta `_skills/db-sdd/SKILL.md` para `<ticket_id>-db/`. La base de datos, migraciones, políticas RLS y tests DB-TDD se validan primero.
+   - **Paso B (Backend):** Con el esquema de datos validado, ejecuta `_skills/backend-sdd/SKILL.md` para `<ticket_id>-backend/` (contratos de API, DTOs/Schemas, repositorios, servicios, controladores/workers, tests Backend-TDD y Gates 1–4 con `scripts/validate-backend.js`).
    - **Paso C (Frontend):** Con los contratos de API disponibles, ejecuta el flujo de frontend para `<ticket_id>-frontend/` (componentes UI, estado y consumo de APIs).
 3. **Archivado Atómico en Lote (`Bulk Archive`):**
    - Una vez validadas todas las capas del ticket, el orquestador NO archiva carpeta por carpeta de forma fragmentada.
@@ -159,7 +162,8 @@ El orquestador evalúa el grafo de dependencias de la User Story o de las tareas
    - Al despachar agentes en paralelo, el orquestador mantiene una barrera de sincronización: recopila todos los resultados y no avanza a la siguiente fase ni emite pausas al usuario hasta que todos los subagentes concurrentes hayan concluido sus análisis.
 
 5. **Archivado en OpenSpec (`opsx:archive`) y Commit de la Entrega (Ticket Mono-Capa):**
-   - Al recibir la señal `[LISTO PARA COMMIT Y ARCHIVE] <migrations_dir> <security_dir> <seeds_dir> <tests_dir> <schemas_dir> openspec/changes/<change-name>/`:
+   - **Caso A — Capa Base de Datos (`db-sdd`):**
+     Al recibir la señal `[LISTO PARA COMMIT Y ARCHIVE] <migrations_dir> <security_dir> <seeds_dir> <tests_dir> <schemas_dir> openspec/changes/<change-name>/`:
      ```text
      ⏸️ Ciclo SDD de Base de Datos completado y validado mediante DB-TDD y opsx:verify.
      Archivos impactados:
@@ -172,12 +176,31 @@ El orquestador evalúa el grafo de dependencias de la User Story o de las tareas
 
      ¿Confirmás ejecutar opsx:archive para archivar el cambio en OpenSpec y realizar el commit?
      ```
-   - Tras confirmación explícita del usuario:
+     Tras confirmación explícita del usuario:
      1. Ejecutar el workflow **[`opsx:archive`](.claude/commands/opsx/archive.md)** (sincroniza delta specs en `openspec/specs/` vía `opsx:sync` y mueve el cambio a `openspec/changes/archive/YYYY-MM-DD-<change-name>/`).
      2. Ejecutar el commit de Git agregando las rutas impactadas del repositorio y `openspec/`:
         ```bash
         git add <rutas-bd-impactadas> openspec/
         git commit -m "feat(db): schema, migraciones y tests para <ticket>"
+        ```
+
+   - **Caso B — Capa Backend (`backend-sdd`):**
+     Al recibir la señal `[LISTO PARA COMMIT Y ARCHIVE] <backend_dir> <tests_dir> openspec/changes/<change-name>/`:
+     ```text
+     ⏸️ Ciclo SDD de Backend completado y validado mediante Backend-TDD, Gates 1–4 y opsx:verify.
+     Archivos impactados:
+     - <backend_dir>/ (DTOs/Schemas, repositorios, servicios, controladores/workers y openapi.yaml si aplica)
+     - <tests_dir>/ (tests organizados por dominio/módulo)
+     - openspec/changes/<change-name>/ (incluyendo verification-report.md)
+
+     ¿Confirmás ejecutar opsx:archive para archivar el cambio en OpenSpec y realizar el commit?
+     ```
+     Tras confirmación explícita del usuario:
+     1. Ejecutar el workflow **[`opsx:archive`](.claude/commands/opsx/archive.md)** (sincroniza delta specs en `openspec/specs/` vía `opsx:sync` y mueve el cambio a `openspec/changes/archive/YYYY-MM-DD-<change-name>/`).
+     2. Ejecutar el commit de Git agregando las rutas impactadas de backend, tests y `openspec/`:
+        ```bash
+        git add <backend_dir> <tests_dir> openspec/
+        git commit -m "feat(backend): contratos, servicios y tests para <ticket>"
         ```
 
 ---

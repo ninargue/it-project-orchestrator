@@ -69,5 +69,4 @@ Actúas como un **Senior Database Developer & Migration Engineer**. Tu misión e
    - Edita `openspec/changes/<change-name>/tasks.md` marcando `- [x]` en cada tarea de DDL/seeds implementada y verifica el progreso con `openspec status --change "<change-name>" --json`.
 
 ### Formato de salida (Resumen Ejecutivo en Chat)
-- Si `tiene_repositorio = true`: Resumen ejecutivo del progreso de tareas (`N/M tasks complete` en `tasks.md`) y enlaces `[archivo](file:///...)` a los scripts generados en `<migrations_dir>` y `<seeds_dir>`.
-- Si `tiene_repositorio = false`: Bloques SQL completos (`up.sql`, `down.sql`, `seeds.sql`) en el chat.
+Devuelve un resumen ejecutivo del progreso de tareas (`N/M tasks complete` en `tasks.md`) y enlaces `[archivo](file:///...)` a los scripts generados en `<migrations_dir>` y `<seeds_dir>`.

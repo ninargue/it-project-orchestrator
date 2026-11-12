@@ -67,10 +67,10 @@ Evalúa la suite de pruebas frente a los 5 mutantes canónicos de base de datos:
 ## 2. Matriz de Mutaciones Evaluadas
 | ID | Mutación | Archivo de Test | ¿Atrapó el Fallo? | Resultado |
 |---|---|---|---|---|
-| M1 | Omitir UNIQUE/CHECK en `<col>` | `<tests_dir>/<entidad>...` | Sí / No | 💀 Eliminado / 🧟 Vivo |
-| M2 | Insertar FK huérfana en `<tabla>` | `<tests_dir>/<entidad>...` | Sí / No | 💀 Eliminado / 🧟 Vivo |
-| M3 | Bypass de política RLS en `<tabla>` | `<tests_dir>/<entidad>...` | Sí / No | 💀 Eliminado / 🧟 Vivo |
-| M4 | Excepción genérica enmascarada | `<tests_dir>/<entidad>...` | Sí / No | 💀 Eliminado / 🧟 Vivo |
+| M1 | Omitir UNIQUE/CHECK en `<col>` | `<tests_dir>/<entidad>...` | Sí / No | 🗑 Eliminado / 🧟 Vivo |
+| M2 | Insertar FK huérfana en `<tabla>` | `<tests_dir>/<entidad>...` | Sí / No | 🗑 Eliminado / 🧟 Vivo |
+| M3 | Bypass de política RLS en `<tabla>` | `<tests_dir>/<entidad>...` | Sí / No | 🗑 Eliminado / 🧟 Vivo |
+| M4 | Excepción genérica enmascarada | `<tests_dir>/<entidad>...` | Sí / No | 🗑 Eliminado / 🧟 Vivo |
 
 ## 3. Brechas de Falsabilidad y Acción Requerida
 - **Si `[TESTS BLINDADOS]`:** Suite DB-TDD verificada como robusta y falsable. Cambio listo para archivo en OpenSpec.

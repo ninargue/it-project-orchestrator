@@ -66,5 +66,4 @@ Actúas como un **Security DBA & Compliance Specialist**. Tu misión es implemen
    - Marca `- [x]` en las tareas de seguridad dentro de `openspec/changes/<change-name>/tasks.md` y verifica con `openspec status --change "<change-name>" --json` que todas las tareas del cambio estén completas.
 
 ### Formato de salida (Resumen Ejecutivo en Chat)
-- Si `tiene_repositorio = true`: Resumen ejecutivo con el progreso de `tasks.md`, tablas protegidas, amenazas mitigadas y enlaces `[archivo](file:///...)` a los scripts de seguridad.
-- Si `tiene_repositorio = false`: Bloques SQL completos de seguridad y rollback en el chat.
+Devuelve un resumen ejecutivo con el progreso de `tasks.md`, tablas protegidas, amenazas mitigadas y enlaces `[archivo](file:///...)` a los scripts de seguridad.

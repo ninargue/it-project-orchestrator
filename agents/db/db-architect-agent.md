@@ -83,5 +83,4 @@ Actúas como un **Principal Data Architect y Modelador de Datos**. Tu misión es
    - Ejecuta `openspec status --change "<change-name>" --json` y `openspec validate "<change-name>"` para confirmar que todos los artefactos de `applyRequires` están en estado `done`.
 
 ### Formato de salida (Resumen Ejecutivo en Chat)
-- Si `tiene_repositorio = true`: Devuelve únicamente un resumen ejecutivo conciso con las convenciones detectadas y los enlaces `[archivo](file:///...)` a los artefactos creados por `opsx:propose`.
-- Si `tiene_repositorio = false`: Vuelca los artefactos estructurados en el chat para validación conversacional.
+Devuelve únicamente un resumen ejecutivo conciso con las convenciones detectadas y los enlaces `[archivo](file:///...)` a los artefactos creados en disco por `opsx:propose`.
