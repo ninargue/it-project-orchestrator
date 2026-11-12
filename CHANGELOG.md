@@ -4,13 +4,17 @@ Todos los cambios notables de este plugin se documentan aquí.
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.0.0/).
 Versionado siguiendo [Semantic Versioning](https://semver.org/).
 
+> **Regla de registro:** Documentar en cada versión o en `[Unreleased]` únicamente el resultado neto de las capacidades, mejoras o correcciones respecto a `master` (última versión publicada). Prohibido listar iteraciones intermedias, correcciones internas o refactorizaciones ocurridas dentro de una misma rama antes de su fusión.
+
 ---
 
 ## [Unreleased]
 
 ### Añadido
-- **Skill de inicialización SDD (`_skills/sdd-init/`):** Automatiza la configuración de OpenSpec (`openspec/config.yaml`, carpetas `specs/` y `changes/`) en el repositorio de desarrollo sin instalar herramientas locales en el código, extrayendo el contexto del proyecto de forma inteligente.
-- **Integración OpenSpec en el orquestador:** Integración del ciclo de desarrollo guiado por especificaciones (SDD) vía plugin, vinculando la opción `[4]` de `AGENTS.md`.
+- **Integración de Specification-Driven Development (`_skills/sdd-init/` y workflows `opsx:*`):** Configuración automatizada y contextual de `openspec/config.yaml` en el repositorio de desarrollo e incorporación de los workflows `opsx:explore`, `opsx:propose`, `opsx:apply`, `opsx:verify`, `opsx:sync`, `opsx:archive` y `opsx:bulk-archive` ejecutados desde el plugin.
+- **Sistema Multi-Agente y Ciclo SDD de Base de Datos (`_skills/db-sdd/` y `agents/db/`):** Ciclo de base de datos guiado por especificaciones y **DB-TDD** (Red → Green → Verify → Mutation) con 5 subagentes especializados (`db-architect-agent`, `db-developer-agent`, `db-security-agent`, `db-qa-agent` y `db-mutation-tester`) que ejecutan nativamente los workflows de OpenSpec, soportan modos condicionales (con/sin RLS, migraciones simétricas o *forward-only*, seeds opcionales) y organizan los tests por dominio según la estructura del repositorio.
+- **Validador Mecánico Multiplataforma (`scripts/validate-db-migrations.js`):** Script determinista en Node.js nativo (sin dependencias externas) para verificar simetría y reversibilidad de migraciones, índices en claves foráneas por ámbito de tabla, cobertura de políticas RLS y columnas sensibles (PII).
+- **Dispatcher por Capa, Tickets Multi-Capa e Invariantes de Arquitectura (`orchestrator/ORCHESTRATOR.md` y `AGENTS.md`):** Plan de ejecución validado en Fase 3, gestión de tickets multi-capa con archivado atómico (`opsx:bulk-archive`), bloqueo global de `git` para subagentes en `hooks/register.ts` y reglas de ingeniería (§7) para creación y mantenimiento de skills y subagentes.
 
 ---
 

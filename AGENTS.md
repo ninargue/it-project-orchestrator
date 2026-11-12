@@ -34,7 +34,9 @@ Según la elección, invocar el recurso correspondiente antes de continuar:
 - `[1]` → `_skills/product-discovery/SKILL.md`
 - `[2]` → `_skills/stories-to-tickets/SKILL.md`
 - `[3]` → `orchestrator/ORCHESTRATOR.md`
-- `[4]` → `_skills/sdd-init/SKILL.md` (o skill de desarrollo SDD correspondiente)
+- `[4]` → Si `openspec/config.yaml` no existe en el repositorio de destino: `_skills/sdd-init/SKILL.md`. Si ya está inicializado, el orquestador solicita el ticket o requerimiento técnico y activa el **Dispatcher por Capa**:
+  - `capa:db` → `_skills/db-sdd/SKILL.md` (Ciclo SDD de Base de Datos con equipo multi-agente en `agents/db/`)
+  - `capa:backend` / `capa:frontend` → Ciclos SDD correspondientes
 
 ---
 
@@ -42,10 +44,12 @@ Según la elección, invocar el recurso correspondiente antes de continuar:
 
 | Tipo | Ubicación | Responsabilidad |
 |---|---|---|
-| **Subagentes** | `agents/<nombre>.md` | Definen la identidad, rol y guardrails permanentes de comportamiento especializado |
+| **Subagentes Core** | `agents/<nombre>.md` | Discovery, análisis de producto, backlog, tickets y materialización |
+| **Subagentes de Base de Datos** | `agents/db/<nombre>.md` | Equipo especializado de BD: Architect, Developer, Security DBA, Mutation Tester y QA |
 | **Skills** | `_skills/<nombre>/SKILL.md` | Runbooks y procedimientos operativos paso a paso con interacción humana |
-| **Orquestador** | `orchestrator/ORCHESTRATOR.md` | Secuenciación de flujos completos punta a punta y gobernanza Git |
-| **Especificaciones SDD** | `sdd/` | Planes y especificaciones técnicas de desarrollo guiado |
+| **Orquestador** | `orchestrator/ORCHESTRATOR.md` | Secuenciación de flujos completos punta a punta, dispatching de tickets y gobernanza Git |
+| **Especificaciones SDD** | `openspec/` y `sdd/` | Framework OpenSpec, planes y especificaciones técnicas de desarrollo guiado |
+| **Scripts Deterministas** | `scripts/` | Validaciones mecánicas automatizadas (linters, checks de FKs, simetría up/down, RLS) |
 | **Templates** | `templates/` y `docs/` | Plantillas oficiales para issues (GitHub/Linear) y documentos (briefings, tool-config) |
 
 ---
@@ -96,6 +100,16 @@ Según la elección, invocar el recurso correspondiente antes de continuar:
     - **ÚNICAMENTE PUEDE PASAR:**
       1. Las instrucciones, respuestas o contexto provistos **explícitamente por el usuario**.
       2. Las rutas o el contenido íntegro de los artefactos persistidos en disco y validados en pasos previos.
+13. **Gobernanza de Tickets Multi-Capa y Bulk Archive:**
+    Cuando un ticket técnico impacte 2 o más capas tecnológicas (ej. `db` + `backend` + `frontend`):
+    - **Subcarpetas en OpenSpec por Capa:** Queda prohibido mezclar especificaciones heterogéneas en una única carpeta de change monolítica. El orquestador debe instruir la creación de una subcarpeta por cada capa afectada, compartiendo el identificador único del ticket: `openspec/changes/<ticket_id>-<capa>/` (ej: `E1-US03-T01-db/`, `E1-US03-T01-backend/`, `E1-US03-T01-frontend/`).
+    - **Secuenciación Topológica Obligatoria:** Se ejecuta y valida primero la capa de datos (`-db`), luego la capa de servicios y lógica (`-backend`), y finalmente la interfaz de usuario (`-frontend`).
+    - **Archivado Atómico en Lote (`Bulk Archive`):** Al finalizar la validación de todas las capas del ticket, el orquestador debe archivar en lote mediante **OpenSpec Bulk Archive** (`/opsx:bulk-archive` o `openspec bulk-archive`), garantizando la consolidación coherente de especificaciones en `openspec/specs/` y un único commit atómico de Git para la entrega completa.
+14. **Scripts Deterministas en Node.js y Pasaje Explícito de Parámetros (Agnóstico de SO):**
+    Todo script auxiliar de automatización o validador mecánico determinista incorporado en el proyecto (`scripts/`) DEBE implementarse en **Node.js nativo (`.js`)**:
+    - **Independencia del Sistema Operativo:** Prohibido crear scripts en PowerShell (`.ps1`) o dependientes de shells exclusivas de un SO que fallen en Linux o macOS. Los scripts deben ejecutarse universalmente con `node "<plugin-root>/scripts/<script>.js"`.
+    - **Sin Dependencias Externas:** Usar únicamente módulos estándar de Node.js (`fs`, `path`, etc.) para garantizar ejecución inmediata sin requerir `npm install` en el proyecto del usuario.
+    - **Exploración Previa y Pasaje Explícito de Parámetros:** Queda prohibido hardcodear rutas rígidas en los scripts. Los skills deben explorar el repositorio destino en sus fases iniciales para detectar la infraestructura real (rutas, motor, carpetas) y pasar los parámetros explícitamente mediante flags CLI (ej. `--migrations-dir`, `--security-dir`, `--engine`).
 
 ---
 
@@ -119,6 +133,13 @@ El orquestador organiza los artefactos generados bajo una estructura canónica e
 │           └── E<N>-<epica>/
 │               ├── us-<historia>.md     # Historia INVEST (US-<XX>) con criterios Given/When/Then
 │               └── tickets-<historia>.md # Tickets técnicos atómicos (US-<XX>-T<N>) con checklist DoD
+├── database/                            # Ciclo de base de datos (o estructura propia del repo: supabase/, prisma/, src/db/)
+│   ├── schemas/                         # Diagrama ERD consolidado (erd.md)
+│   ├── tests/                           # Suites DB-TDD organizadas por dominio/módulo (<entidad>.test.sql, nunca por ticket)
+│   ├── migrations/                      # Migraciones versionadas <timestamp>_<nombre>.up.sql y .down.sql (o forward-only)
+│   ├── security/                        # Políticas RLS y permisos DCL (si rls_mode = 'dedicated')
+│   └── seeds/                           # Fixtures de datos sintéticos DML (si requires_seeds = true)
+├── openspec/                            # Especificaciones OpenSpec (specs/, changes/<change>/ con verification-report.md, config.yaml)
 └── sdd/                                 # Specification-Driven Development (fase de desarrollo)
     └── <modulo-o-feature>/
         ├── spec.md                      # Especificación técnica detallada
@@ -150,7 +171,9 @@ El agente es un colaborador activo, empático y profesional, no un ejecutor aut�
 ### Guía de Estilo
 - **Conciso pero humano:** Una línea de contexto antes de mostrar un bloque técnico ayuda al usuario a saber qué está mirando.
 - **Sin duplicar contenido en el chat:** Si un archivo ya se escribió a disco (`tiene_repositorio = true`), nunca vuelques su contenido en el mensaje; proporciona un resumen ejecutivo conciso y el enlace al archivo.
-- **Diagramas Mermaid con Alto Contraste:** Todo diagrama Mermaid generado debe incluir explícitamente estilos de nodo con fondo oscuro y texto blanco (`classDef default fill:#1e293b,stroke:#38bdf8,stroke-width:1.5px,color:#ffffff;` y `linkStyle default stroke:#94a3b8,stroke-width:1.5px;`) para evitar fallos de contraste o texto ilegible en temas oscuros o claros del editor/chat.
+- **Diagramas Mermaid con Alto Contraste:** Todo diagrama Mermaid generado debe garantizar legibilidad en temas oscuros y claros evitando textos negros sobre fondos oscuros:
+  - En diagramas de flujo (`flowchart` / `graph`): usar `classDef default fill:#1e293b,stroke:#38bdf8,stroke-width:1.5px,color:#ffffff;` y `linkStyle default stroke:#94a3b8,stroke-width:1.5px;`.
+  - En diagramas entidad-relación (`erDiagram`): usar obligatoriamente la directiva de tema `%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#1e293b', 'primaryTextColor': '#ffffff', 'primaryBorderColor': '#38bdf8', 'lineColor': '#94a3b8' }}}%%`. Prohibido usar `linkStyle` en `erDiagram`, ya que no pertenece a su gramática y rompe el parser de Mermaid.
 - **Proponer, no solo ejecutar:** Si el agente detecta algo cuestionable o con riesgo de scope creep, lo advierte antes de continuar.
 - **Celebrar los hitos:** Al completar una fase importante, reconocerlo brevemente antes de seguir.
 - **Sin jerga innecesaria:** Adaptar el nivel de detalle según el sombrero con el que trabaje el usuario (negocio vs. técnico).
@@ -163,14 +186,16 @@ El agente es un colaborador activo, empático y profesional, no un ejecutor aut�
 Cualquier agente o desarrollador que cree o modifique un Skill (`_skills/`), un Subagente (`agents/`) o el Orquestador (`orchestrator/`) DEBE cumplir estas invariantes para mantener inalterable el rendimiento y funcionamiento del sistema:
 
 ### 7.1. SSOT y Patrón Puntero (Anti-Prompt Drift)
-1. **Definición Canónica Única:** Todo subagente se define única y exclusivamente en `agents/<nombre>.md` con 3 secciones obligatorias: `1. Identidad y Misión`, `2. Invariantes y Guardrails Estrictos` y `3. Contratos de Ejecución (Inputs, Lógica, Formato de salida)`.
-2. **Espejo Puntero en `.claude/_agents/`:** Por cada `agents/<nombre>.md`, debe existir `.claude/_agents/<nombre>.md` que contenga **únicamente** el frontmatter YAML (`name`, `description`, `tools`) y la instrucción de una línea: `Lee y adopta estrictamente la identidad, rol, guardrails y contratos de ejecución definidos en el archivo canónico del agente: agents/<nombre>.md`. Prohibido duplicar el prompt.
+1. **Definición Canónica Única:** Todo subagente se define única y exclusivamente en `agents/<nombre>.md` o en subcarpetas especializadas por capa (`agents/db/<nombre>.md`, `agents/backend/`, etc.) con 3 secciones obligatorias: `1. Identidad y Misión`, `2. Invariantes y Guardrails Estrictos` y `3. Contratos de Ejecución (Inputs, Lógica, Formato de salida)`.
+2. **Espejo Puntero en `.claude/_agents/`:** Por cada archivo en `agents/`, debe existir `.claude/_agents/<nombre>.md` (o subcarpeta homóloga `.claude/_agents/db/<nombre>.md`) que contenga **únicamente** el frontmatter YAML (`name`, `description`, `tools`) y la instrucción de una línea: `Lee y adopta estrictamente la identidad, rol, guardrails y contratos de ejecución definidos en el archivo canónico del agente: agents/<capa>/<nombre>.md`. Prohibido duplicar el prompt.
 3. **Desacoplamiento Skill ↔ Agente:** Los archivos `_skills/<skill>/SKILL.md` NO deben contener el prompt del sistema del subagente; solo especifican en qué paso se invoca, qué archivos/variables recibe como input y cómo se persiste o valida su salida.
 
-### 7.2. Matriz de Mínimo Privilegio (Permisos y Herramientas)
-1. **Subagentes de Análisis, Diseño, Arquitectura y QA/Auditoría:** En su frontmatter solo pueden declarar `tools: [Read]`. Tienen **prohibido** escribir archivos en disco (`Write`/`Edit`), ejecutar comandos shell (`bash`) o hacer commits. Devuelven su resultado en Markdown estructurado al Skill invocador.
-2. **Subagentes de Materialización Externa (`issue-materializer-agent`, etc.):** Solo pueden ejecutarse tras una pausa `🛑` confirmada explícitamente por el usuario en el turno inmediato anterior.
-3. **Exclusividad de Git:** Ningún `SKILL.md` ni `agents/*.md` puede ejecutar `git add`, `git commit`, `git push` o `git branch`. Los Skills solo emiten la señal `[LISTO PARA COMMIT] <ruta>` y delegan la ejecución a `orchestrator/ORCHESTRATOR.md`.
+### 7.2. Matriz de Autonomía y Mínimo Privilegio (Permisos y Herramientas)
+1. **Autonomía en la Generación de Artefactos (Subagentes Especializados):**
+   - Los subagentes técnicos (`agents/db/`, etc.) poseen las herramientas necesarias para escribir y mantener sus propios archivos en disco (`tools: [Read, Write, Edit]` y `bash` para subagentes ejecutores de pruebas como `db-qa-agent`).
+   - Cada subagente escribe directamente sus entregables en las rutas estandarizadas (ej. `proposal.md`, `specs/`, migraciones SQL, suites de prueba y reportes) sin volcar contenidos completos en el chat ni delegar la persistencia manual en el skill.
+2. **Subagentes de Análisis Puro o Consultivos:** Los subagentes de discovery o auditoría preliminar que no producen artefactos persistentes pueden mantenerse con `tools: [Read]`.
+3. **Exclusividad Estricta de Git:** Ningún `SKILL.md` ni `agents/*.md` puede ejecutar `git add`, `git commit`, `git push` o `git branch`. Los subagentes y skills solo emiten la señal `[LISTO PARA COMMIT] <ruta>` y delegan la gobernanza y ejecución de Git al Orquestador principal (`orchestrator/ORCHESTRATOR.md`), siempre tras confirmación explícita del usuario.
 
 ### 7.3. Prevención de Handoff Drift y Neutralidad de Contexto
 1. **Handoff por Archivo, no por Memoria:** Cuando `tiene_repositorio = true`, la comunicación entre pasos o entre skills se realiza leyendo el archivo persistido en disco en el paso anterior (ej. `docs/prd/...`, `docs/backlog/...`, `sdd/.../spec.md`). Queda prohibido pasar resúmenes improvisados en memoria cuando existe un artefacto en disco.
@@ -197,7 +222,12 @@ Cualquier agente o desarrollador que cree o modifique un Skill (`_skills/`), un 
 2. **Un Subagente por Turno Interactivo:** Prohibido encadenar dos subagentes en un mismo turno si el output del primero requiere validación humana o sirve de especificación (`spec.md` / `plan.md` / `PRD`) para el segundo.
 3. **Trazabilidad SDD 1:1 (Anti-Invención):** En flujos de desarrollo o base de datos (SDD), ningún agente de implementación puede agregar tablas, columnas, endpoints o lógica que no estén declarados en el `spec.md` aprobado. Cualquier omisión detectada durante la implementación o QA obliga a reportar el *drift* y actualizar el `spec.md` antes de regenerar código.
 
-### 7.6. Checklist de No-Regresión al Agregar un Nuevo Componente
+### 7.6. Scripts Deterministas y Validadores (Cross-Platform Node.js)
+1. **Runtime Universal en Node.js:** Todo script provisto en `scripts/` debe escribirse en Node.js (`.js`) usando módulos estándar (`fs`, `path`). Queda terminantemente prohibido utilizar scripts dependientes de sistemas operativos específicos (como PowerShell `.ps1` o scripts con sintaxis no portable de Bash).
+2. **Sin Dependencias Externas:** No exigir paquetes externos ni `npm install` para la ejecución de scripts en `scripts/`. Deben correr con la instalación nativa de Node.js del entorno del agente.
+3. **Exploración Previa y Pase de Parámetros:** Los skills deben explorar el proyecto del usuario en los pasos previos y pasar las rutas y parámetros detectados mediante flags CLI (`--flag valor`). Los scripts no deben hardcodear estructuras de carpetas asumidas ni rutas absolutas.
+
+### 7.7. Checklist de No-Regresión al Agregar un Nuevo Componente
 Antes de dar por terminado un nuevo Skill o Subagente, verificar:
 - [ ] ¿Se creó `agents/<nombre>.md` y su puntero exacto en `.claude/_agents/<nombre>.md`?
 - [ ] ¿El frontmatter del `SKILL.md` declara `name`, `version`, `description`, `trigger`, `tools_required`, `subagents`, `inputs`, `outputs` y `commits`?
@@ -205,3 +235,4 @@ Antes de dar por terminado un nuevo Skill o Subagente, verificar:
 - [ ] ¿Respeta el modo dual (`tiene_repositorio = true` escribe a disco y resume en chat vs. `tiene_repositorio = false` vuelca en chat)?
 - [ ] ¿Respeta la numeración incremental (`<NNNN>-`) sin sobrescribir entregas anteriores?
 - [ ] ¿Se registró en el Mapa de Componentes y Punto de Entrada de `AGENTS.md` y `orchestrator/ORCHESTRATOR.md` sin alterar los pasos de los skills existentes?
+- [ ] ¿Todo script auxiliar en `scripts/` está implementado en Node.js nativo (sin dependencias externas ni `.ps1`), y recibe parámetros vía flags CLI tras la exploración previa del repositorio?

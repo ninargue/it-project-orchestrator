@@ -6,6 +6,8 @@ trigger: "cuando el usuario elige rol [3] Ciclo completo en el punto de entrada"
 skills_invoked:
   - _skills/product-discovery/SKILL.md
   - _skills/stories-to-tickets/SKILL.md
+  - _skills/db-sdd/SKILL.md
+  - _skills/sdd-init/SKILL.md
 ---
 
 # Orquestador — Ciclo completo
@@ -76,6 +78,107 @@ Reglas generales, tono y convenciones de archivos: ver `AGENTS.md`.
    git add docs/backlog/
    git commit -m "feat: stories-to-tickets — tickets y backlog priorizado (<proyecto>)"
    ```
+
+---
+
+## FASE 3 — Ejecutar Desarrollo con SDD (OpenSpec & Dispatcher por Capa)
+
+> 🛑 **PROHIBIDO EJECUTAR EN LOTE:** Cada paso del ciclo de desarrollo requiere validación interactiva del usuario antes de continuar.
+
+1. **Verificación de Entorno OpenSpec:**
+   - Si `openspec/config.yaml` no existe en el repositorio de destino, invocar primero `_skills/sdd-init/SKILL.md` para inicializar el framework.
+2. **Selección del Ticket y Análisis de Capas:**
+   - Identificar el ticket técnico a implementar (desde `docs/backlog/**/tickets-*.md` o issue de GitHub).
+   - Analizar los metadatos, etiquetas y criterios del ticket para determinar:
+     - Capas involucradas (`capa:db`, `capa:backend`, `capa:frontend`).
+     - Si es **Mono-capa** (impacta una sola área) o **Multi-capa** (impacta 2 o más áreas).
+     - Dependencias técnicas entre tareas para fijar la estrategia de concurrencia (secuencial vs. paralelo).
+
+3. **Presentación y Validación del Plan de Ejecución (HITL Obligatorio):**
+   - **ANTES de lanzar cualquier skill o subagente**, el orquestador DEBE elaborar y presentar al usuario el **Plan de Ejecución Formal** para su aprobación explícita:
+
+   ```text
+   📋 Plan de Ejecución Propuesto — Ticket <ticket_id>
+   - Objetivo: <título / descripción breve del ticket>
+   - Alcance: <Mono-capa / Multi-capa>
+   - Capas afectadas: <Lista de capas: BD, Backend, Frontend>
+   
+   Ruta de Ejecución Planificada:
+     1. [<Secuencial/Paralelo>] <Capa 1>: <Skill y subagentes que intervienen>
+        → Subcarpeta OpenSpec: openspec/changes/<ticket_id>-<capa>/
+        → Entregables clave esperados
+     2. [<Secuencial/Paralelo>] <Capa 2>: <Skill y subagentes que intervienen>
+        → Subcarpeta OpenSpec: openspec/changes/<ticket_id>-<capa>/
+        → Entregables clave esperados
+   - Validaciones: <Linters deterministas, DB-TDD, tests unitarios>
+   - Cierre: <Archivado OpenSpec (Archive / Bulk Archive) + Commit Git>
+
+   ¿Confirmas este plan de ejecución para comenzar con la primera fase?
+   ```
+
+   🛑 **FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:** Detén tu turno aquí y espera la confirmación explícita del usuario antes de proceder a la ejecución.
+
+4. **Despacho y Ejecución por Capa:**
+   - Una vez aprobado el plan:
+     - **Capa Base de Datos (`capa:db`):** Conducir `_skills/db-sdd/SKILL.md` paso a paso (Exploración y propuesta vía `opsx:propose` con `db-architect-agent` → Suite DB-TDD por dominio en ROJO con `db-qa-agent` → Implementación DDL vía `opsx:apply` con `db-developer-agent` → Seguridad RLS vía `opsx:apply` con `db-security-agent` (si aplica) → Validación mecánica determinista con `scripts/validate-db-migrations.js` y verificación en VERDE vía `opsx:verify` con `db-qa-agent` → Mutation Testing con `db-mutation-tester` (si aplica)).
+     - **Capa Backend (`capa:backend`):** Conducir el flujo SDD correspondiente para backend.
+     - **Capa Frontend (`capa:frontend`):** Conducir el flujo SDD correspondiente para frontend.
+
+#### 4.1. Gestión de Tickets Multi-Capa (Cross-Cutting / Fullstack)
+Si un ticket técnico impacta 2 o más capas (ej. Base de Datos + Backend + Frontend):
+1. **Nomenclatura Canónica en OpenSpec (`openspec/changes/`):**
+   El orquestador instruye generar una carpeta de cambio independiente por cada capa afectada, compartiendo el identificador único del ticket:
+   - `openspec/changes/<ticket_id>-db/` (ej. `E1-US03-T01-db/`)
+   - `openspec/changes/<ticket_id>-backend/` (ej. `E1-US03-T01-backend/`)
+   - `openspec/changes/<ticket_id>-frontend/` (ej. `E1-US03-T01-frontend/`)
+2. **Ejecución Secuencial Topológica:**
+   - **Paso A (Datos):** Ejecuta `_skills/db-sdd/` para `<ticket_id>-db/`. La base de datos, migraciones, políticas RLS y tests DB-TDD se validan primero.
+   - **Paso B (Backend):** Con el esquema de datos validado, ejecuta el flujo de backend para `<ticket_id>-backend/` (endpoints, controladores, DTOs y lógica de negocio).
+   - **Paso C (Frontend):** Con los contratos de API disponibles, ejecuta el flujo de frontend para `<ticket_id>-frontend/` (componentes UI, estado y consumo de APIs).
+3. **Archivado Atómico en Lote (`Bulk Archive`):**
+   - Una vez validadas todas las capas del ticket, el orquestador NO archiva carpeta por carpeta de forma fragmentada.
+   - Invoca el archivado en lote mediante **OpenSpec Bulk Archive** (`/opsx:bulk-archive` o `openspec bulk-archive`), consolidando simultáneamente las especificaciones canónicas en `openspec/specs/` y moviendo todas las subcarpetas del ticket a `openspec/changes/archive/`.
+   - Realiza un único commit atómico de la feature completa:
+     ```bash
+     git add database/ backend/ frontend/ openspec/
+     git commit -m "feat(<modulo>): implementacion fullstack para <ticket_id>"
+     ```
+
+#### 4.2. Decisión de Concurrencia: Invocación Paralela vs. Secuencial
+El orquestador evalúa el grafo de dependencias de la User Story o de las tareas del ticket para determinar la estrategia de despacho:
+
+1. **Invocación Secuencial Obligatoria (Pipeline):**
+   - Aplica cuando existe **dependencia de datos**: el output de un subagente es insumo directo del siguiente (ej. `db-architect-agent` genera `design.md` antes de que `db-developer-agent` escriba el DDL).
+   - Aplica cuando existe **acoplamiento técnico de capas**: la base de datos debe estar modelada y migrada antes de implementar lógica de persistencia en Backend.
+   - Aplica cuando existe una **pausa de validación humana obligatoria (HITL)** entre pasos.
+2. **Invocación Paralela (Fork-Join):**
+   - Aplica cuando dos o más subagentes realizan **tareas disjuntas y ortogonales** sin dependencias mutuas ni riesgo de colisión de archivos.
+   - *Auditorías multidimensionales concurrentes:* En fases de verificación, el orquestador puede lanzar en paralelo agentes de solo lectura sobre el mismo entregable (ej. `db-security-agent` auditando RLS/PII concurrentemente con `db-qa-agent` evaluando planes de ejecución).
+   - *Tareas paralelas de la US:* Tareas sin dependencia mutua (ej. maquetado visual en Frontend con interfaces mockeadas en paralelo con la definición de seeds en DB).
+3. **Barrera de Sincronización (Join Barrier):**
+   - Al despachar agentes en paralelo, el orquestador mantiene una barrera de sincronización: recopila todos los resultados y no avanza a la siguiente fase ni emite pausas al usuario hasta que todos los subagentes concurrentes hayan concluido sus análisis.
+
+5. **Archivado en OpenSpec (`opsx:archive`) y Commit de la Entrega (Ticket Mono-Capa):**
+   - Al recibir la señal `[LISTO PARA COMMIT Y ARCHIVE] <migrations_dir> <security_dir> <seeds_dir> <tests_dir> <schemas_dir> openspec/changes/<change-name>/`:
+     ```text
+     ⏸️ Ciclo SDD de Base de Datos completado y validado mediante DB-TDD y opsx:verify.
+     Archivos impactados:
+     - <schemas_dir>/ (si se actualizó erd.md)
+     - <tests_dir>/ (tests organizados por dominio/entidad)
+     - <migrations_dir>/
+     - <security_dir>/ (si aplica RLS/DCL)
+     - <seeds_dir>/ (si aplica seeds)
+     - openspec/changes/<change-name>/ (incluyendo verification-report.md y mutation-report.md)
+
+     ¿Confirmás ejecutar opsx:archive para archivar el cambio en OpenSpec y realizar el commit?
+     ```
+   - Tras confirmación explícita del usuario:
+     1. Ejecutar el workflow **[`opsx:archive`](.claude/commands/opsx/archive.md)** (sincroniza delta specs en `openspec/specs/` vía `opsx:sync` y mueve el cambio a `openspec/changes/archive/YYYY-MM-DD-<change-name>/`).
+     2. Ejecutar el commit de Git agregando las rutas impactadas del repositorio y `openspec/`:
+        ```bash
+        git add <rutas-bd-impactadas> openspec/
+        git commit -m "feat(db): schema, migraciones y tests para <ticket>"
+        ```
 
 ---
 
