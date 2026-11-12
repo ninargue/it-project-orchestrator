@@ -38,7 +38,7 @@ Closes #<!-- número del issue -->
 - [ ] Se respetó la Única Fuente de Verdad (SSOT en `agents/`) sin duplicar prompts
 - [ ] Se mantuvieron los límites duros de fin de turno (`🛑 FIN DE TURNO OBLIGATORIO`) en pausas
 - [ ] Rutas de persistencia alineadas con la estructura canónica (`docs/prd/`, `docs/backlog/<NNNN>-.../`)
-- [ ] Se actualizó `CHANGELOG.md` con descripción concisa y versión correspondiente
+- [ ] (Si aporta cambios al usuario) Se registró el cambio neto en `## [Unreleased]` de `CHANGELOG.md` (la versión se consolida en `release/*` o `hotfix/*`)
 
 ## 💬 Notas adicionales
 <!-- Contexto extra, decisiones tomadas, trade-offs -->
