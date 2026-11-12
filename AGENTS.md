@@ -14,6 +14,8 @@ Este proyecto es un sistema multi-agente agnóstico diseñado para cubrir el cic
    - `orchestrator/`: Orquesta el ciclo completo punta a punta cuando un rol o agente tiene acceso total al proyecto y gestiona el versionado Git.
 2. **Ciclo de Desarrollo SDD (Specification-Driven Development):**
    - `_skills/sdd-init/`: Inicializa la estructura OpenSpec y `config.yaml` contextual en el repositorio de desarrollo sin instalar herramientas locales (usadas vía plugin).
+   - `_skills/db-sdd/`: Ciclo SDD de Base de Datos guiado por especificaciones, DB-TDD y validaciones mecánicas deterministas.
+   - `_skills/backend-sdd/`: Ciclo SDD de la capa Backend guiado por especificaciones, contratos de API, Backend-TDD y 4 Gates deterministas.
    - `sdd/`: Implementación de código guiada por especificaciones técnicas rigurosas a partir de tickets priorizados del backlog y especificaciones OpenSpec.
 
 ---
@@ -36,7 +38,8 @@ Según la elección, invocar el recurso correspondiente antes de continuar:
 - `[3]` → `orchestrator/ORCHESTRATOR.md`
 - `[4]` → Si `openspec/config.yaml` no existe en el repositorio de destino: `_skills/sdd-init/SKILL.md`. Si ya está inicializado, el orquestador solicita el ticket o requerimiento técnico y activa el **Dispatcher por Capa**:
   - `capa:db` → `_skills/db-sdd/SKILL.md` (Ciclo SDD de Base de Datos con equipo multi-agente en `agents/db/`)
-  - `capa:backend` / `capa:frontend` → Ciclos SDD correspondientes
+  - `capa:backend` → `_skills/backend-sdd/SKILL.md` (Ciclo SDD de Backend con equipo multi-agente en `agents/backend/`)
+  - `capa:frontend` → Ciclo SDD correspondiente
 
 ---
 
@@ -46,10 +49,11 @@ Según la elección, invocar el recurso correspondiente antes de continuar:
 |---|---|---|
 | **Subagentes Core** | `agents/<nombre>.md` | Discovery, análisis de producto, backlog, tickets y materialización |
 | **Subagentes de Base de Datos** | `agents/db/<nombre>.md` | Equipo especializado de BD: Architect, Developer, Security DBA, Mutation Tester y QA |
+| **Subagentes de Backend** | `agents/backend/<nombre>.md` | Equipo especializado de Backend: API Architect, Backend Developer y Backend QA |
 | **Skills** | `_skills/<nombre>/SKILL.md` | Runbooks y procedimientos operativos paso a paso con interacción humana |
 | **Orquestador** | `orchestrator/ORCHESTRATOR.md` | Secuenciación de flujos completos punta a punta, dispatching de tickets y gobernanza Git |
 | **Especificaciones SDD** | `openspec/` y `sdd/` | Framework OpenSpec, planes y especificaciones técnicas de desarrollo guiado |
-| **Scripts Deterministas** | `scripts/` | Validaciones mecánicas automatizadas (linters, checks de FKs, simetría up/down, RLS) |
+| **Scripts Deterministas** | `scripts/` | Validaciones mecánicas automatizadas (`validate-db-migrations.js`, `validate-backend.js`: FKs, simetría up/down, RLS, contratos OpenAPI, No-DB-Diff) |
 | **Templates** | `templates/` y `docs/` | Plantillas oficiales para issues (GitHub/Linear) y documentos (briefings, tool-config) |
 
 ---
@@ -139,6 +143,13 @@ El orquestador organiza los artefactos generados bajo una estructura canónica e
 │   ├── migrations/                      # Migraciones versionadas <timestamp>_<nombre>.up.sql y .down.sql (o forward-only)
 │   ├── security/                        # Políticas RLS y permisos DCL (si rls_mode = 'dedicated')
 │   └── seeds/                           # Fixtures de datos sintéticos DML (si requires_seeds = true)
+├── backend/                             # Ciclo de capa backend (o estructura propia del repo: src/, app/, backend/)
+│   ├── openapi.yaml                     # Contrato OpenAPI 3.x (si contract_style = 'openapi-first')
+│   ├── schemas/                         # DTOs y esquemas de validación de entrada/salida (o dtos/)
+│   ├── repositories/                    # Capa de acceso a datos y consultas parametrizadas / ORM
+│   ├── services/                        # Capa de lógica de negocio y orquestación transaccional
+│   ├── routers/                         # Controladores HTTP / Routers / Workers de entrada (o controllers/)
+│   └── tests/                           # Suites Backend-TDD organizadas por dominio/módulo (<modulo>.test..., nunca por ticket)
 ├── openspec/                            # Especificaciones OpenSpec (specs/, changes/<change>/ con verification-report.md, config.yaml)
 └── sdd/                                 # Specification-Driven Development (fase de desarrollo)
     └── <modulo-o-feature>/
@@ -192,7 +203,7 @@ Cualquier agente o desarrollador que cree o modifique un Skill (`_skills/`), un 
 
 ### 7.2. Matriz de Autonomía y Mínimo Privilegio (Permisos y Herramientas)
 1. **Autonomía en la Generación de Artefactos (Subagentes Especializados):**
-   - Los subagentes técnicos (`agents/db/`, etc.) poseen las herramientas necesarias para escribir y mantener sus propios archivos en disco (`tools: [Read, Write, Edit]` y `bash` para subagentes ejecutores de pruebas como `db-qa-agent`).
+   - Los subagentes técnicos (`agents/db/`, `agents/backend/`, etc.) poseen las herramientas necesarias para escribir y mantener sus propios archivos en disco (`tools: [Read, Write, Edit]` y `bash` para subagentes ejecutores de pruebas como `db-qa-agent`).
    - Cada subagente escribe directamente sus entregables en las rutas estandarizadas (ej. `proposal.md`, `specs/`, migraciones SQL, suites de prueba y reportes) sin volcar contenidos completos en el chat ni delegar la persistencia manual en el skill.
 2. **Subagentes de Análisis Puro o Consultivos:** Los subagentes de discovery o auditoría preliminar que no producen artefactos persistentes pueden mantenerse con `tools: [Read]`.
 3. **Exclusividad Estricta de Git:** Ningún `SKILL.md` ni `agents/*.md` puede ejecutar `git add`, `git commit`, `git push` o `git branch`. Los subagentes y skills solo emiten la señal `[LISTO PARA COMMIT] <ruta>` y delegan la gobernanza y ejecución de Git al Orquestador principal (`orchestrator/ORCHESTRATOR.md`), siempre tras confirmación explícita del usuario.

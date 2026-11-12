@@ -15,6 +15,11 @@ Versionado siguiendo [Semantic Versioning](https://semver.org/).
 - **Sistema Multi-Agente y Ciclo SDD de Base de Datos (`_skills/db-sdd/` y `agents/db/`):** Ciclo de base de datos guiado por especificaciones y **DB-TDD** (Red → Green → Verify → Mutation) con 5 subagentes especializados (`db-architect-agent`, `db-developer-agent`, `db-security-agent`, `db-qa-agent` y `db-mutation-tester`) que ejecutan nativamente los workflows de OpenSpec, soportan modos condicionales (con/sin RLS, migraciones simétricas o *forward-only*, seeds opcionales) y organizan los tests por dominio según la estructura del repositorio.
 - **Validador Mecánico Multiplataforma (`scripts/validate-db-migrations.js`):** Script determinista en Node.js nativo (sin dependencias externas) para verificar simetría y reversibilidad de migraciones, índices en claves foráneas por ámbito de tabla, cobertura de políticas RLS y columnas sensibles (PII).
 - **Dispatcher por Capa, Tickets Multi-Capa e Invariantes de Arquitectura (`orchestrator/ORCHESTRATOR.md` y `AGENTS.md`):** Plan de ejecución validado en Fase 3, gestión de tickets multi-capa con archivado atómico (`opsx:bulk-archive`), bloqueo global de `git` para subagentes en `hooks/register.ts` y reglas de ingeniería (§7) para creación y mantenimiento de skills y subagentes.
+- **Sistema Multi-Agente y Ciclo SDD de Backend (`_skills/backend-sdd/` y `agents/backend/`):** Flujo de desarrollo backend guiado por especificaciones (`opsx:propose`, `opsx:apply`, `opsx:verify`) y **Backend-TDD por dominio** con 3 subagentes especializados (`api-architect-agent`, `backend-developer-agent`, `backend-qa-agent`) y soporte adaptativo (`with-db`/`stateless`, `rls_mode`, `code-first`/`openapi-first`).
+- **Validador Mecánico Backend (`scripts/validate-backend.js`):** Script determinista en Node.js nativo con 4 Gates (pre-condición de BD, validación de escenarios OpenSpec y contratos OpenAPI YAML/JSON, inmutabilidad No-DB-Diff y escaneo de secretos, y trazabilidad/ejecución de suite Backend-TDD).
+
+### Mejorado
+- **Alcance estricto del modo sin repositorio:** El modo conversacional (`tiene_repositorio = false`) queda acotado exclusivamente a la Fase 1 (`product-discovery`), exigiendo repositorio o workspace local obligatorio desde `stories-to-tickets` y en todos los flujos SDD (`db-sdd` y `backend-sdd`).
 
 ---
 
