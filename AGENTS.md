@@ -133,14 +133,13 @@ El orquestador organiza los artefactos generados bajo una estructura canónica e
 │           └── E<N>-<epica>/
 │               ├── us-<historia>.md     # Historia INVEST (US-<XX>) con criterios Given/When/Then
 │               └── tickets-<historia>.md # Tickets técnicos atómicos (US-<XX>-T<N>) con checklist DoD
-├── database/                            # Ciclo de base de datos y migraciones
-│   ├── schemas/                         # Diagramas ERD Mermaid y diccionarios de datos
-│   ├── tests/                           # Suites de pruebas DB-TDD (<change-name>-test.sql)
-│   ├── migrations/                      # Migraciones versionadas <timestamp>_<nombre>.up.sql y .down.sql
-│   ├── security/                        # Políticas RLS y permisos DCL
-│   ├── seeds/                           # Fixtures de datos sintéticos DML
-│   └── reports/                         # Reportes de auditoría atómicos (<change-name>-qa-report.md)
-├── openspec/                            # Especificaciones OpenSpec (specs/, changes/, config.yaml)
+├── database/                            # Ciclo de base de datos (o estructura propia del repo: supabase/, prisma/, src/db/)
+│   ├── schemas/                         # Diagrama ERD consolidado (erd.md)
+│   ├── tests/                           # Suites DB-TDD organizadas por dominio/módulo (<entidad>.test.sql, nunca por ticket)
+│   ├── migrations/                      # Migraciones versionadas <timestamp>_<nombre>.up.sql y .down.sql (o forward-only)
+│   ├── security/                        # Políticas RLS y permisos DCL (si rls_mode = 'dedicated')
+│   └── seeds/                           # Fixtures de datos sintéticos DML (si requires_seeds = true)
+├── openspec/                            # Especificaciones OpenSpec (specs/, changes/<change>/ con verification-report.md, config.yaml)
 └── sdd/                                 # Specification-Driven Development (fase de desarrollo)
     └── <modulo-o-feature>/
         ├── spec.md                      # Especificación técnica detallada
@@ -191,10 +190,12 @@ Cualquier agente o desarrollador que cree o modifique un Skill (`_skills/`), un 
 2. **Espejo Puntero en `.claude/_agents/`:** Por cada archivo en `agents/`, debe existir `.claude/_agents/<nombre>.md` (o subcarpeta homóloga `.claude/_agents/db/<nombre>.md`) que contenga **únicamente** el frontmatter YAML (`name`, `description`, `tools`) y la instrucción de una línea: `Lee y adopta estrictamente la identidad, rol, guardrails y contratos de ejecución definidos en el archivo canónico del agente: agents/<capa>/<nombre>.md`. Prohibido duplicar el prompt.
 3. **Desacoplamiento Skill ↔ Agente:** Los archivos `_skills/<skill>/SKILL.md` NO deben contener el prompt del sistema del subagente; solo especifican en qué paso se invoca, qué archivos/variables recibe como input y cómo se persiste o valida su salida.
 
-### 7.2. Matriz de Mínimo Privilegio (Permisos y Herramientas)
-1. **Subagentes de Análisis, Diseño, Arquitectura y QA/Auditoría:** En su frontmatter solo pueden declarar `tools: [Read]`. Tienen **prohibido** escribir archivos en disco (`Write`/`Edit`), ejecutar comandos shell (`bash`) o hacer commits. Devuelven su resultado en Markdown estructurado al Skill invocador.
-2. **Subagentes de Materialización Externa (`issue-materializer-agent`, etc.):** Solo pueden ejecutarse tras una pausa `🛑` confirmada explícitamente por el usuario en el turno inmediato anterior.
-3. **Exclusividad de Git:** Ningún `SKILL.md` ni `agents/*.md` puede ejecutar `git add`, `git commit`, `git push` o `git branch`. Los Skills solo emiten la señal `[LISTO PARA COMMIT] <ruta>` y delegan la ejecución a `orchestrator/ORCHESTRATOR.md`.
+### 7.2. Matriz de Autonomía y Mínimo Privilegio (Permisos y Herramientas)
+1. **Autonomía en la Generación de Artefactos (Subagentes Especializados):**
+   - Los subagentes técnicos (`agents/db/`, etc.) poseen las herramientas necesarias para escribir y mantener sus propios archivos en disco (`tools: [Read, Write, Edit]` y `bash` para subagentes ejecutores de pruebas como `db-qa-agent`).
+   - Cada subagente escribe directamente sus entregables en las rutas estandarizadas (ej. `proposal.md`, `specs/`, migraciones SQL, suites de prueba y reportes) sin volcar contenidos completos en el chat ni delegar la persistencia manual en el skill.
+2. **Subagentes de Análisis Puro o Consultivos:** Los subagentes de discovery o auditoría preliminar que no producen artefactos persistentes pueden mantenerse con `tools: [Read]`.
+3. **Exclusividad Estricta de Git:** Ningún `SKILL.md` ni `agents/*.md` puede ejecutar `git add`, `git commit`, `git push` o `git branch`. Los subagentes y skills solo emiten la señal `[LISTO PARA COMMIT] <ruta>` y delegan la gobernanza y ejecución de Git al Orquestador principal (`orchestrator/ORCHESTRATOR.md`), siempre tras confirmación explícita del usuario.
 
 ### 7.3. Prevención de Handoff Drift y Neutralidad de Contexto
 1. **Handoff por Archivo, no por Memoria:** Cuando `tiene_repositorio = true`, la comunicación entre pasos o entre skills se realiza leyendo el archivo persistido en disco en el paso anterior (ej. `docs/prd/...`, `docs/backlog/...`, `sdd/.../spec.md`). Queda prohibido pasar resúmenes improvisados en memoria cuando existe un artefacto en disco.
