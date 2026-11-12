@@ -4,31 +4,17 @@ Todos los cambios notables de este plugin se documentan aquí.
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.0.0/).
 Versionado siguiendo [Semantic Versioning](https://semver.org/).
 
+> **Regla de registro:** Documentar en cada versión o en `[Unreleased]` únicamente el resultado neto de las capacidades, mejoras o correcciones respecto a `master` (última versión publicada). Prohibido listar iteraciones intermedias, correcciones internas o refactorizaciones ocurridas dentro de una misma rama antes de su fusión.
+
 ---
 
 ## [Unreleased]
 
 ### Añadido
-- **Ejecución Nativa de Workflows OpenSpec (`opsx:*`) por Subagentes y Organización de Tests por Dominio:** Los subagentes de BD ejecutan directamente `opsx:explore`, `opsx:propose`, `opsx:apply` (actualizando `- [x]` en `tasks.md`) y `opsx:verify` (con reportes encapsulados en `openspec/changes/<change-name>/`), prohibiendo nombres de tickets o `<change-name>` en rutas de tests y organizándolos según la estructura modular/dominio del repositorio destino.
-- **Simplificación de Paso 0 y Delegación de Exploración:** Reducción del Paso 0 en `_skills/db-sdd/` estrictamente a Input Gate (§7.3.3) sin pausas redundantes; la exploración técnica del repositorio (`engine`, `migrations_dir`, `migration_mode`, `rls_mode`, `requires_seeds`, `test_cmd`) se delega a `db-architect-agent` en la Fase A.
-- **Sistema Multi-Agente de Base de Datos (`agents/db/`):** 5 subagentes especializados (`db-architect-agent`, `db-developer-agent`, `db-security-agent`, `db-mutation-tester`, `db-qa-agent`) bajo arquitectura SSOT y autonomía de persistencia (`tools: [Read, Write, Edit, Bash]`).
-- **Input Gate y Variables de Sesión Globales (§7.3.3 y §7.3.4):** Verificación de pre-condiciones en `_skills/db-sdd/` (bloqueo estricto ante ausencia de `openspec/config.yaml` o ticket) y gobierno de variables de sesión en modo dual (`tiene_repositorio`).
-- **Estandarización de `_skills/sdd-init/`:** Frontmatter canónico (`subagents: []`, `commits:`), plantilla obligatoria de fin de turno (§7.5.1) y variables de sesión.
-- **Autonomía de Subagentes (Invariante 7.2):** Los subagentes técnicos generan y editan directamente sus archivos en disco en lugar de delegar la escritura en el skill.
-- **Ciclo DB-TDD Bifásico en QA:** `db-qa-agent` redacta la suite y valida estado ROJO en la fase Red antes del desarrollo; tras la implementación, ejecuta el runner (`make test-db`) para certificar el paso a VERDE y auditar drift.
-- **Condicionalidades del Ciclo SDD:** Soporte para proyectos sin RLS (`--no-rls`), migraciones *forward-only* o simétricas, seeds opcionales (`requires_seeds`), actualización de ERD consolidado solo ante tablas/FKs nuevas y mutation testing condicional ante constraints/RLS.
-- **Mutation Testing en Base de Datos (`agents/db/db-mutation-tester.md`):** Subagente para validar la robustez de la suite de tests contra 5 mutantes canónicos antes de la aprobación de QA.
-- **Comandos Nativos OpenSpec CLI:** Integración de `openspec new change`, `openspec instructions` y `openspec validate` en `_skills/db-sdd/` y `db-architect-agent`.
-- **Skill de Ciclo SDD de Base de Datos (`_skills/db-sdd/`):** Runbook Spec-First con metodología DB-TDD, fases Apply desacopladas (DDL y Security) y pausas HITL obligatorias (§7.5.2).
-- **Especificación de Datos en OpenSpec (`specs/`):** Generación formal de `specs/<capability>/spec.md` con requisitos y escenarios Given/When/Then como contrato de verdad para DB-TDD.
-- **Feedback Loop y Resiliencia en DB-TDD:** Bifurcación en Verify con retroalimentación a desarrollo/seguridad ante fallos (sin modificar tests) y eliminación de sesgo de Postgres en QA.
-- **Validador Mecánico Multiplataforma (`scripts/validate-db-migrations.js`):** Script universal en Node.js para validación determinista de FKs con ámbito por tabla, simetría up/down, RLS y PII en múltiples motores.
-- **Exploración e Integración de Runners:** Detección de infraestructura (motor, directorios) y ejecución complementaria de runners nativos del proyecto (`npm run db:validate`, `make db-validate`, `uv run db-validate`).
-- **Gobernanza de Tickets Multi-Capa:** Protocolo en el orquestador para particionar tickets cross-cutting (`<ticket_id>-<capa>/`), secuenciación topológica y archivado atómico con OpenSpec Bulk Archive.
-- **Invariante de Scripts en Node.js:** Regla de Oro 14 y §7.6 en `AGENTS.md` exigiendo scripts multiplataforma sin dependencias de SO (`.ps1`).
-- **Alto Contraste en `erDiagram` de Mermaid:** Directiva de tema `%%{init: ...}%%` para diagramas ER en `AGENTS.md` y `db-architect-agent.md`, evitando `linkStyle`.
-- **Resolución de Rutas del Plugin (`hooks/register.ts`):** Mapeo de `scripts/`, `agents/` y datos de usuario contra la raíz del plugin.
-- **Skill de Inicialización SDD (`_skills/sdd-init/`):** Configuración de OpenSpec en el proyecto destino vía plugin.
+- **Integración de Specification-Driven Development (`_skills/sdd-init/` y workflows `opsx:*`):** Configuración automatizada y contextual de `openspec/config.yaml` en el repositorio de desarrollo e incorporación de los workflows `opsx:explore`, `opsx:propose`, `opsx:apply`, `opsx:verify`, `opsx:sync`, `opsx:archive` y `opsx:bulk-archive` ejecutados desde el plugin.
+- **Sistema Multi-Agente y Ciclo SDD de Base de Datos (`_skills/db-sdd/` y `agents/db/`):** Ciclo de base de datos guiado por especificaciones y **DB-TDD** (Red → Green → Verify → Mutation) con 5 subagentes especializados (`db-architect-agent`, `db-developer-agent`, `db-security-agent`, `db-qa-agent` y `db-mutation-tester`) que ejecutan nativamente los workflows de OpenSpec, soportan modos condicionales (con/sin RLS, migraciones simétricas o *forward-only*, seeds opcionales) y organizan los tests por dominio según la estructura del repositorio.
+- **Validador Mecánico Multiplataforma (`scripts/validate-db-migrations.js`):** Script determinista en Node.js nativo (sin dependencias externas) para verificar simetría y reversibilidad de migraciones, índices en claves foráneas por ámbito de tabla, cobertura de políticas RLS y columnas sensibles (PII).
+- **Dispatcher por Capa, Tickets Multi-Capa e Invariantes de Arquitectura (`orchestrator/ORCHESTRATOR.md` y `AGENTS.md`):** Plan de ejecución validado en Fase 3, gestión de tickets multi-capa con archivado atómico (`opsx:bulk-archive`), bloqueo global de `git` para subagentes en `hooks/register.ts` y reglas de ingeniería (§7) para creación y mantenimiento de skills y subagentes.
 
 ---
 
