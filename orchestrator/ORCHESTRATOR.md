@@ -132,6 +132,30 @@ Antes de iniciar la Fase 1 (o al retomar cualquier fase con `tiene_repositorio =
    ¿Confirmas este plan de ejecución para comenzar con la primera fase?
    ```
 
+   <details>
+   <summary>Ejemplo canónico de Plan de Ejecución (Multi-capa)</summary>
+
+   ```text
+   📋 Plan de Ejecución Propuesto — Ticket E1-US03-T01
+   - Objetivo: Registrar venta offline con sincronización al backend
+   - Alcance: Multi-capa
+   - Capas afectadas: BD, Backend, Frontend
+
+   Ruta de Ejecución Planificada:
+     1. [Secuencial] BD: _skills/db-sdd/SKILL.md (db-architect, db-qa, db-developer, db-security, db-mutation-tester)
+        → Subcarpeta OpenSpec: openspec/changes/E1-US03-T01-db/
+        → Entregables: migración sales, RLS tenant_id, tests DB-TDD
+     2. [Paralelo post-Gate 2 Backend (Contract-First)] Backend: _skills/backend-sdd/SKILL.md (api-architect, backend-qa, backend-developer, backend-mutation-tester)
+        → Subcarpeta OpenSpec: openspec/changes/E1-US03-T01-backend/
+        → Entregables: openapi.yaml, POST /sales, tests Backend-TDD
+     3. [Paralelo post-Gate 2 Backend] Frontend: _skills/frontend-sdd/SKILL.md (frontend-architect, frontend-qa, frontend-ui-developer, frontend-integrator, frontend-auditor, frontend-mutation-tester)
+        → Subcarpeta OpenSpec: openspec/changes/E1-US03-T01-frontend/
+        → Entregables: cola IndexedDB, vista POS Design-Blind, mocks MSW, tests
+   - Validaciones: validate-db-migrations.js, validate-backend.js, validate-frontend.js, opsx:verify
+   - Cierre: opsx:bulk-archive + commit atómico único
+   ```
+   </details>
+
    🛑 **FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:** Detén tu turno aquí y espera la confirmación explícita del usuario antes de proceder a la ejecución.
 
 4. **Despacho y Ejecución por Capa:**
@@ -172,6 +196,7 @@ El orquestador evalúa el grafo de dependencias de la User Story o de las tareas
    - Aplica cuando dos o más subagentes realizan **tareas disjuntas y ortogonales** sin dependencias mutuas ni riesgo de colisión de archivos.
    - *Auditorías multidimensionales concurrentes:* En fases de verificación, el orquestador puede lanzar en paralelo agentes de solo lectura sobre el mismo entregable (ej. `db-security-agent` auditando RLS/PII concurrentemente con `db-qa-agent` evaluando planes de ejecución).
    - *Tareas paralelas de la US:* Tareas sin dependencia mutua (ej. maquetado visual en Frontend con interfaces mockeadas en paralelo con la definición de seeds en DB).
+   - *Capas Contract-First desacopladas:* Una vez aprobado el contrato OpenAPI (post-Gate 2 de Backend o preexistente), `capa:backend` y `capa:frontend` (usando mocks MSW/Orval) pueden avanzar en paralelo en sesiones/worktrees independientes hasta la barrera de `opsx:bulk-archive`.
 3. **Barrera de Sincronización (Join Barrier):**
    - Al despachar agentes en paralelo, el orquestador mantiene una barrera de sincronización: recopila todos los resultados y no avanza a la siguiente fase ni emite pausas al usuario hasta que todos los subagentes concurrentes hayan concluido sus análisis.
 
@@ -259,4 +284,4 @@ Si el commit de Fase 1 o Fase 2 ya se realizó, pero la Fase 3 (SDD) detecta que
 1. **Congelar cambios SDD en curso:** No ejecutar `opsx:archive` sobre el cambio afectado; mantener o descartar `openspec/changes/<change-name>/` según indique el usuario.
 2. **Confirmación HITL obligatoria (`🛑`):** Presentar el `<commit-sha>` problemático de Fase 1/2 y proponer una de dos salidas:
    - **Opción A — Revertir commit:** Tras confirmación explícita, ejecutar `git revert --no-edit <commit-sha>` (preservando el historial sin reescribir ramas compartidas) y re-ejecutar el skill afectado (`_skills/stories-to-tickets/SKILL.md` o `_skills/product-discovery/SKILL.md`).
-   - **Opción B — Commit correctivo hacia adelante:** Corregir los archivos en `docs/prd/` o `docs/backlog/` mediante el skill correspondiente y registrar un nuevo commit correctivo antes de reanudar la Fase 3.
+   - **Opción B — Commit correctivo hacia adelante (Retorno F3 → F2 / F1):** Si un ticket está mal acotado (*oversized* o con criterios incompletos), pausar `openspec/changes/<change-name>/`, re-invocar `_skills/stories-to-tickets/SKILL.md` para dividir/ajustar `docs/backlog/**/tickets-*.md` y `<NNNN>-backlog-priorizado.md`, registrar un commit `chore(backlog): re-scopear <ticket_id>` tras confirmación `🛑` y reanudar Fase 3 con los nuevos tickets atómicos.
