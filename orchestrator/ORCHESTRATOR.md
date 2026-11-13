@@ -8,6 +8,8 @@ skills_invoked:
   - _skills/stories-to-tickets/SKILL.md
   - _skills/db-sdd/SKILL.md
   - _skills/backend-sdd/SKILL.md
+  - _skills/ui-discovery/SKILL.md
+  - _skills/frontend-sdd/SKILL.md
   - _skills/sdd-init/SKILL.md
 ---
 
@@ -125,7 +127,7 @@ Reglas generales, tono y convenciones de archivos: ver `AGENTS.md`.
    - Una vez aprobado el plan:
      - **Capa Base de Datos (`capa:db`):** Conducir `_skills/db-sdd/SKILL.md` paso a paso (Exploración y propuesta vía `opsx:propose` con `db-architect-agent` → Suite DB-TDD por dominio en ROJO con `db-qa-agent` → Implementación DDL vía `opsx:apply` con `db-developer-agent` → Seguridad RLS vía `opsx:apply` con `db-security-agent` (si aplica) → Validación mecánica determinista con `scripts/validate-db-migrations.js` y verificación en VERDE vía `opsx:verify` con `db-qa-agent` → Mutation Testing con `db-mutation-tester` (si aplica)).
      - **Capa Backend (`capa:backend`):** Conducir `_skills/backend-sdd/SKILL.md` paso a paso (Exploración adaptativa y Gate 1 de pre-condición BD e introspección con `scripts/validate-backend.js` → Propuesta, especificación y contrato vía `opsx:propose` con `api-architect-agent` + Gate 2 de validación OpenSpec/OpenAPI → Suite Backend-TDD en ROJO con `backend-qa-agent` (Fase A) → Implementación en capas vía `opsx:apply` con `backend-developer-agent` + Gate 3 de linter, typecheck e inmutabilidad No-DB-Diff con `scripts/validate-backend.js` → Gate 4 de ejecución de suite de tests y auditoría adversarial en VERDE vía `opsx:verify` con `backend-qa-agent` (Fase B) → Mutation Testing con `backend-mutation-tester` (si aplica)).
-     - **Capa Frontend (`capa:frontend`):** Conducir el flujo SDD correspondiente para frontend.
+     - **Capa Frontend (`capa:frontend`):** Opcionalmente ejecutar primero `_skills/ui-discovery/SKILL.md` (`ux-designer-agent`) para generar `ui-spec.json`. Luego conducir `_skills/frontend-sdd/SKILL.md` paso a paso (Input Gate/Gate 1 Contract-First o Frontend-Driven y `openapi_hash` con `scripts/validate-frontend.js` → `opsx:propose` con `frontend-architect-agent` + Gate 2 → Suite Frontend-TDD *Design-Blind* en ROJO con `frontend-qa-agent` (Fase A) → Implementación visual y lógica vía `opsx:apply` (`frontend-ui-developer-agent` → `frontend-integrator-agent`) + Gate 3 → Optimización/SW con `frontend-auditor-agent` + Gate 4 → Verificación final `opsx:verify` con `frontend-qa-agent` (Fase B) → Mutation Testing con `frontend-mutation-tester`).
 
 #### 4.1. Gestión de Tickets Multi-Capa (Cross-Cutting / Fullstack)
 Si un ticket técnico impacta 2 o más capas (ej. Base de Datos + Backend + Frontend):
@@ -137,13 +139,14 @@ Si un ticket técnico impacta 2 o más capas (ej. Base de Datos + Backend + Fron
 2. **Ejecución Secuencial Topológica:**
    - **Paso A (Datos):** Ejecuta `_skills/db-sdd/SKILL.md` para `<ticket_id>-db/`. La base de datos, migraciones, políticas RLS y tests DB-TDD se validan primero.
    - **Paso B (Backend):** Con el esquema de datos validado, ejecuta `_skills/backend-sdd/SKILL.md` para `<ticket_id>-backend/` (contratos de API, DTOs/Schemas, repositorios, servicios, controladores/workers, tests Backend-TDD y Gates 1–4 con `scripts/validate-backend.js`).
-   - **Paso C (Frontend):** Con los contratos de API disponibles, ejecuta el flujo de frontend para `<ticket_id>-frontend/` (componentes UI, estado y consumo de APIs).
+   - **Paso C (Frontend):** Con los contratos de API disponibles, ejecuta `_skills/frontend-sdd/SKILL.md` para `<ticket_id>-frontend/` (componentes UI, estado, offline y consumo de APIs con Gates 1–4 y `scripts/validate-frontend.js`).
+   - **Paralelización Condicional Contract-First:** Si el ticket utiliza `contract_style = 'openapi-first'` y el contrato `openapi.yaml` ya superó el **Paso 1 + Gate 2 de Backend** (o existe previamente validado), `capa:backend` y `capa:frontend` (usando mocks MSW/Orval) pueden ejecutarse en paralelo mediante sesiones/worktrees independientes sin colisión de turnos `🛑`, sincronizándose en el `Bulk Archive` final. Si hay cambio de contrato (`openapi_hash` distinto), la capa afectada retrocede a su Paso 1.
 3. **Archivado Atómico en Lote (`Bulk Archive`):**
    - Una vez validadas todas las capas del ticket, el orquestador NO archiva carpeta por carpeta de forma fragmentada.
    - Invoca el archivado en lote mediante **OpenSpec Bulk Archive** (`/opsx:bulk-archive` o `openspec bulk-archive`), consolidando simultáneamente las especificaciones canónicas en `openspec/specs/` y moviendo todas las subcarpetas del ticket a `openspec/changes/archive/`.
    - Realiza un único commit atómico de la feature completa:
      ```bash
-     git add database/ backend/ frontend/ openspec/
+     git add <db_dirs> <backend_dir> <frontend_dir> <tests_dir> openspec/
      git commit -m "feat(<modulo>): implementacion fullstack para <ticket_id>"
      ```
 
@@ -201,6 +204,31 @@ El orquestador evalúa el grafo de dependencias de la User Story o de las tareas
         ```bash
         git add <backend_dir> <tests_dir> openspec/
         git commit -m "feat(backend): contratos, servicios y tests para <ticket>"
+        ```
+
+   - **Caso C — Capa Frontend (`frontend-sdd` y `ui-discovery`):**
+     - Si `ui-discovery` emite `[LISTO PARA COMMIT] docs/ui/<NNNN>-ui-spec-<sufijo>.json`:
+       Tras confirmación explícita del usuario, ejecutar:
+       ```bash
+       git add docs/ui/
+       git commit -m "docs(ui): especificacion visual para <sufijo>"
+       ```
+     - Al recibir la señal `[LISTO PARA COMMIT Y ARCHIVE] <frontend_dir> <tests_dir> openspec/changes/<change-name>/`:
+     ```text
+     ⏸️ Ciclo SDD de Frontend completado y validado mediante Frontend-TDD, Gates 1–4, opsx:verify y Mutation Testing.
+     Archivos impactados:
+     - <frontend_dir>/ (componentes, hooks, stores, clientes API y Service Worker si aplica)
+     - <tests_dir>/ (tests Design-Blind organizados por dominio/módulo)
+     - openspec/changes/<change-name>/ (incluyendo verification-report.md y mutation-report.md si aplica)
+
+     ¿Confirmás ejecutar opsx:archive para archivar el cambio en OpenSpec y realizar el commit?
+     ```
+     Tras confirmación explícita del usuario:
+     1. Ejecutar **[`opsx:archive`](.claude/commands/opsx/archive.md)** (sincroniza delta specs en `openspec/specs/` y archiva el cambio).
+     2. Ejecutar el commit de Git:
+        ```bash
+        git add <frontend_dir> <tests_dir> openspec/
+        git commit -m "feat(frontend): componentes, integración y tests para <ticket>"
         ```
 
 ---
