@@ -49,7 +49,7 @@ Según la elección, invocar el recurso correspondiente antes de continuar:
 |---|---|---|
 | **Subagentes Core** | `agents/<nombre>.md` | Discovery, análisis de producto, backlog, tickets y materialización |
 | **Subagentes de Base de Datos** | `agents/db/<nombre>.md` | Equipo especializado de BD: Architect, Developer, Security DBA, Mutation Tester y QA |
-| **Subagentes de Backend** | `agents/backend/<nombre>.md` | Equipo especializado de Backend: API Architect, Backend Developer y Backend QA |
+| **Subagentes de Backend** | `agents/backend/<nombre>.md` | Equipo especializado de Backend: API Architect, Backend Developer, Backend QA y Mutation Tester |
 | **Skills** | `_skills/<nombre>/SKILL.md` | Runbooks y procedimientos operativos paso a paso con interacción humana |
 | **Orquestador** | `orchestrator/ORCHESTRATOR.md` | Secuenciación de flujos completos punta a punta, dispatching de tickets y gobernanza Git |
 | **Especificaciones SDD** | `openspec/` y `sdd/` | Framework OpenSpec, planes y especificaciones técnicas de desarrollo guiado |
@@ -150,7 +150,7 @@ El orquestador organiza los artefactos generados bajo una estructura canónica e
 │   ├── services/                        # Capa de lógica de negocio y orquestación transaccional
 │   ├── routers/                         # Controladores HTTP / Routers / Workers de entrada (o controllers/)
 │   └── tests/                           # Suites Backend-TDD organizadas por dominio/módulo (<modulo>.test..., nunca por ticket)
-├── openspec/                            # Especificaciones OpenSpec (specs/, changes/<change>/ con verification-report.md, config.yaml)
+├── openspec/                            # Especificaciones OpenSpec (specs/, changes/<change>/ con verification-report.md y mutation-report.md, config.yaml)
 └── sdd/                                 # Specification-Driven Development (fase de desarrollo)
     └── <modulo-o-feature>/
         ├── spec.md                      # Especificación técnica detallada

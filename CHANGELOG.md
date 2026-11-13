@@ -8,6 +8,13 @@ Versionado siguiendo [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [Unreleased]
+
+### Añadido
+- **Mutation Testing en el ciclo SDD de Backend (`agents/backend/backend-mutation-tester.md` y `_skills/backend-sdd/`):** Nuevo subagente especializado en falsabilidad (`1 Orquestador + 4 Subagentes`) como Gate Condicional (Paso 5) posterior a `opsx:verify` en verde, con soporte para `mutation_cmd` nativo o catálogo canónico `M1–M5`, verificación determinista de árbol limpio sin `git`, ruteo condicional anticipado en Paso 4 y reporte en `openspec/changes/<change-name>/mutation-report.md` (#29).
+
+---
+
 ## [0.2.0] — 2026-11-12
 
 ### Añadido
