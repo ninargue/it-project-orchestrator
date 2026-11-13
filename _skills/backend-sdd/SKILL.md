@@ -13,6 +13,7 @@ subagents:
   - api-architect-agent
   - backend-developer-agent
   - backend-qa-agent
+  - backend-mutation-tester
 inputs:
   - Ticket técnico de backend (US-XX-TN o issue de GitHub)
   - openspec/config.yaml (configuración SDD del proyecto)
@@ -25,6 +26,7 @@ outputs:
   - openspec/changes/<change-name>/design.md
   - openspec/changes/<change-name>/tasks.md
   - openspec/changes/<change-name>/verification-report.md
+  - openspec/changes/<change-name>/mutation-report.md (si incluye lógica de negocio, validaciones o autorización)
   - <openapi_path> (opcional, solo cuando contract_style = 'openapi-first')
   - <tests_dir>/<modulo_o_entidad>... (tests organizados por dominio/estructura del repositorio)
   - <backend_dir>/** (código productivo: DTOs/Schemas, Repositorios, Servicios, Controladores/Routers/Workers)
@@ -66,7 +68,7 @@ Si alguna de estas variables no está en memoria de sesión (usuario invocó dir
    - **DETÉN tu respuesta inmediatamente.** No agregues texto anticipando el paso siguiente ni simules respuestas del usuario.
 2. **Integración Nativa con Workflows OpenSpec (`opsx:*`):** Los subagentes NO inventan formatos ni plantillas propias para los artefactos de SDD; ejecutan directamente los workflows oficiales de OpenSpec del plugin (`.claude/commands/opsx/` o `.agent/workflows/opsx-*.md`): `opsx:explore`, `opsx:propose`, `opsx:apply`, `opsx:verify` y `opsx:archive` / `opsx:bulk-archive`.
 3. **Organización de Tests según la Estructura del Repositorio:** Queda **terminantemente prohibido** nombrar archivos de test con IDs de tickets (`US-XX-TN`) o nombres del cambio (`test_<change-name>`). Los tests son activos vivos del repositorio y deben ubicarse y nombrarse por **dominio, módulo, recurso o entidad** respetando la estructura existente del proyecto (`<tests_dir>/<modulo_o_entidad>...`).
-4. **Ubicación del Reporte de Verificación:** El reporte de auditoría QA se persiste exclusivamente en `openspec/changes/<change-name>/verification-report.md` para que se archive limpiamente con `opsx:archive` sin ensuciar el árbol de código productivo.
+4. **Ubicación de los Reportes:** Los reportes de verificación QA y mutación se persisten exclusivamente en `openspec/changes/<change-name>/verification-report.md` y `openspec/changes/<change-name>/mutation-report.md` para que se archiven limpiamente con `opsx:archive` sin ensuciar el árbol de código productivo.
 5. **Gobernanza de Git:** Ningún subagente ni skill ejecuta commits directamente. Solo el orquestador principal interactúa con Git, siempre tras confirmación explícita del usuario.
 6. **Persistencia en Disco y Concisión en Chat (Repositorio Obligatorio):**
    - El ciclo SDD de backend **requiere obligatoriamente un repositorio o workspace local** (`tiene_repositorio = true`) para operar con OpenSpec, escribir código/tests y ejecutar los 4 Gates mecánicos.
@@ -80,7 +82,8 @@ Si alguna de estas variables no está en memoria de sesión (usuario invocó dir
 2. **Backend-TDD Organizado por Dominio en ROJO (`backend-qa-agent` Fase A):** Antes de escribir código productivo, se crean o amplían los tests del módulo/entidad en `<tests_dir>/<modulo_o_entidad>...` a partir de los escenarios Given/When/Then de `specs/` y se ejecuta `test_cmd` para verificar su fallo inicial en **ROJO**.
 3. **Implementación vía `opsx:apply` (`backend-developer-agent`) + `Gate 3` (Linter, Tipos e Inmutabilidad No-DB-Diff):** El desarrollador ejecuta `opsx:apply`, implementa las capas del backend en `<backend_dir>`, marca sus tareas completadas (`- [ ]` → `- [x]`) en `tasks.md`, y el **Gate 3** verifica mecánicamente que el linter/typecheck pasen y que `git diff` sobre los directorios de BD esté vacío.
 4. **Verificación en VERDE (`Gate 4`) y `opsx:verify` (`backend-qa-agent` Fase B):** Se ejecuta la suite de pruebas en **VERDE** (`Gate 4`) y `backend-qa-agent` conduce `opsx:verify` (Completeness, Correctness y Coherence + auditoría anti-bypass RLS/RBAC/IDOR), generando `openspec/changes/<change-name>/verification-report.md`.
-5. **Gobernanza de Cierre (`opsx:archive` y `Commit`):** El Orquestador principal ejecuta `opsx:archive` (o `opsx:bulk-archive`) para sincronizar las delta specs en `openspec/specs/`, archivar el cambio (con su `verification-report.md`) y realizar el commit en Git.
+5. **Pruebas de Mutación y Falsabilidad Condicional (`backend-mutation-tester`):** Si el cambio incluye lógica de negocio, validaciones o reglas de autorización/multi-tenancy, `backend-mutation-tester` evalúa mutaciones controladas sobre `<backend_dir>` (herramienta nativa o catálogo `M1–M5`) sin dejar cambios persistidos en código ni usar `git`, generando `openspec/changes/<change-name>/mutation-report.md`.
+6. **Gobernanza de Cierre (`opsx:archive` y `Commit`):** El Orquestador principal ejecuta `opsx:archive` (o `opsx:bulk-archive`) para sincronizar las delta specs en `openspec/specs/`, archivar el cambio (con sus reportes `verification-report.md` y `mutation-report.md`) y realizar el commit en Git.
 
 ---
 
@@ -132,7 +135,7 @@ Si alguna de estas variables no está en memoria de sesión (usuario invocó dir
 
 1. Invocar a `api-architect-agent` entregando el `<change-name>`, el ticket técnico y la referencia al workflow **[`opsx:propose`](.claude/commands/opsx/propose.md)** (o `.agent/workflows/opsx-propose.md`).
 2. `api-architect-agent` ejecuta el flujo oficial de `opsx:propose`:
-   - **Exploración del Repositorio (`opsx:explore`):** Detecta y registra en `design.md` la infraestructura y convenciones reales del proyecto: `stack`, `backend_dir`, `arch_pattern` (capas Greenfield vs. estructura Brownfield), `db_mode` (`with-db` | `stateless`), `db_dirs`, `typegen_cmd`, `rls_mode` (`dedicated` / `in-situ` / `none`), `auth_mode` (`jwt` / `session` / `api-key` / `none`), `contract_style` (`code-first` como FastAPI/Pydantic vs. `openapi-first` vs. `worker-job` / `graphql` / `grpc`), `tests_dir` (y su convención modular por entidad/dominio), `lint_cmd`, `typecheck_cmd`, `test_cmd` y `ci_hooks_status` (existencia de `pre-commit` / `pre-push` / CI).
+   - **Exploración del Repositorio (`opsx:explore`):** Detecta y registra en `design.md` la infraestructura y convenciones reales del proyecto: `stack`, `backend_dir`, `arch_pattern` (capas Greenfield vs. estructura Brownfield), `db_mode` (`with-db` | `stateless`), `db_dirs`, `typegen_cmd`, `rls_mode` (`dedicated` / `in-situ` / `none`), `auth_mode` (`jwt` / `session` / `api-key` / `none`), `contract_style` (`code-first` como FastAPI/Pydantic vs. `openapi-first` vs. `worker-job` / `graphql` / `grpc`), `tests_dir` (y su convención modular por entidad/dominio), `lint_cmd`, `typecheck_cmd`, `test_cmd`, `mutation_cmd` (opcional, ej. `mutmut` / `stryker`) y `ci_hooks_status` (existencia de `pre-commit` / `pre-push` / CI).
    - **Creación Guiada por el Grafo de OpenSpec:** Ejecuta `openspec new change "<change-name>"`, consulta `openspec status --change "<change-name>" --json` y para cada artefacto obtiene su `template`, `context`, `rules` y `outputPath` con `openspec instructions <artifact-id> --change "<change-name>" --json`:
      - `openspec/changes/<change-name>/proposal.md`: Why, What, Non-goals y compatibilidad.
      - `openspec/changes/<change-name>/specs/<capability>/spec.md`: Requisitos formales y escenarios Given/When/Then (`2xx`, errores `4xx` y seguridad/multi-tenancy).
@@ -254,7 +257,9 @@ Si alguna de estas variables no está en memoria de sesión (usuario invocó dir
      ```
      **🛑 FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:** Detén tu turno aquí y espera la confirmación explícita del usuario.
 
-   - **Escenario B — Dictamen `[APROBADO]` en `opsx:verify`:**
+   - **Escenario B — Dictamen `[APROBADO]` en `opsx:verify` (con Ruteo Condicional Anticipado):**
+     - **Si el cambio está exento de Mutation Testing** (ej. passthrough puro sin lógica de negocio, validaciones de entrada ni reglas de autorización/multi-tenancy): dejar constancia explícita de la exención, verificar `openspec validate "<change-name>"` y solicitar confirmación para pasar directamente al **Paso 6 (`opsx:archive` y Commit)** sin detenerse en un Paso 5 vacío.
+     - **Si el cambio incluye lógica de negocio, validaciones o reglas de autorización/multi-tenancy:** solicitar confirmación para avanzar al **Paso 5 (Pruebas de Mutación y Falsabilidad)**.
      ```text
      📊 Verificación opsx:verify y Backend-TDD en VERDE completada:
      - Reporte: [verification-report.md](file:///<ruta>/openspec/changes/<change-name>/verification-report.md)
@@ -262,13 +267,56 @@ Si alguna de estas variables no está en memoria de sesión (usuario invocó dir
      - Suite Backend-TDD en <tests_dir>: 🟢 100% en VERDE
      - Gates Deterministas (1 a 4) y openspec validate: ✅ Superados
 
-     ¿Confirmas la entrega para pasar al Paso 5 (opsx:archive y Commit por el Orquestador)?
+     <Si aplica Mutation Testing: "¿Procedemos al Paso 5 (Mutation Testing de falsabilidad con backend-mutation-tester)?">
+     <Si está exento de Mutation Testing: "ℹ️ Cambio exento de Mutation Testing (sin lógica de negocio, validaciones ni reglas de autorización falsables) y validado con 'openspec validate'. ¿Confirmas la entrega para pasar directo al Paso 6 (opsx:archive y Commit por el Orquestador)?">
      ```
      **🛑 FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:** Detén tu turno aquí y espera la confirmación explícita del usuario.
 
 ---
 
-### Paso 5 — Handoff al Orquestador (`opsx:archive` / `opsx:bulk-archive` y Commit)
+### Paso 5 — Pruebas de Mutación y Falsabilidad (`backend-mutation-tester` — Gate Condicional)
+
+> [!NOTE] Gate Condicional de Mutation Testing
+> Este paso se ejecuta únicamente cuando el cambio incluye lógica de negocio, validaciones de entrada o reglas de autorización/multi-tenancy. Si estuvo exento, fue ruteado directamente del Paso 4 al Paso 6.
+
+1. Invocar únicamente a `backend-mutation-tester` entregando `<change-name>`, `design.md`, `specs/`, `<backend_dir>` y `<tests_dir>`:
+   - Audita la falsabilidad de la suite en `<tests_dir>` ejecutando mutaciones controladas sobre `<backend_dir>` (`mutation_cmd` si fue detectado en `design.md` o catálogo canónico `M1–M5`).
+   - Restaura íntegramente los archivos de `<backend_dir>` sin usar comandos `git`, limpia cachés temporales y escribe únicamente `openspec/changes/<change-name>/mutation-report.md`.
+2. **Validación determinista post-corrida de árbol limpio e integridad:**
+   - Comprobar en disco que no existan artefactos residuales de mutación (`.stryker-tmp`, `.mutmut-cache`).
+   - Re-ejecutar `test_cmd` (o Gate 4 con `node "<plugin-root>/scripts/validate-backend.js" --gate 4 ...`) tras `backend-mutation-tester` para certificar con `exit 0` que `<backend_dir>` fue restaurado íntegramente y la suite volvió a quedar 100% en VERDE.
+3. **Validación Formal OpenSpec:**
+   ```bash
+   openspec validate "<change-name>"
+   ```
+4. **Evaluación de Falsabilidad y Bifurcación:**
+
+   - **Escenario A — `[TESTS COMPLACIENTES DETECTADOS]` (Mutantes Sobrevivientes):**
+     ```text
+     🧟 Mutation Testing detectó Tests Complacientes:
+     - Reporte de Mutación: [mutation-report.md](file:///<ruta>/openspec/changes/<change-name>/mutation-report.md)
+     - Estado: [TESTS COMPLACIENTES DETECTADOS]
+     - Mutantes sobrevivientes: <lista de mutantes no atrapados en <tests_dir>>
+
+     ¿Autorizas re-despachar a backend-qa-agent (con mutation-report.md) para reforzar las aserciones y re-validar Gate 4 + Paso 5 (o volver al Paso 3 si el test reforzado destapa un bug real en <backend_dir>)?
+     ```
+     **🛑 FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:** Detén tu turno aquí y espera la confirmación explícita del usuario.
+
+   - **Escenario B — `[TESTS BLINDADOS]` (100% Mutantes Evaluados Abatidos):**
+     ```text
+     🔬 Verificación de Falsabilidad y OpenSpec Completada:
+     - Reporte de Mutación: [mutation-report.md](file:///<ruta>/openspec/changes/<change-name>/mutation-report.md)
+     - Estado de Falsabilidad: [TESTS BLINDADOS]
+     - Integridad de código y árbol limpio: ✅ Verificada (sin mutaciones ni cachés residuales)
+     - Validación OpenSpec CLI: ✅ Superada (openspec validate "<change-name>")
+
+     ¿Confirmas la entrega para que el Orquestador ejecute el Paso 6 (opsx:archive y Commit en Git)?
+     ```
+     **🛑 FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:** Detén tu turno aquí y espera la confirmación explícita del usuario.
+
+---
+
+### Paso 6 — Handoff al Orquestador (`opsx:archive` / `opsx:bulk-archive` y Commit)
 
 1. Emitir la señal hacia el orquestador principal indicando las rutas reales del repositorio impactadas:
    ```text
@@ -277,5 +325,5 @@ Si alguna de estas variables no está en memoria de sesión (usuario invocó dir
 2. El orquestador principal tomará el control para ejecutar el workflow oficial **[`opsx:archive`](.claude/commands/opsx/archive.md)** (o **[`opsx:bulk-archive`](.claude/commands/opsx/bulk-archive.md)** si es un ticket multi-capa), el cual:
    - Verifica el estado de artefactos y tareas (`- [x]`).
    - Sincroniza las delta specs hacia `openspec/specs/<capability>/spec.md` (vía `opsx:sync`).
-   - Mueve la carpeta del cambio (incluyendo `verification-report.md`) a `openspec/changes/archive/YYYY-MM-DD-<change-name>/`.
+   - Mueve la carpeta del cambio (incluyendo `verification-report.md` y `mutation-report.md` si aplica) a `openspec/changes/archive/YYYY-MM-DD-<change-name>/`.
    - Realiza el `git commit` atómico de la entrega tras confirmación del usuario.
