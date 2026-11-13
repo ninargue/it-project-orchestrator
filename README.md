@@ -23,6 +23,7 @@ Funciona con Claude Code, Cursor, Antigravity, Codex, OpenCode, Windsurf y cualq
      - **`backend-qa-agent`:** En **Fase A (Pre-Apply)** escribe la suite de tests de contrato, integración y seguridad organizada por dominio/módulo y comprueba que falle en **🔴 ROJO**; en **Fase B (Post-Apply)** certifica el paso a **🟢 VERDE**, audita la ausencia de *drift* o bypasses de seguridad (RLS/RBAC/IDOR) y genera `verification-report.md` vía `opsx:verify`.
      - **`backend-developer-agent`:** Ejecuta `opsx:apply` implementando las capas del backend (DTOs/Schemas, Repositorios, Servicios y Controladores/Routers/Workers) consumiendo la BD de forma **100% inmutable** (verificado mecánicamente con `git diff --exit-code` sobre directorios de BD) y sin permiso para tocar los tests.
      - **`backend-mutation-tester`:** En el **Paso 5 (Gate Condicional)** audita la falsabilidad de la suite en `<tests_dir>` aplicando mutaciones controladas sobre `<backend_dir>` (herramienta nativa o catálogo `M1–M5`) y genera `mutation-report.md` para detectar aserciones complacientes o mocks permisivos.
+   - **Sistema Multi-Agente de Frontend (`capa:frontend` — `_skills/frontend-sdd/` y `_skills/ui-discovery/`):** Flujo SDD Contract-First (o Frontend-Driven gobernado) con 7 subagentes especializados en `agents/frontend/` y 4 Gates deterministas en `scripts/validate-frontend.js`: conceptualización UI híbrida opcional (`ux-designer-agent`), arquitectura OpenSpec (`frontend-architect-agent`), Frontend-TDD *Design-Blind* y `opsx:verify` post-auditoría (`frontend-qa-agent`), maquetación pura (`frontend-ui-developer-agent`), integración API/offline (`frontend-integrator-agent`), optimización PWA/bundle (`frontend-auditor-agent`) y Mutation Testing (`frontend-mutation-tester`).
 
 > 🔒 **Encapsulación:** Los skills y subagentes internos del ciclo idea-a-backlog están prefijados con `_` para evitar exposición involuntaria en los catálogos globales de la herramienta. Son orquestados y gestionados exclusivamente a través del punto de entrada maestro.
 
@@ -82,6 +83,7 @@ El agente preguntará:
 | **Issues** | Issues creados en GitHub o Linear | *N/A — Requiere repositorio/workspace local* |
 | **SDD — Base de Datos (`capa:db`)** | `openspec/changes/<change>/` (`proposal`, `specs`, `design`, `tasks`, `verification-report`, `mutation-report`), `<migrations_dir>/`, `<security_dir>/`, `<seeds_dir>/`, `<tests_dir>/<entidad>...` | *N/A — Requiere repositorio/workspace local* |
 | **SDD — Backend (`capa:backend`)** | `openspec/changes/<change>/` (`proposal`, `specs`, `design`, `tasks`, `verification-report`, `mutation-report`), `<openapi_path>` (si aplica), `<backend_dir>/**` (DTOs, Repositorios, Servicios, Routers/Workers), `<tests_dir>/<modulo>...` | *N/A — Requiere repositorio/workspace local* |
+| **SDD — Frontend (`capa:frontend`)** | `docs/ui/<NNNN>-ui-spec-<sufijo>.json` (opcional), `openspec/changes/<change>/` (`proposal`, `specs`, `design`, `tasks`, `.frontend-state.json`, `verification-report`, `mutation-report`), `<frontend_dir>/**`, `<tests_dir>/<modulo>...` | Solo `ui-discovery` en chat |
 
 ---
 
@@ -98,13 +100,17 @@ it-project-orchestrator/
 │   ├── stories-to-tickets/# historias → tickets atómicos → grafo/sizing → issues
 │   ├── sdd-init/          # inicialización de OpenSpec (openspec/config.yaml)
 │   ├── db-sdd/            # ciclo SDD de base de datos + DB-TDD + validaciones mecánicas
-│   └── backend-sdd/       # ciclo SDD de capa backend + Backend-TDD + 4 Gates deterministas
+│   ├── backend-sdd/       # ciclo SDD de capa backend + Backend-TDD + 4 Gates deterministas
+│   ├── ui-discovery/      # conceptualización UI híbrida opcional (Text-to-Wireframe / Figma)
+│   └── frontend-sdd/      # ciclo SDD de capa frontend + TDD Design-Blind + Mutation Testing
 ├── agents/                # Definición canónica (SSOT) de roles y guardrails (.md)
 │   ├── db/                # Subagentes de Base de Datos (Architect, Developer, Security, QA, Mutation)
-│   └── backend/           # Subagentes de Backend (API Architect, Backend Developer, Backend QA, Mutation)
+│   ├── backend/           # Subagentes de Backend (API Architect, Backend Developer, Backend QA, Mutation)
+│   └── frontend/          # Subagentes de Frontend (UX, Architect, QA, UI, Integrator, Auditor, Mutation)
 ├── scripts/               # Validadores mecánicos deterministas multiplataforma en Node.js
 │   ├── validate-db-migrations.js
-│   └── validate-backend.js
+│   ├── validate-backend.js
+│   └── validate-frontend.js
 ├── templates/             # Plantillas de issues (GitHub, Linear) y config
 ├── docs/                  # Plantillas de kickoff y tech-briefing
 └── openspec/              # Especificaciones y cambios estructurados (SDD)
@@ -121,7 +127,9 @@ it-project-orchestrator/
 | `orchestrator` | ✅ ORCHESTRATOR.md ejecutable con Dispatcher SDD mono-capa y multi-capa |
 | `sdd-init` | ✅ Inicialización de OpenSpec y `config.yaml` contextual |
 | `db-sdd` (`capa:db`) | ✅ SKILL.md ejecutable + 5 subagentes en `agents/db/` + `validate-db-migrations.js` |
-| `backend-sdd` (`capa:backend`) | ✅ SKILL.md ejecutable + 4 subagentes en `agents/backend/` + `validate-backend.js` (4 Gates) |
+| `backend-sdd` (`capa:backend`) | ✅ SKILL.md ejecutable + 4 subagentes en `agents/backend/` + `validate-backend.js` (4 Gates + Mutation) |
+| `ui-discovery` (pre-SDD) | ✅ SKILL.md ejecutable + `ux-designer-agent` (Text-to-Wireframe / Figma Extractor) |
+| `frontend-sdd` (`capa:frontend`) | ✅ SKILL.md ejecutable + 6 subagentes en `agents/frontend/` + `validate-frontend.js` (4 Gates + Mutation) |
 | Subagentes Core (`agents/`) | ✅ Canónicos (Discovery, Backlog, Tickets, Issues, Adversarial) |
 | Plugin Claude Code | ✅ `.claude-plugin/` + `hooks/` |
 | Templates GitHub / Linear | ✅ YAML y Markdown listos |

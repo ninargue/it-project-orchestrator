@@ -16,6 +16,8 @@ Este proyecto es un sistema multi-agente agnóstico diseñado para cubrir el cic
    - `_skills/sdd-init/`: Inicializa la estructura OpenSpec y `config.yaml` contextual en el repositorio de desarrollo sin instalar herramientas locales (usadas vía plugin).
    - `_skills/db-sdd/`: Ciclo SDD de Base de Datos guiado por especificaciones, DB-TDD y validaciones mecánicas deterministas.
    - `_skills/backend-sdd/`: Ciclo SDD de la capa Backend guiado por especificaciones, contratos de API, Backend-TDD y 4 Gates deterministas.
+   - `_skills/ui-discovery/`: Conceptualización visual previa opcional (Text-to-Wireframe o Figma Extractor) generando `ui-spec.json`.
+   - `_skills/frontend-sdd/`: Ciclo SDD de la capa Frontend con Contract-First (o Frontend-Driven), Frontend-TDD *Design-Blind*, 4 Gates deterministas, `opsx:verify` post-auditoría y Mutation Testing.
    - `sdd/`: Implementación de código guiada por especificaciones técnicas rigurosas a partir de tickets priorizados del backlog y especificaciones OpenSpec.
 
 ---
@@ -39,7 +41,7 @@ Según la elección, invocar el recurso correspondiente antes de continuar:
 - `[4]` → Si `openspec/config.yaml` no existe en el repositorio de destino: `_skills/sdd-init/SKILL.md`. Si ya está inicializado, el orquestador solicita el ticket o requerimiento técnico y activa el **Dispatcher por Capa**:
   - `capa:db` → `_skills/db-sdd/SKILL.md` (Ciclo SDD de Base de Datos con equipo multi-agente en `agents/db/`)
   - `capa:backend` → `_skills/backend-sdd/SKILL.md` (Ciclo SDD de Backend con equipo multi-agente en `agents/backend/`)
-  - `capa:frontend` → Ciclo SDD correspondiente
+  - `capa:frontend` → `_skills/frontend-sdd/SKILL.md` (Ciclo SDD de Frontend con equipo multi-agente en `agents/frontend/`, precedido opcionalmente por `_skills/ui-discovery/SKILL.md`)
 
 ---
 
@@ -50,10 +52,11 @@ Según la elección, invocar el recurso correspondiente antes de continuar:
 | **Subagentes Core** | `agents/<nombre>.md` | Discovery, análisis de producto, backlog, tickets y materialización |
 | **Subagentes de Base de Datos** | `agents/db/<nombre>.md` | Equipo especializado de BD: Architect, Developer, Security DBA, Mutation Tester y QA |
 | **Subagentes de Backend** | `agents/backend/<nombre>.md` | Equipo especializado de Backend: API Architect, Backend Developer, Backend QA y Mutation Tester |
+| **Subagentes de Frontend** | `agents/frontend/<nombre>.md` | Equipo especializado de Frontend: UX Designer, Architect, QA, UI Developer, Integrator, Auditor y Mutation Tester |
 | **Skills** | `_skills/<nombre>/SKILL.md` | Runbooks y procedimientos operativos paso a paso con interacción humana |
 | **Orquestador** | `orchestrator/ORCHESTRATOR.md` | Secuenciación de flujos completos punta a punta, dispatching de tickets y gobernanza Git |
 | **Especificaciones SDD** | `openspec/` y `sdd/` | Framework OpenSpec, planes y especificaciones técnicas de desarrollo guiado |
-| **Scripts Deterministas** | `scripts/` | Validaciones mecánicas automatizadas (`validate-db-migrations.js`, `validate-backend.js`: FKs, simetría up/down, RLS, contratos OpenAPI, No-DB-Diff) |
+| **Scripts Deterministas** | `scripts/` | Validaciones mecánicas automatizadas (`validate-db-migrations.js`, `validate-backend.js`, `validate-frontend.js`) |
 | **Templates** | `templates/` y `docs/` | Plantillas oficiales para issues (GitHub/Linear) y documentos (briefings, tool-config) |
 
 ---
@@ -131,6 +134,7 @@ El orquestador organiza los artefactos generados bajo una estructura canónica e
 │   ├── prd/
 │   │   ├── <NNNN>-alcance-<sufijo>.md   # Alcance consensuado (ej: 0001-alcance-registro-ventas-mvp.md)
 │   │   └── <NNNN>-<proyecto>-<sufijo>.md # PRD estructurado (ej: 0001-sistema-ventas-registro-ventas-mvp.md)
+│   ├── ui/                              # Especificaciones visuales opcionales (<NNNN>-ui-spec-<sufijo>.json)
 │   └── backlog/
 │       └── <NNNN>-<proyecto>-<sufijo>/  # Subcarpeta homónima al PRD para cada avance
 │           ├── <NNNN>-backlog-priorizado.md # Grafo de dependencias, sizing y matriz
@@ -150,6 +154,11 @@ El orquestador organiza los artefactos generados bajo una estructura canónica e
 │   ├── services/                        # Capa de lógica de negocio y orquestación transaccional
 │   ├── routers/                         # Controladores HTTP / Routers / Workers de entrada (o controllers/)
 │   └── tests/                           # Suites Backend-TDD organizadas por dominio/módulo (<modulo>.test..., nunca por ticket)
+├── frontend/                            # Ciclo de capa frontend (o estructura propia del repo: src/, app/, frontend/)
+│   ├── components/                      # Componentes presentacionales puros y tokens de diseño
+│   ├── hooks/                           # Hooks de consulta/mutación, estado global y colas offline
+│   ├── services/                        # Clientes API alineados con OpenAPI / mocks MSW
+│   └── tests/                           # Suites Frontend-TDD Design-Blind organizadas por dominio/módulo (nunca por ticket)
 ├── openspec/                            # Especificaciones OpenSpec (specs/, changes/<change>/ con verification-report.md y mutation-report.md, config.yaml)
 └── sdd/                                 # Specification-Driven Development (fase de desarrollo)
     └── <modulo-o-feature>/
