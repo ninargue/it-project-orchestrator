@@ -21,9 +21,6 @@ Versionado siguiendo [Semantic Versioning](https://semver.org/).
 ### Mejorado
 - **Alcance estricto del modo sin repositorio:** El modo conversacional (`tiene_repositorio = false`) queda acotado exclusivamente a la Fase 1 (`product-discovery`), exigiendo repositorio o workspace local obligatorio desde `stories-to-tickets` y en todos los flujos SDD (`db-sdd` y `backend-sdd`) (#23).
 
-### Corregido
-- **Repositorio obligatorio en `db-sdd` (`_skills/db-sdd/` y `agents/db/`):** Eliminado el modo conversacional sin repositorio (`tiene_repositorio = false`) en el flujo SDD de base de datos, exigiendo repositorio o workspace local activo en el Input Gate del Paso 0 y en los contratos de salida de `db-architect-agent`, `db-developer-agent` y `db-security-agent` (#23).
-
 ---
 
 ## [0.1.2] — 2026-11-09
