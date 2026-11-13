@@ -182,8 +182,9 @@ Si un ticket técnico impacta 2 o más capas (ej. Base de Datos + Backend + Fron
    - Realiza un único commit atómico de la feature completa:
      ```bash
      git add <db_dirs> <backend_dir> <frontend_dir> <tests_dir> openspec/
-     git commit -m "feat(<modulo>): implementacion fullstack para <ticket_id>"
+     git commit -m "feat(<modulo>): implementacion fullstack" -m "Refs <ticket_id>"
      ```
+   - **Fallback si `opsx:archive` / `opsx:bulk-archive` falla (mono-capa o multi-capa):** Si el archivado falla (ej. conflicto de merge en `openspec/specs/`, tareas pendientes `[ ]` o fallo de `openspec validate`), **NO ejecutar `git commit`**, mantener `openspec/changes/<change-name>/` intacto, reportar el error exacto y pedir confirmación `🛑` para resolver el conflicto/tarea o ejecutar `opsx:sync` antes de reintentar el archivado.
 
 #### 4.2. Decisión de Concurrencia: Invocación Paralela vs. Secuencial
 El orquestador evalúa el grafo de dependencias de la User Story o de las tareas del ticket para determinar la estrategia de despacho:
@@ -201,6 +202,7 @@ El orquestador evalúa el grafo de dependencias de la User Story o de las tareas
    - Al despachar agentes en paralelo, el orquestador mantiene una barrera de sincronización: recopila todos los resultados y no avanza a la siguiente fase ni emite pausas al usuario hasta que todos los subagentes concurrentes hayan concluido sus análisis.
 
 5. **Archivado en OpenSpec (`opsx:archive`) y Commit de la Entrega (Ticket Mono-Capa):**
+   *(Todos los commits siguen [`.github/CONTRIBUTING.md`](.github/CONTRIBUTING.md): `<tipo>(<capa-o-modulo>): <descripción en imperativo y minúsculas>` en el header y `Refs <ticket_id>` / `Closes #<issue>` en el footer. Si `opsx:archive` falla, aplicar el Fallback de la sección 4.1 sin commitear).*
    - **Caso A — Capa Base de Datos (`db-sdd`):**
      Al recibir la señal `[LISTO PARA COMMIT Y ARCHIVE] <migrations_dir> <security_dir> <seeds_dir> <tests_dir> <schemas_dir> openspec/changes/<change-name>/`:
      ```text
@@ -220,7 +222,7 @@ El orquestador evalúa el grafo de dependencias de la User Story o de las tareas
      2. Ejecutar el commit de Git agregando las rutas impactadas del repositorio y `openspec/`:
         ```bash
         git add <rutas-bd-impactadas> openspec/
-        git commit -m "feat(db): schema, migraciones y tests para <ticket>"
+        git commit -m "feat(db): schema, migraciones y tests" -m "Refs <ticket_id>"
         ```
 
    - **Caso B — Capa Backend (`backend-sdd`):**
@@ -239,7 +241,7 @@ El orquestador evalúa el grafo de dependencias de la User Story o de las tareas
      2. Ejecutar el commit de Git agregando las rutas impactadas de backend, tests y `openspec/`:
         ```bash
         git add <backend_dir> <tests_dir> openspec/
-        git commit -m "feat(backend): contratos, servicios y tests para <ticket>"
+        git commit -m "feat(backend): contratos, servicios y tests" -m "Refs <ticket_id>"
         ```
 
    - **Caso C — Capa Frontend (`frontend-sdd` y `ui-discovery`):**
@@ -264,7 +266,7 @@ El orquestador evalúa el grafo de dependencias de la User Story o de las tareas
      2. Ejecutar el commit de Git:
         ```bash
         git add <frontend_dir> <tests_dir> openspec/
-        git commit -m "feat(frontend): componentes, integración y tests para <ticket>"
+        git commit -m "feat(frontend): componentes, integracion y tests" -m "Refs <ticket_id>"
         ```
 
 ---
