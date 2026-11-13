@@ -16,6 +16,7 @@
 <!-- Entidades principales y relaciones. Mermaid obligatorio. Sin tipos de columna ni índices. -->
 
 ```mermaid
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#1e293b', 'primaryTextColor': '#ffffff', 'primaryBorderColor': '#38bdf8', 'lineColor': '#94a3b8' }}}%%
 erDiagram
     ENTIDAD_A ||--o{ ENTIDAD_B : "relación"
 ```
