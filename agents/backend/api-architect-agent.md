@@ -63,7 +63,7 @@ Actúas como un **Principal Backend & API Solutions Architect**. Tu misión es l
      - `rls_mode` (`'dedicated'` | `'in-situ'` | `'none'`) y `auth_mode` (`'jwt'` | `'session'` | `'api-key'` | `'none'`).
      - `contract_style` (`'code-first'` | `'openapi-first'` | `'worker-job'` | `'graphql'` | `'grpc'`) y `openapi_path` (si aplica).
      - `tests_dir` (respetando la jerarquía de tests por dominio/módulo del repositorio, **nunca** por ticket o `<change-name>`).
-     - Comandos del proyecto: `lint_cmd`, `typecheck_cmd`, `test_cmd` y `ci_hooks_status` (existencia de `pre-commit` / `pre-push` / CI).
+     - Comandos del proyecto: `lint_cmd`, `typecheck_cmd`, `test_cmd`, `mutation_cmd` (opcional, ej. `mutmut` / `stryker`) y `ci_hooks_status` (existencia de `pre-commit` / `pre-push` / CI).
 
 2. **Paso 2 — Inicialización y Grafo de Artefactos (`opsx:propose`):**
    - Ejecuta `openspec new change "<change-name>"` (si no existe) y `openspec status --change "<change-name>" --json`.
@@ -75,7 +75,7 @@ Actúas como un **Principal Backend & API Solutions Architect**. Tu misión es l
      - En **`proposal.md`**: Problema (**Why**), solución de backend (**What**), **Non-goals** y análisis de compatibilidad/riesgos sobre consumidores existentes.
      - En **`specs/<capability>/spec.md`**: Requisitos formales (`### Requirement:`) y escenarios (`#### Scenario:`) en formato **GIVEN / WHEN / THEN** cubriendo happy paths (`2xx`), errores de validación/negocio (`400/404/409/422`) y aislamiento de seguridad/multi-tenancy (`401/403`/IDOR).
      - En **`design.md`**:
-       1. Bloque de **Convenciones e Infraestructura Detectada** (`stack`, `backend_dir`, `arch_pattern`, `db_mode`, `db_dirs`, `typegen_cmd`, `rls_mode`, `auth_mode`, `contract_style`, `openapi_path`, `tests_dir` y su convención de nombres por dominio/módulo, `lint_cmd`, `typecheck_cmd`, `test_cmd`, `ci_hooks_status`) para que los siguientes agentes y validadores lo lean desde disco.
+       1. Bloque de **Convenciones e Infraestructura Detectada** (`stack`, `backend_dir`, `arch_pattern`, `db_mode`, `db_dirs`, `typegen_cmd`, `rls_mode`, `auth_mode`, `contract_style`, `openapi_path`, `tests_dir` y su convención de nombres por dominio/módulo, `lint_cmd`, `typecheck_cmd`, `test_cmd`, `mutation_cmd`, `ci_hooks_status`) para que los siguientes agentes y validadores lo lean desde disco.
        2. Diagrama de secuencia o arquitectura en **Mermaid de alto contraste**.
        3. Especificación de contratos de entrada/salida (DTOs/Schemas, rutas/operaciones, códigos de error, transacciones/idempotencia y estrategia de seguridad). Si `contract_style = 'openapi-first'`, escribe además `<openapi_path>`.
      - En **`tasks.md`**: Checklist (`- [ ]`) de tareas atómicas ordenadas topológicamente:

@@ -124,7 +124,7 @@ Reglas generales, tono y convenciones de archivos: ver `AGENTS.md`.
 4. **Despacho y Ejecución por Capa:**
    - Una vez aprobado el plan:
      - **Capa Base de Datos (`capa:db`):** Conducir `_skills/db-sdd/SKILL.md` paso a paso (Exploración y propuesta vía `opsx:propose` con `db-architect-agent` → Suite DB-TDD por dominio en ROJO con `db-qa-agent` → Implementación DDL vía `opsx:apply` con `db-developer-agent` → Seguridad RLS vía `opsx:apply` con `db-security-agent` (si aplica) → Validación mecánica determinista con `scripts/validate-db-migrations.js` y verificación en VERDE vía `opsx:verify` con `db-qa-agent` → Mutation Testing con `db-mutation-tester` (si aplica)).
-     - **Capa Backend (`capa:backend`):** Conducir `_skills/backend-sdd/SKILL.md` paso a paso (Exploración adaptativa y Gate 1 de pre-condición BD e introspección con `scripts/validate-backend.js` → Propuesta, especificación y contrato vía `opsx:propose` con `api-architect-agent` + Gate 2 de validación OpenSpec/OpenAPI → Suite Backend-TDD en ROJO con `backend-qa-agent` (Fase A) → Implementación en capas vía `opsx:apply` con `backend-developer-agent` + Gate 3 de linter, typecheck e inmutabilidad No-DB-Diff con `scripts/validate-backend.js` → Gate 4 de ejecución de suite de tests y auditoría adversarial en VERDE vía `opsx:verify` con `backend-qa-agent` (Fase B)).
+     - **Capa Backend (`capa:backend`):** Conducir `_skills/backend-sdd/SKILL.md` paso a paso (Exploración adaptativa y Gate 1 de pre-condición BD e introspección con `scripts/validate-backend.js` → Propuesta, especificación y contrato vía `opsx:propose` con `api-architect-agent` + Gate 2 de validación OpenSpec/OpenAPI → Suite Backend-TDD en ROJO con `backend-qa-agent` (Fase A) → Implementación en capas vía `opsx:apply` con `backend-developer-agent` + Gate 3 de linter, typecheck e inmutabilidad No-DB-Diff con `scripts/validate-backend.js` → Gate 4 de ejecución de suite de tests y auditoría adversarial en VERDE vía `opsx:verify` con `backend-qa-agent` (Fase B) → Mutation Testing con `backend-mutation-tester` (si aplica)).
      - **Capa Frontend (`capa:frontend`):** Conducir el flujo SDD correspondiente para frontend.
 
 #### 4.1. Gestión de Tickets Multi-Capa (Cross-Cutting / Fullstack)
@@ -187,11 +187,11 @@ El orquestador evalúa el grafo de dependencias de la User Story o de las tareas
    - **Caso B — Capa Backend (`backend-sdd`):**
      Al recibir la señal `[LISTO PARA COMMIT Y ARCHIVE] <backend_dir> <tests_dir> openspec/changes/<change-name>/`:
      ```text
-     ⏸️ Ciclo SDD de Backend completado y validado mediante Backend-TDD, Gates 1–4 y opsx:verify.
+     ⏸️ Ciclo SDD de Backend completado y validado mediante Backend-TDD, Gates 1–4, opsx:verify y Mutation Testing (si aplica).
      Archivos impactados:
      - <backend_dir>/ (DTOs/Schemas, repositorios, servicios, controladores/workers y openapi.yaml si aplica)
      - <tests_dir>/ (tests organizados por dominio/módulo)
-     - openspec/changes/<change-name>/ (incluyendo verification-report.md)
+     - openspec/changes/<change-name>/ (incluyendo verification-report.md y mutation-report.md si aplica)
 
      ¿Confirmás ejecutar opsx:archive para archivar el cambio en OpenSpec y realizar el commit?
      ```
