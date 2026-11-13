@@ -24,6 +24,17 @@ Reglas generales, tono y convenciones de archivos: ver `AGENTS.md`.
 
 ---
 
+## FASE 0 — Validación Inicial de Entorno (Pre-flight Check)
+
+Antes de iniciar la Fase 1 (o al retomar cualquier fase con `tiene_repositorio = true`):
+1. Verificar que el directorio destino sea un repositorio Git válido (`git rev-parse --is-inside-work-tree`) y consultar la rama activa (`git branch --show-current`).
+2. Comprobar que **no** existan conflictos de merge/rebase pendientes ni estado inconsistente (`git status --porcelain`).
+   - Si hay conflictos o merge/rebase en curso: **detener** e informar al usuario para resolverlos antes de ejecutar skills.
+   - Si hay cambios sin commitear ajenos al flujo: advertir al usuario y pedir confirmación antes de continuar (`🛑`).
+3. Verificar la estructura base esperada (`docs/` si existen entregas previas, o inicializar según `AGENTS.md` §5) y confirmar si el ciclo incluirá Fase 3 (SDD), recordando que en ese punto será obligatorio `openspec/config.yaml`.
+
+---
+
 ## FASE 1 — Ejecutar Skill 1 (product-discovery)
 
 > 🛑 **PROHIBIDO EJECUTAR EN LOTE (BATCH EXECUTION FORBIDDEN):**
@@ -242,3 +253,10 @@ Si el usuario detiene el flujo entre fases:
 Si un paso falla antes del commit:
 - No commitear archivos parciales.
 - Avisar al usuario qué paso falló y desde dónde puede retomar.
+
+### Rollback Post-Commit (cuando una fase posterior revela fallos en Fase 1 o Fase 2)
+Si el commit de Fase 1 o Fase 2 ya se realizó, pero la Fase 3 (SDD) detecta que las historias o tickets están mal diseñados o incompletos:
+1. **Congelar cambios SDD en curso:** No ejecutar `opsx:archive` sobre el cambio afectado; mantener o descartar `openspec/changes/<change-name>/` según indique el usuario.
+2. **Confirmación HITL obligatoria (`🛑`):** Presentar el `<commit-sha>` problemático de Fase 1/2 y proponer una de dos salidas:
+   - **Opción A — Revertir commit:** Tras confirmación explícita, ejecutar `git revert --no-edit <commit-sha>` (preservando el historial sin reescribir ramas compartidas) y re-ejecutar el skill afectado (`_skills/stories-to-tickets/SKILL.md` o `_skills/product-discovery/SKILL.md`).
+   - **Opción B — Commit correctivo hacia adelante:** Corregir los archivos en `docs/prd/` o `docs/backlog/` mediante el skill correspondiente y registrar un nuevo commit correctivo antes de reanudar la Fase 3.
