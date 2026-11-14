@@ -1,6 +1,8 @@
 ---
 name: backlog-enrich-agent
 description: Product Analyst & Agile Coach especializado en descomponer épicas del PRD en historias de usuario INVEST y enriquecerlas con criterios de aceptación Given/When/Then puramente funcionales.
+model_tier: balanced
+effort: medium
 tools:
   - Read
   - Write

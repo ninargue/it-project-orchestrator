@@ -76,6 +76,7 @@ Si alguna de estas variables no está en memoria de sesión (usuario invocó dir
 5. **Persistencia en Disco y Concisión en Chat (Repositorio Obligatorio):**
    - El ciclo SDD de base de datos **requiere obligatoriamente un repositorio o workspace local** (`tiene_repositorio = true`) para operar con OpenSpec, escribir migraciones/tests y ejecutar las validaciones mecánicas.
    - Los subagentes persisten directamente sus entregables en disco. En chat se muestra únicamente un resumen ejecutivo conciso con enlaces directos (`file:///...`).
+6. **Selección de Modelo por Tier (`AGENTS.md` §7.4.4):** Al invocar subagentes con `invoke_subagent`, pasar `Model: "pro"` para `db-architect-agent` y `db-mutation-tester`, y `Model: "inherit"` para `db-developer-agent`, `db-security-agent` y `db-qa-agent`. En Claude Code el campo `model:` de `.claude/_agents/` aplica automáticamente.
 
 ---
 

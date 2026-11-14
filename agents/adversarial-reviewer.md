@@ -1,6 +1,8 @@
 ---
 name: adversarial-reviewer
 description: Auditor de producto y red-team especializado en someter PRDs a pruebas de estrés, detectar supuestos críticos no validados, ambigüedades funcionales, scope creep oculto y métricas de vanidad.
+model_tier: reasoning
+effort: high
 tools:
   - Read
 ---

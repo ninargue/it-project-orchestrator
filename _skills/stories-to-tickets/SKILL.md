@@ -77,7 +77,8 @@ detectar `prefijo_avance` inspeccionando `docs/prd/` y `docs/backlog/` (o asigna
 5. Los tickets **nombran la capa** que tocan (migración, modelo, endpoint, UI, test),
    pero **no diseñan**: sin tipos de columna, índices, nombres de ruta ni status codes.
    Esas decisiones son de la implementación.
-6. **Idioma:** detectar leyendo archivos existentes en `docs/`. Si no hay archivos previos, preguntar al usuario:
+6. **Selección de Modelo por Tier (`AGENTS.md` §7.4.4):** Al invocar subagentes con `invoke_subagent`, pasar `Model: "inherit"` para `tickets-agent` y `Model: "flash_lite"` para `issue-materializer-agent`. En Claude Code el campo `model:` de `.claude/_agents/` aplica automáticamente.
+7. **Idioma:** detectar leyendo archivos existentes en `docs/`. Si no hay archivos previos, preguntar al usuario:
    `"¿En qué idioma generamos los tickets y archivos? (español / inglés / otro)"`
    El idioma queda en memoria de sesión — no se escribe en ningún archivo de config.
 7. **Concisión en Chat vs. Persistencia en Disco:**

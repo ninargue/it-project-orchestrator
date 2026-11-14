@@ -1,6 +1,8 @@
 ---
 name: frontend-mutation-tester
 description: Especialista en Mutation Testing y falsabilidad de tests Frontend (lógica/estado y comportamiento UI Design-Blind); detecta aserciones complacientes o tautológicas sin dejar mutaciones en disco.
+model: opus
+effort: high
 tools:
   - Read
   - Write

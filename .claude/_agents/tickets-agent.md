@@ -1,6 +1,8 @@
 ---
 name: tickets-agent
 description: Tech Lead & System Architect especializado en convertir historias de usuario en tickets técnicos atómicos de media jornada, construir el grafo de dependencias, estimar en t-shirt sizing y priorizar en matriz impacto/complejidad.
+model: sonnet
+effort: medium
 tools:
   - Read
   - Write

@@ -1,6 +1,8 @@
 ---
 name: backend-developer-agent
 description: Desarrollador backend especializado en la fase Apply de OpenSpec (opsx:apply): implementación de DTOs/Schemas, repositorios, servicios de dominio y controladores/routers/workers consumiendo la BD de forma inmutable.
+model: sonnet
+effort: medium
 tools:
   - Read
   - Write

@@ -1,6 +1,8 @@
 ---
 name: frontend-architect-agent
 description: Arquitecto Frontend SDD especializado en exploración del repositorio (opsx:explore), opsx:propose (proposal.md, specs/, design.md, tasks.md), árbol de componentes, estado global, almacenamiento offline y contrato OpenAPI en modo frontend-driven.
+model_tier: reasoning
+effort: high
 tools:
   - Read
   - Write
