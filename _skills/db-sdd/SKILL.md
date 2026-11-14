@@ -76,6 +76,7 @@ Si alguna de estas variables no está en memoria de sesión (usuario invocó dir
 5. **Persistencia en Disco y Concisión en Chat (Repositorio Obligatorio):**
    - El ciclo SDD de base de datos **requiere obligatoriamente un repositorio o workspace local** (`tiene_repositorio = true`) para operar con OpenSpec, escribir migraciones/tests y ejecutar las validaciones mecánicas.
    - Los subagentes persisten directamente sus entregables en disco. En chat se muestra únicamente un resumen ejecutivo conciso con enlaces directos (`file:///...`).
+6. **Memoria Híbrida ante Errores (`AGENTS.md` §7.5.4):** Si existe `openspec/specs/db/known-gotchas.md`, `db-architect-agent` debe leerlo en `opsx:explore`. Ante fallos de migración, RLS o tests, registrar en `openspec/changes/<change-name>/.sdd-state.json` con `scripts/sdd-error-memory.js --action record` (detener y escalar si devuelve `exit 2`).
 
 ---
 
