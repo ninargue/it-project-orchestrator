@@ -1,6 +1,8 @@
 ---
 name: frontend-integrator-agent
 description: Integrador Frontend especializado en conectar componentes aprobados con clientes API tipados desde OpenAPI, estado global, sesión/auth y colas de sincronización offline hasta pasar build de desarrollo y tests en verde.
+model: sonnet
+effort: medium
 tools:
   - Read
   - Write

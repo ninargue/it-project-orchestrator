@@ -54,6 +54,7 @@ briefing generado por el tech lead.
 8. **Concisión en Chat vs. Persistencia en Disco:**
    - **Si `tiene_repositorio = true`:** Todo documento formal se escribe en disco. En el chat SOLO se muestra un resumen ejecutivo conciso con enlaces a los archivos generados. **QUEDA TERMINANTEMENTE PROHIBIDO pegar o repetir el texto completo del documento `.md` en el mensaje de chat**.
    - **Si `tiene_repositorio = false`:** El contenido completo sí se muestra en la conversación, ya que no hay persistencia en disco y es el insumo necesario para que el usuario valide y se generen los PDFs descargables.
+9. **Selección de Modelo por Tier (`AGENTS.md` §7.4.4):** Al invocar subagentes con `invoke_subagent`, pasar el `Model` según su `model_tier`: `adversarial-reviewer` (`pro`), `discovery-agent` y `backlog-enrich-agent` (`inherit`). En Claude Code el campo `model:` de `.claude/_agents/` aplica automáticamente.
 
 ---
 

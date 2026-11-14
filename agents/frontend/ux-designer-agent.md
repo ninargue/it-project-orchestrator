@@ -1,6 +1,8 @@
 ---
 name: ux-designer-agent
 description: Especialista en conceptualización UI híbrida (Text-to-Wireframe y Figma Extractor) previo al ciclo SDD frontend; produce especificaciones visuales estructuradas (ui-spec.json) y diagramas de flujo de pantalla.
+model_tier: balanced
+effort: medium
 tools:
   - Read
   - Write

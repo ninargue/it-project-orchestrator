@@ -1,6 +1,8 @@
 ---
 name: frontend-qa-agent
 description: QA Engineer de Frontend especializado en Frontend-TDD Design-Blind por dominio (Fase A en ROJO), verificación post-auditoría vía opsx:verify (Fase B en VERDE), drift check y triaje de fallos.
+model: sonnet
+effort: high
 tools:
   - Read
   - Write

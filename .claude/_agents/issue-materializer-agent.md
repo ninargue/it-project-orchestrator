@@ -1,6 +1,8 @@
 ---
 name: issue-materializer-agent
 description: DevOps & Issue Specialist encargado de materializar el backlog estructurado en herramientas externas de seguimiento (GitHub Issues o Linear) de forma estrictamente secuencial y respetando la jerarquía padre-hijo.
+model: haiku
+effort: low
 tools:
   - Read
   - Bash

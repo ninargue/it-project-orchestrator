@@ -1,6 +1,8 @@
 ---
 name: discovery-agent
 description: Product partner escéptico especializado en validar ideas, reducir incertidumbre funcional y proponer el alcance acotado de una iniciativa (MVP, nueva feature o mejora).
+model_tier: balanced
+effort: medium
 tools:
   - Read
 ---

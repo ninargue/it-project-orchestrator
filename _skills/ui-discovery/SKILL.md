@@ -40,6 +40,7 @@ Skill previo y opcional para transformar requerimientos o diseños de Figma en u
 1. **Límite Estricto de Fin de Turno:** Toda pausa `**🛑 FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:**` detiene inmediatamente el turno.
 2. **Gobernanza de Git:** Prohibido ejecutar commits dentro de este skill o `ux-designer-agent`.
 3. **Neutralidad Visual:** `ui-spec.json` describe roles semánticos, estados (`loading`, `empty`, `error`, `offline`, `ready`) y acciones requeridas, sin acoplarse a clases CSS.
+4. **Selección de Modelo por Tier (`AGENTS.md` §7.4.4):** Al invocar `ux-designer-agent` con `invoke_subagent`, pasar `Model: "inherit"`. En Claude Code el campo `model: sonnet` de `.claude/_agents/frontend/ux-designer-agent.md` aplica automáticamente.
 
 ---
 
