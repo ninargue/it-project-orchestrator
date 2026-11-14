@@ -56,7 +56,7 @@ Según la elección, invocar el recurso correspondiente antes de continuar:
 | **Skills** | `_skills/<nombre>/SKILL.md` | Runbooks y procedimientos operativos paso a paso con interacción humana |
 | **Orquestador** | `orchestrator/ORCHESTRATOR.md` | Secuenciación de flujos completos punta a punta, dispatching de tickets y gobernanza Git |
 | **Especificaciones SDD** | `openspec/` y `sdd/` | Framework OpenSpec, planes y especificaciones técnicas de desarrollo guiado |
-| **Scripts Deterministas** | `scripts/` | Validaciones mecánicas automatizadas (`validate-db-migrations.js`, `validate-backend.js`, `validate-frontend.js`) |
+| **Scripts Deterministas** | `scripts/` | Validaciones mecánicas automatizadas (`validate-db-migrations.js`, `validate-backend.js`, `validate-frontend.js`, `sdd-error-memory.js`) |
 | **Templates** | `templates/` y `docs/` | Plantillas oficiales para issues (GitHub/Linear) y documentos (briefings, tool-config) |
 
 ---
@@ -241,6 +241,7 @@ Cualquier agente o desarrollador que cree o modifique un Skill (`_skills/`), un 
    `**🛑 FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:**` seguido de las instrucciones explícitas de detención.
 2. **Un Subagente por Turno Interactivo:** Prohibido encadenar dos subagentes en un mismo turno si el output del primero requiere validación humana o sirve de especificación (`spec.md` / `plan.md` / `PRD`) para el segundo.
 3. **Trazabilidad SDD 1:1 (Anti-Invención):** En flujos de desarrollo o base de datos (SDD), ningún agente de implementación puede agregar tablas, columnas, endpoints o lógica que no estén declarados en el `spec.md` aprobado. Cualquier omisión detectada durante la implementación o QA obliga a reportar el *drift* y actualizar el `spec.md` antes de regenerar código.
+4. **Memoria Híbrida ante Errores (`.sdd-state.json` + `known-gotchas.md`):** Ante fallos de Gates, tests o QA en un ciclo SDD, registrar el error con `node "<plugin-root>/scripts/sdd-error-memory.js" --action record`. Si la misma `error_signature` se repite 2 veces (`exit 2`), detener reintentos automáticos y escalar al usuario. Al archivar con `opsx:archive` / `opsx:bulk-archive`, si hubo errores estructurales, proponer (previa confirmación HITL) promover una regla breve a `openspec/specs/<capa>/known-gotchas.md` vía `--action promote`.
 
 ### 7.6. Scripts Deterministas y Validadores (Cross-Platform Node.js)
 1. **Runtime Universal en Node.js:** Todo script provisto en `scripts/` debe escribirse en Node.js (`.js`) usando módulos estándar (`fs`, `path`). Queda terminantemente prohibido utilizar scripts dependientes de sistemas operativos específicos (como PowerShell `.ps1` o scripts con sintaxis no portable de Bash).

@@ -281,6 +281,16 @@ Si un paso falla antes del commit:
 - No commitear archivos parciales.
 - Avisar al usuario qué paso falló y desde dónde puede retomar.
 
+### Memoria Híbrida ante Errores (`.sdd-state.json` + `known-gotchas.md`)
+Para evitar loops de reintentos y preservar aprendizajes entre tickets sin inflar el contexto:
+1. **Registro efímero por cambio (`--action record`):** Cuando un Gate, test o verificación falle en Fase 3, registrar el fallo en `openspec/changes/<change-name>/.sdd-state.json` ejecutando:
+   ```bash
+   node "<plugin-root>/scripts/sdd-error-memory.js" --action record --change-dir "<change-dir>" --layer "<db|backend|frontend>" --step "<paso>" --message "<error>" --avoid "<restriccion>"
+   ```
+   - Si el script devuelve **`exit 2` (`loop_detected: true`)**, el orquestador **detiene inmediatamente los reintentos automáticos** y escala al usuario con el resumen (`--action summary`).
+   - Al re-invocar un subagente tras un fallo no repetido, adjuntar únicamente la salida compacta de `--action summary` (sin volcar logs completos).
+2. **Promoción selectiva al archivar (`--action promote`):** Antes o inmediatamente después de `opsx:archive` / `opsx:bulk-archive`, si `.sdd-state.json` registró fallos no triviales del repositorio, preguntar al usuario (`⏸️`) si desea promover una regla breve (1 línea) a `openspec/specs/<capa>/known-gotchas.md` mediante `--action promote`.
+
 ### Rollback Post-Commit (cuando una fase posterior revela fallos en Fase 1 o Fase 2)
 Si el commit de Fase 1 o Fase 2 ya se realizó, pero la Fase 3 (SDD) detecta que las historias o tickets están mal diseñados o incompletos:
 1. **Congelar cambios SDD en curso:** No ejecutar `opsx:archive` sobre el cambio afectado; mantener o descartar `openspec/changes/<change-name>/` según indique el usuario.
