@@ -236,7 +236,7 @@ Cualquier agente o desarrollador que cree o modifique un Skill (`_skills/`), un 
    - Un archivo `agents/<nombre>.md` no debe exceder ~150 líneas (mantener instrucciones densas, deterministas y sin relleno).
    - Un archivo `_skills/<nombre>/SKILL.md` debe contener entre 3 y 8 pasos interactivos como máximo. Si un flujo supera los 8 pasos, debe particionarse en 2 Skills secuenciales conectados por `ORCHESTRATOR.md` con un commit intermedio.
 4. **Asignación de Modelos y Esfuerzo por Tier (`model_tier` y `effort`):**
-   - Cada subagente canónico declara `model_tier` (`reasoning` | `balanced` | `fast`) y `effort` (`high` | `medium` | `low`) en su frontmatter; su espejo en `.claude/_agents/` fija `model` y `effort` para Claude Code, mientras los skills pasan el parámetro `Model` equivalente al invocar en Antigravity:
+   - Cada subagente canónico declara `model_tier` (`reasoning` | `balanced` | `fast`) y `effort` (`high` | `medium` | `low`) en su frontmatter; su espejo en `.claude/_agents/` fija `model` y `effort` para Claude Code, mientras los skills pasan el parámetro `Model` equivalente al invocar en Antigravity (`invoke_subagent` no expone parámetro `effort`):
      - `reasoning` → Claude Code `opus` (`effort: high`) | Antigravity `pro`: `adversarial-reviewer`, `db-architect-agent`, `api-architect-agent`, `frontend-architect-agent`, `db-mutation-tester`, `backend-mutation-tester`, `frontend-mutation-tester`.
      - `balanced` → Claude Code `sonnet` | Antigravity `inherit`:
        - `effort: high` (QA, seguridad y auditoría): `db-qa-agent`, `backend-qa-agent`, `frontend-qa-agent`, `db-security-agent`, `frontend-auditor-agent`.
@@ -256,7 +256,7 @@ Cualquier agente o desarrollador que cree o modifique un Skill (`_skills/`), un 
 
 ### 7.7. Checklist de No-Regresión al Agregar un Nuevo Componente
 Antes de dar por terminado un nuevo Skill o Subagente, verificar:
-- [ ] ¿Se creó `agents/<nombre>.md` (con `model_tier`) y su puntero exacto en `.claude/_agents/<nombre>.md` (con `model`)?
+- [ ] ¿Se creó `agents/<nombre>.md` (con `model_tier` y `effort`) y su puntero exacto en `.claude/_agents/<nombre>.md` (con `model` y `effort`)?
 - [ ] ¿El frontmatter del `SKILL.md` declara `name`, `version`, `description`, `trigger`, `tools_required`, `subagents`, `inputs`, `outputs` y `commits`?
 - [ ] ¿El handoff hacia el subagente está libre de sesgos del orquestador (solo contexto del usuario + archivos en disco)?
 - [ ] ¿Respeta el modo dual (`tiene_repositorio = true` escribe a disco y resume en chat vs. `tiene_repositorio = false` vuelca en chat)?

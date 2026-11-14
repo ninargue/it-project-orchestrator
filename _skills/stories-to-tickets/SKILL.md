@@ -81,7 +81,7 @@ detectar `prefijo_avance` inspeccionando `docs/prd/` y `docs/backlog/` (o asigna
 7. **Idioma:** detectar leyendo archivos existentes en `docs/`. Si no hay archivos previos, preguntar al usuario:
    `"¿En qué idioma generamos los tickets y archivos? (español / inglés / otro)"`
    El idioma queda en memoria de sesión — no se escribe en ningún archivo de config.
-7. **Concisión en Chat vs. Persistencia en Disco:**
+8. **Concisión en Chat vs. Persistencia en Disco:**
    - **Si `tiene_repositorio = true`:** Los tickets y el backlog priorizado se escriben directamente a disco. En el chat solo se muestran resúmenes ejecutivos (tablas de tickets, diagramas y listas de archivos con enlaces). **QUEDA TERMINANTEMENTE PROHIBIDO volcar el contenido íntegro de todos los tickets generados en el chat**.
    - **Si `tiene_repositorio = false`:** Mostrar en conversación los bloques markdown completos para que el usuario los guarde cuando cree su repositorio.
 
