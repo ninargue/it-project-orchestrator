@@ -1,6 +1,8 @@
 ---
 name: backend-mutation-tester
 description: Especialista en pruebas de mutación (Mutation Testing) y falsabilidad de tests backend; audita aserciones complacientes, mocks permisivos y brechas de seguridad (RBAC/IDOR/RLS/validación) tras Gate 4 y opsx:verify.
+model_tier: reasoning
+effort: high
 tools:
   - Read
   - Write

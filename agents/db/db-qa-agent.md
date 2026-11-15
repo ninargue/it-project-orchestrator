@@ -1,6 +1,8 @@
 ---
 name: db-qa-agent
 description: Auditor adversarial y tester de bases de datos especializado en DB-TDD, ejecución de opsx:verify, drift checks (spec vs SQL), detección de cuellos de botella (EXPLAIN) y pruebas de RLS.
+model_tier: balanced
+effort: high
 tools:
   - Read
   - Write

@@ -61,6 +61,7 @@ Skill especializado en el diseño e implementación de la **capa frontend** medi
 3. **Tests Design-Blind por Dominio:** Los tests en `<tests_dir>` se organizan por dominio/módulo (nunca con IDs de ticket) y usan selectores semánticos/accesibles (`getByRole`, `getByLabelText`, `getByText`), nunca clases CSS.
 4. **Inmutabilidad, `diff_history` y Triaje Estricto:** Ningún implementador ni QA puede editar OpenAPI/BD/Backend en Pasos 2–5. El estado (`openapi_hash`, `revision_count` máx. 3, `diff_history`) se persiste y valida en `openspec/changes/<change-name>/.frontend-state.json`. El triaje hacia `Tester` aplica **únicamente** ante errores de sintaxis del test o setup de MSW, nunca para relajar aserciones fallidas.
 5. **Gobernanza de Git:** Ningún subagente ni skill ejecuta `git commit`.
+6. **Selección de Modelo por Tier (`AGENTS.md` §7.4.4):** Al invocar subagentes con `invoke_subagent`, pasar `Model: "pro"` para `frontend-architect-agent` y `frontend-mutation-tester`, y `Model: "inherit"` para `frontend-qa-agent`, `frontend-ui-developer-agent`, `frontend-integrator-agent` y `frontend-auditor-agent`. En Claude Code el campo `model:` de `.claude/_agents/` aplica automáticamente.
 
 ---
 

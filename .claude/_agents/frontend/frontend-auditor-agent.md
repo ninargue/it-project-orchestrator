@@ -1,6 +1,8 @@
 ---
 name: frontend-auditor-agent
 description: Auditor de Rendimiento y PWA Frontend (Fase Refactor) encargado de lazy loading, Service Workers, caché offline y cumplimiento del presupuesto de bundle en build de producción sin romper tests.
+model: sonnet
+effort: high
 tools:
   - Read
   - Write

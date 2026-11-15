@@ -207,7 +207,7 @@ Cualquier agente o desarrollador que cree o modifique un Skill (`_skills/`), un 
 
 ### 7.1. SSOT y Patrón Puntero (Anti-Prompt Drift)
 1. **Definición Canónica Única:** Todo subagente se define única y exclusivamente en `agents/<nombre>.md` o en subcarpetas especializadas por capa (`agents/db/<nombre>.md`, `agents/backend/`, etc.) con 3 secciones obligatorias: `1. Identidad y Misión`, `2. Invariantes y Guardrails Estrictos` y `3. Contratos de Ejecución (Inputs, Lógica, Formato de salida)`.
-2. **Espejo Puntero en `.claude/_agents/`:** Por cada archivo en `agents/`, debe existir `.claude/_agents/<nombre>.md` (o subcarpeta homóloga `.claude/_agents/db/<nombre>.md`) que contenga **únicamente** el frontmatter YAML (`name`, `description`, `tools`) y la instrucción de una línea: `Lee y adopta estrictamente la identidad, rol, guardrails y contratos de ejecución definidos en el archivo canónico del agente: agents/<capa>/<nombre>.md`. Prohibido duplicar el prompt.
+2. **Espejo Puntero en `.claude/_agents/`:** Por cada archivo en `agents/`, debe existir `.claude/_agents/<nombre>.md` (o subcarpeta homóloga `.claude/_agents/db/<nombre>.md`) que contenga **únicamente** el frontmatter YAML (`name`, `description`, `model`, `effort`, `tools`) y la instrucción de una línea: `Lee y adopta estrictamente la identidad, rol, guardrails y contratos de ejecución definidos en el archivo canónico del agente: agents/<capa>/<nombre>.md`. Prohibido duplicar el prompt. Los campos `model` (`opus` | `sonnet` | `haiku`) y `effort` (`high` | `medium` | `low`) deben corresponder al agente canónico según §7.4.4.
 3. **Desacoplamiento Skill ↔ Agente:** Los archivos `_skills/<skill>/SKILL.md` NO deben contener el prompt del sistema del subagente; solo especifican en qué paso se invoca, qué archivos/variables recibe como input y cómo se persiste o valida su salida.
 
 ### 7.2. Matriz de Autonomía y Mínimo Privilegio (Permisos y Herramientas)
@@ -235,6 +235,13 @@ Cualquier agente o desarrollador que cree o modifique un Skill (`_skills/`), un 
 3. **Límite de Granularidad:**
    - Un archivo `agents/<nombre>.md` no debe exceder ~150 líneas (mantener instrucciones densas, deterministas y sin relleno).
    - Un archivo `_skills/<nombre>/SKILL.md` debe contener entre 3 y 8 pasos interactivos como máximo. Si un flujo supera los 8 pasos, debe particionarse en 2 Skills secuenciales conectados por `ORCHESTRATOR.md` con un commit intermedio.
+4. **Asignación de Modelos y Esfuerzo por Tier (`model_tier` y `effort`):**
+   - Cada subagente canónico declara `model_tier` (`reasoning` | `balanced` | `fast`) y `effort` (`high` | `medium` | `low`) en su frontmatter; su espejo en `.claude/_agents/` fija `model` y `effort` para Claude Code, mientras los skills pasan el parámetro `Model` equivalente al invocar en Antigravity (`invoke_subagent` no expone parámetro `effort`):
+     - `reasoning` → Claude Code `opus` (`effort: high`) | Antigravity `pro`: `adversarial-reviewer`, `db-architect-agent`, `api-architect-agent`, `frontend-architect-agent`, `db-mutation-tester`, `backend-mutation-tester`, `frontend-mutation-tester`.
+     - `balanced` → Claude Code `sonnet` | Antigravity `inherit`:
+       - `effort: high` (QA, seguridad y auditoría): `db-qa-agent`, `backend-qa-agent`, `frontend-qa-agent`, `db-security-agent`, `frontend-auditor-agent`.
+       - `effort: medium` (implementación, discovery y backlog): `discovery-agent`, `backlog-enrich-agent`, `tickets-agent`, `db-developer-agent`, `backend-developer-agent`, `ux-designer-agent`, `frontend-ui-developer-agent`, `frontend-integrator-agent`.
+     - `fast` → Claude Code `haiku` (`effort: low`) | Antigravity `flash_lite`: `issue-materializer-agent`.
 
 ### 7.5. Protocolo HITL (Human-in-the-Loop) e Idempotencia
 1. **Plantilla Obligatoria de Fin de Turno:** Todo paso interactivo dentro de un `SKILL.md` debe cerrar con el bloque literal:
@@ -249,7 +256,7 @@ Cualquier agente o desarrollador que cree o modifique un Skill (`_skills/`), un 
 
 ### 7.7. Checklist de No-Regresión al Agregar un Nuevo Componente
 Antes de dar por terminado un nuevo Skill o Subagente, verificar:
-- [ ] ¿Se creó `agents/<nombre>.md` y su puntero exacto en `.claude/_agents/<nombre>.md`?
+- [ ] ¿Se creó `agents/<nombre>.md` (con `model_tier` y `effort`) y su puntero exacto en `.claude/_agents/<nombre>.md` (con `model` y `effort`)?
 - [ ] ¿El frontmatter del `SKILL.md` declara `name`, `version`, `description`, `trigger`, `tools_required`, `subagents`, `inputs`, `outputs` y `commits`?
 - [ ] ¿El handoff hacia el subagente está libre de sesgos del orquestador (solo contexto del usuario + archivos en disco)?
 - [ ] ¿Respeta el modo dual (`tiene_repositorio = true` escribe a disco y resume en chat vs. `tiene_repositorio = false` vuelca en chat)?
