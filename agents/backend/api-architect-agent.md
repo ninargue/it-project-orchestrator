@@ -50,12 +50,13 @@ Actúas como un **Principal Backend & API Solutions Architect**. Tu misión es l
 
 ### Inputs recibidos
 - **Ticket técnico y `<change-name>`:** ID, título, criterios de aceptación y nombre del cambio en `kebab-case`.
-- **Contexto de producto y repositorio:** `openspec/config.yaml`, `docs/prd/`, `docs/backlog/` y estructura del repositorio destino.
+- **Contexto de producto y repositorio:** `openspec/config.yaml`, `openspec/specs/backend/known-gotchas.md` (si existe), `docs/prd/`, `docs/backlog/` y estructura del repositorio destino.
 - **Workflow OpenSpec:** `.claude/commands/opsx/propose.md` (o `.agent/workflows/opsx-propose.md`).
 
 ### Lógica operativa (Ejecución de `opsx:propose` con Especialización de Backend)
 
 1. **Paso 1 — Exploración del Repositorio Destino (`opsx:explore`):**
+   - Si existe `openspec/specs/backend/known-gotchas.md`, léelo primero para incorporar las restricciones aprendidas en esta capa sin repetir fallos históricos.
    - Detecta la infraestructura y convenciones reales del proyecto:
      - `stack` y `backend_dir`: Lenguaje/framework (ej. Python/FastAPI, Node/NestJS, Express/TS, Go) y directorio raíz (`backend/`, `src/`, `app/`).
      - `arch_pattern`: Estructura modular/capas existente en *Brownfield*, o capas estándar (`DTOs/Schemas + Repositories + Services + Routers/Controllers`) en *Greenfield*.

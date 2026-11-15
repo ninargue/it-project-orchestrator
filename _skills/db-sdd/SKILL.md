@@ -17,6 +17,7 @@ subagents:
 inputs:
   - Ticket técnico de base de datos (US-XX-TN o issue de GitHub)
   - openspec/config.yaml (configuración SDD del proyecto)
+  - openspec/specs/db/known-gotchas.md (opcional, aprendizajes previos de la capa db)
   - .claude/commands/opsx/*.md (o .agent/workflows/opsx-*.md)
   - docs/prd/*.md (opcional, contexto de dominio existente)
   - docs/backlog/**/us-*.md (opcional, historias asociadas)
@@ -25,6 +26,7 @@ outputs:
   - openspec/changes/<change-name>/specs/<capability>/spec.md
   - openspec/changes/<change-name>/design.md
   - openspec/changes/<change-name>/tasks.md
+  - openspec/changes/<change-name>/.sdd-state.json
   - openspec/changes/<change-name>/verification-report.md
   - openspec/changes/<change-name>/mutation-report.md (si hay constraints o RLS a falsar)
   - <schemas_dir>/erd.md (actualizado si hay tablas nuevas o FKs alteradas)
@@ -248,7 +250,7 @@ Si alguna de estas variables no está en memoria de sesión (usuario invocó dir
 2. **Ejecución de Validadores Estándar del Proyecto (si existen):**
    - Ejecutar `validation_cmd` (según `design.md`) si fue detectado.
 3. **Gate de Validación Mecánica:**
-   - Si el validador mecánico devuelve `exit 1` o falla `validation_cmd`, **NO se invoca a `db-qa-agent`**. Se informa el fallo en chat y se re-despacha al Paso 3 (DDL) o Paso 4 (RLS) para corregir el SQL.
+   - Si el validador mecánico devuelve `exit 1` o falla `validation_cmd`, **NO se invoca a `db-qa-agent`**. Registrar el fallo con `node "<plugin-root>/scripts/sdd-error-memory.js" --action record --change-dir "openspec/changes/<change-name>" --layer db --step "Paso 5" --message "<error>" --avoid "<restriccion>"`. Si devuelve `exit 2` (`loop_detected: true`), detener reintentos y escalar al usuario; de lo contrario, informar el fallo y re-despachar al Paso 3 (DDL) o Paso 4 (RLS) adjuntando el resumen compacto de `--action summary`.
 4. **Verificación en VERDE y Ejecución de `opsx:verify` con `db-qa-agent` (un solo subagente en este turno, §7.5.2):**
    - Si la validación mecánica pasó en verde, invocar únicamente a `db-qa-agent` (Fase B) con la referencia al workflow **[`opsx:verify`](.claude/commands/opsx/verify.md)**:
      - Ejecuta `test_cmd` mediante `Bash` y comprueba que **todos los tests del dominio en `<tests_dir>` pasen en VERDE**.

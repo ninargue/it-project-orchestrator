@@ -19,6 +19,7 @@ subagents:
 inputs:
   - Ticket técnico de frontend (US-XX-TN o issue de GitHub)
   - openspec/config.yaml (configuración SDD del proyecto)
+  - openspec/specs/frontend/known-gotchas.md (opcional, aprendizajes previos de la capa frontend)
   - Contrato OpenAPI (<openapi_path>, obligatorio en contract-first)
   - docs/ui/*ui-spec*.json (opcional, generado por _skills/ui-discovery/)
   - .claude/commands/opsx/*.md (o .agent/workflows/opsx-*.md)
@@ -28,6 +29,7 @@ outputs:
   - openspec/changes/<change-name>/design.md
   - openspec/changes/<change-name>/tasks.md
   - openspec/changes/<change-name>/.frontend-state.json
+  - openspec/changes/<change-name>/.sdd-state.json
   - openspec/changes/<change-name>/verification-report.md
   - openspec/changes/<change-name>/mutation-report.md (si aplica lógica/interacción)
   - <tests_dir>/<modulo_o_entidad>... (tests organizados por dominio/módulo)
@@ -61,7 +63,7 @@ Skill especializado en el diseño e implementación de la **capa frontend** medi
 3. **Tests Design-Blind por Dominio:** Los tests en `<tests_dir>` se organizan por dominio/módulo (nunca con IDs de ticket) y usan selectores semánticos/accesibles (`getByRole`, `getByLabelText`, `getByText`), nunca clases CSS.
 4. **Inmutabilidad, `diff_history` y Triaje Estricto:** Ningún implementador ni QA puede editar OpenAPI/BD/Backend en Pasos 2–5. El estado (`openapi_hash`, `revision_count` máx. 3, `diff_history`) se persiste y valida en `openspec/changes/<change-name>/.frontend-state.json`. El triaje hacia `Tester` aplica **únicamente** ante errores de sintaxis del test o setup de MSW, nunca para relajar aserciones fallidas.
 5. **Gobernanza de Git:** Ningún subagente ni skill ejecuta `git commit`.
-6. **Memoria Híbrida ante Errores (`AGENTS.md` §7.5.4):** Si existe `openspec/specs/frontend/known-gotchas.md`, `frontend-architect-agent` debe leerlo en `opsx:explore`. Ante fallos de Gates 1–4 o QA, registrar en `openspec/changes/<change-name>/.sdd-state.json` con `scripts/sdd-error-memory.js --action record` (detener y escalar si devuelve `exit 2`).
+6. **Memoria Híbrida ante Errores (`AGENTS.md` §7.5.4) y Coexistencia con `.frontend-state.json`:** Si existe `openspec/specs/frontend/known-gotchas.md`, `frontend-architect-agent` debe leerlo en `opsx:explore`. Mientras `.frontend-state.json` gobierna hashes de inmutabilidad (`openapi_hash`, `tests_hash`) y el tope global de revisiones por nodo (`<= 3`), `.sdd-state.json` detecta loops de idéntica `error_signature` consecutiva (`>= 2`, `exit 2`) vía `scripts/sdd-error-memory.js --action record` y provee el resumen `--action summary` para reintentos.
 
 ---
 

@@ -35,11 +35,11 @@ Actúas como un **Principal Frontend Architect**. Tu misión es traducir el tick
 
 ### Inputs recibidos
 - Identificador `<change-name>`, ticket técnico y `contract_mode` (`contract-first` | `frontend-driven`).
-- `<openapi_path>` (obligatorio en `contract-first`), `docs/ui/*ui-spec*.json` (opcional) y `openspec/config.yaml`.
+- `<openapi_path>` (obligatorio en `contract-first`), `openspec/specs/frontend/known-gotchas.md` (si existe), `docs/ui/*ui-spec*.json` (opcional) y `openspec/config.yaml`.
 - Workflow oficial: `.claude/commands/opsx/propose.md` (o `.agent/workflows/opsx-propose.md`).
 
 ### Lógica operativa
-1. Inspecciona `<frontend_dir>` y `package.json` para registrar las convenciones y comandos reales en `design.md`.
+1. Si existe `openspec/specs/frontend/known-gotchas.md`, léelo primero en `opsx:explore` para incorporar las restricciones aprendidas de esta capa. Inspecciona `<frontend_dir>` y `package.json` para registrar las convenciones y comandos reales en `design.md`.
 2. Ejecuta `openspec new change "<change-name>"`, consulta `openspec status --change "<change-name>" --json` y `openspec instructions <artifact-id> --change "<change-name>" --json`.
 3. Genera:
    - `proposal.md`: Why, What, Non-goals e impacto offline/PWA.

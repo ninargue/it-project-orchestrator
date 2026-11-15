@@ -289,7 +289,7 @@ Para evitar loops de reintentos y preservar aprendizajes entre tickets sin infla
    ```
    - Si el script devuelve **`exit 2` (`loop_detected: true`)**, el orquestador **detiene inmediatamente los reintentos automáticos** y escala al usuario con el resumen (`--action summary`).
    - Al re-invocar un subagente tras un fallo no repetido, adjuntar únicamente la salida compacta de `--action summary` (sin volcar logs completos).
-2. **Promoción selectiva al archivar (`--action promote`):** Antes o inmediatamente después de `opsx:archive` / `opsx:bulk-archive`, si `.sdd-state.json` registró fallos no triviales del repositorio, preguntar al usuario (`⏸️`) si desea promover una regla breve (1 línea) a `openspec/specs/<capa>/known-gotchas.md` mediante `--action promote`.
+2. **Promoción selectiva antes de archivar (`--action promote`):** En la pausa `⏸️` de confirmación de cierre (Casos A, B, C o Bulk Archive), si `openspec/changes/<change-name>/.sdd-state.json` registró fallos no triviales del repositorio, preguntar en esa misma pausa si desea promover una regla breve (1 línea, máx. 240 caracteres) a `openspec/specs/<capa>/known-gotchas.md`. Si el usuario lo aprueba, ejecutar `--action promote` **antes** de `opsx:archive` / `opsx:bulk-archive` (mientras `.sdd-state.json` aún reside en `openspec/changes/<change-name>/`) para que `known-gotchas.md` y el cambio archivado entren juntos en el mismo `git commit` atómico.
 
 ### Rollback Post-Commit (cuando una fase posterior revela fallos en Fase 1 o Fase 2)
 Si el commit de Fase 1 o Fase 2 ya se realizó, pero la Fase 3 (SDD) detecta que las historias o tickets están mal diseñados o incompletos:

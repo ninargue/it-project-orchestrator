@@ -17,6 +17,7 @@ subagents:
 inputs:
   - Ticket técnico de backend (US-XX-TN o issue de GitHub)
   - openspec/config.yaml (configuración SDD del proyecto)
+  - openspec/specs/backend/known-gotchas.md (opcional, aprendizajes previos de la capa backend)
   - .claude/commands/opsx/*.md (o .agent/workflows/opsx-*.md)
   - docs/prd/*.md y docs/backlog/**/us-*.md (opcional, contexto funcional)
   - Artefactos de Base de Datos (opcional según db_mode: migraciones, esquemas y specs en openspec/specs/)
@@ -25,6 +26,7 @@ outputs:
   - openspec/changes/<change-name>/specs/<capability>/spec.md
   - openspec/changes/<change-name>/design.md
   - openspec/changes/<change-name>/tasks.md
+  - openspec/changes/<change-name>/.sdd-state.json
   - openspec/changes/<change-name>/verification-report.md
   - openspec/changes/<change-name>/mutation-report.md (si incluye lógica de negocio, validaciones o autorización)
   - <openapi_path> (opcional, solo cuando contract_style = 'openapi-first')
@@ -208,7 +210,7 @@ Si alguna de estas variables no está en memoria de sesión (usuario invocó dir
      node "<plugin-root>/scripts/validate-backend.js" --gate 3 --repo-root "<repo-destino>" --backend-dir "<backend_dir>" --db-mode "<db_mode>" --db-dirs "<db_dirs_csv>" --rls-mode "<rls_mode>"
      ```
    - Ejecutar los comandos nativos de linter y typecheck del proyecto (`<lint_cmd>` y `<typecheck_cmd>`).
-   - Si el Gate 3 o los linters fallan (`exit != 0`): si hubo modificación prohibida en `<db_dirs>`, revertirla inmediatamente; re-despachar a `backend-developer-agent` con el log de errores hasta que el Gate 3 pase limpiamente.
+   - Si el Gate 3 o los linters fallan (`exit != 0`): si hubo modificación prohibida en `<db_dirs>`, revertirla inmediatamente; registrar el fallo con `node "<plugin-root>/scripts/sdd-error-memory.js" --action record --change-dir "openspec/changes/<change-name>" --layer backend --step "Gate 3" --message "<error>" --avoid "<restriccion>"`. Si devuelve `exit 2` (`loop_detected: true`), detener reintentos automáticos y escalar al usuario; de lo contrario, re-despachar a `backend-developer-agent` con el resumen compacto de `--action summary` hasta que el Gate 3 pase limpiamente.
 4. Presentar resumen ejecutivo en chat:
 
 ```text

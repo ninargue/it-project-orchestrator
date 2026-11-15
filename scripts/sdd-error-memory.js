@@ -14,11 +14,20 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 
+const VALID_LAYERS = new Set(['db', 'backend', 'frontend']);
+const MAX_RULE_LENGTH = 240;
+const SOFT_MAX_RULES = 25;
+
+function fail(msg, code = 1) {
+  console.error(`ERROR: ${msg}`);
+  process.exit(code);
+}
+
 const args = process.argv.slice(2);
 const opts = {
   action: '',
   changeDir: '',
-  specsDir: 'openspec/specs',
+  specsDir: path.join('openspec', 'specs'),
   layer: '',
   step: '',
   message: '',
@@ -30,41 +39,56 @@ const opts = {
   maxRepeat: 2
 };
 
-for (let i = 0; i < args.length; i++) {
-  const a = args[i];
-  if (a === '--action') opts.action = (args[++i] || '').toLowerCase();
-  else if (a === '--change-dir') opts.changeDir = args[++i] || '';
-  else if (a === '--specs-dir') opts.specsDir = args[++i] || 'openspec/specs';
-  else if (a === '--layer') opts.layer = (args[++i] || '').toLowerCase();
-  else if (a === '--step') opts.step = args[++i] || '';
-  else if (a === '--message') opts.message = args[++i] || '';
-  else if (a === '--cause') opts.cause = args[++i] || '';
-  else if (a === '--avoid') opts.avoid = args[++i] || '';
-  else if (a === '--files') opts.files = args[++i] || '';
-  else if (a === '--rule') opts.rule = args[++i] || '';
-  else if (a === '--context') opts.context = args[++i] || '';
-  else if (a === '--max-repeat') opts.maxRepeat = Math.max(2, Number(args[++i] || 2) || 2);
+function nextArgValue(flag, index) {
+  const val = args[index + 1];
+  if (val === undefined || val.startsWith('--')) {
+    fail(`Falta el valor requerido para ${flag}`);
+  }
+  return val;
 }
 
-function fail(msg, code = 1) {
-  console.error(`ERROR: ${msg}`);
-  process.exit(code);
+for (let i = 0; i < args.length; i++) {
+  const a = args[i];
+  if (a === '--action') { opts.action = nextArgValue(a, i).toLowerCase(); i++; }
+  else if (a === '--change-dir') { opts.changeDir = nextArgValue(a, i); i++; }
+  else if (a === '--specs-dir') { opts.specsDir = nextArgValue(a, i); i++; }
+  else if (a === '--layer') { opts.layer = nextArgValue(a, i).toLowerCase(); i++; }
+  else if (a === '--step') { opts.step = nextArgValue(a, i); i++; }
+  else if (a === '--message') { opts.message = nextArgValue(a, i); i++; }
+  else if (a === '--cause') { opts.cause = nextArgValue(a, i); i++; }
+  else if (a === '--avoid') { opts.avoid = nextArgValue(a, i); i++; }
+  else if (a === '--files') { opts.files = nextArgValue(a, i); i++; }
+  else if (a === '--rule') { opts.rule = nextArgValue(a, i); i++; }
+  else if (a === '--context') { opts.context = nextArgValue(a, i); i++; }
+  else if (a === '--max-repeat') {
+    const raw = Number(nextArgValue(a, i));
+    i++;
+    opts.maxRepeat = Math.max(2, Number.isFinite(raw) ? raw : 2);
+  }
+}
+
+if (opts.layer && !VALID_LAYERS.has(opts.layer)) {
+  fail(`Capa inválida '${opts.layer}'. Valores permitidos: db, backend, frontend`);
 }
 
 function normalizeMessage(msg) {
   return String(msg || '')
     .toLowerCase()
     .replace(/\d{4}-\d{2}-\d{2}[t ]\d{2}:\d{2}:\d{2}(\.\d+)?z?/g, '<ts>')
-    .replace(/[a-z]:\\[^\s:'"]+/gi, '<path>')
-    .replace(/\/[^\s:'"]+/g, '<path>')
-    .replace(/:\d+(:\d+)?/g, ':<line>')
+    .replace(/\bfile:\/\/\/?/g, '')
+    .replace(/\(\d+,\s*\d+\)/g, ':<line>')
+    .replace(/:(\d+)(?::\d+)?\b/g, ':<line>')
+    .replace(/\\\\\?\\[a-z]:[\\/][^\s:'"()<>]+/gi, '<path>')
+    .replace(/\\\\[^\s:'"()<>]+/g, '<path>')
+    .replace(/[a-z]:[\\/][^\s:'"()<>]+/gi, '<path>')
+    .replace(/(?:\/|[a-z0-9_.-]+[\\/])[^\s:'"()<>]+/gi, '<path>')
     .replace(/\b\d+\b/g, '<n>')
     .replace(/\s+/g, ' ')
     .trim();
 }
 
 function computeSignature(layer, step, message) {
-  const canonical = `${layer}|${step}|${normalizeMessage(message)}`;
+  const canonical = `${layer}|${step.trim().toLowerCase()}|${normalizeMessage(message)}`;
   return crypto.createHash('sha256').update(canonical).digest('hex').slice(0, 12);
 }
 
@@ -73,11 +97,20 @@ function getStatePath(changeDir) {
   return path.resolve(changeDir, '.sdd-state.json');
 }
 
+function readStateSafe(statePath) {
+  try {
+    return JSON.parse(fs.readFileSync(statePath, 'utf8'));
+  } catch (err) {
+    fail(`El archivo de estado '${statePath}' está corrupto o no es JSON válido: ${err.message}`);
+  }
+}
+
 function loadOrCreateState(statePath, layer, maxRepeat) {
   if (fs.existsSync(statePath)) {
-    const data = JSON.parse(fs.readFileSync(statePath, 'utf8'));
+    const data = readStateSafe(statePath);
     if (!Array.isArray(data.errors)) data.errors = [];
     if (!data.max_repeat) data.max_repeat = maxRepeat;
+    if (layer && (!data.layer || data.layer === 'unknown')) data.layer = layer;
     return data;
   }
   return {
@@ -98,6 +131,16 @@ function saveState(statePath, state) {
   fs.writeFileSync(statePath, JSON.stringify(state, null, 2) + '\n', 'utf8');
 }
 
+function extractCanonicalRuleFromBullet(line) {
+  return line
+    .trim()
+    .replace(/^-\s+/, '')
+    .replace(/\s+_\([^)]+\)_$/, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
+}
+
 if (opts.action === 'init') {
   const statePath = getStatePath(opts.changeDir);
   const state = loadOrCreateState(statePath, opts.layer, opts.maxRepeat);
@@ -113,6 +156,7 @@ if (opts.action === 'record') {
   const statePath = getStatePath(opts.changeDir);
   const state = loadOrCreateState(statePath, opts.layer, opts.maxRepeat);
   const effectiveLayer = opts.layer || state.layer || 'unknown';
+  state.layer = effectiveLayer;
   const sig = computeSignature(effectiveLayer, opts.step, opts.message);
 
   state.attempt += 1;
@@ -135,7 +179,7 @@ if (opts.action === 'record') {
     message: opts.message,
     cause: opts.cause || undefined,
     avoid: opts.avoid || undefined,
-    files: opts.files ? opts.files.split(',').map((s) => s.trim()).filter(Boolean) : undefined
+    files: opts.files ? opts.files.split(',').map((s) => s.trim().replace(/\\/g, '/')).filter(Boolean) : undefined
   });
 
   saveState(statePath, state);
@@ -155,7 +199,7 @@ if (opts.action === 'summary') {
     console.log(JSON.stringify({ attempt: 0, loop_detected: false, errors: [], avoid: [] }));
     process.exit(0);
   }
-  const state = JSON.parse(fs.readFileSync(statePath, 'utf8'));
+  const state = readStateSafe(statePath);
   const avoid = [...new Set((state.errors || []).map((e) => e.avoid).filter(Boolean))];
   const recent = (state.errors || []).slice(-3).map((e) => ({
     attempt: e.attempt,
@@ -179,19 +223,28 @@ if (opts.action === 'promote') {
   if (!opts.layer) fail('Se requiere --layer para promote (db|backend|frontend)');
   if (!opts.rule) fail('Se requiere --rule para promote');
 
+  const normalizedRule = opts.rule.replace(/\s+/g, ' ').trim();
+  if (!normalizedRule) fail('El valor de --rule no puede estar vacío');
+  if (normalizedRule.length > MAX_RULE_LENGTH) {
+    fail(`La regla excede el máximo de ${MAX_RULE_LENGTH} caracteres (${normalizedRule.length})`);
+  }
+
+  const normalizedContext = opts.context ? opts.context.replace(/\s+/g, ' ').trim() : '';
   const gotchasPath = path.resolve(opts.specsDir, opts.layer, 'known-gotchas.md');
   fs.mkdirSync(path.dirname(gotchasPath), { recursive: true });
 
   const header = `# Known Gotchas — ${opts.layer}\n\nReglas breves promovidas tras fallos reales del repositorio. Leer solo esta capa en \`opsx:explore\`.\n\n`;
   let content = fs.existsSync(gotchasPath) ? fs.readFileSync(gotchasPath, 'utf8') : header;
-  const normalizedRule = opts.rule.trim();
-  const bullet = opts.context
-    ? `- ${normalizedRule} _(${opts.context.trim()})_`
+  const bullet = normalizedContext
+    ? `- ${normalizedRule} _(${normalizedContext})_`
     : `- ${normalizedRule}`;
 
-  const alreadyExists = content
+  const existingBulletLines = content
     .split(/\r?\n/)
-    .some((line) => line.trim().toLowerCase().includes(normalizedRule.toLowerCase()));
+    .filter((line) => line.trim().startsWith('- '));
+
+  const alreadyExists = existingBulletLines
+    .some((line) => extractCanonicalRuleFromBullet(line) === normalizedRule.toLowerCase());
 
   if (!alreadyExists) {
     if (!content.endsWith('\n')) content += '\n';
@@ -202,19 +255,23 @@ if (opts.action === 'promote') {
   if (opts.changeDir) {
     const statePath = getStatePath(opts.changeDir);
     if (fs.existsSync(statePath)) {
-      const state = JSON.parse(fs.readFileSync(statePath, 'utf8'));
+      const state = readStateSafe(statePath);
       state.promoted = true;
       saveState(statePath, state);
     }
   }
 
   const totalRules = content.split(/\r?\n/).filter((l) => l.trim().startsWith('- ')).length;
-  console.log(JSON.stringify({
+  const result = {
     promoted: !alreadyExists,
     duplicate: alreadyExists,
     path: gotchasPath,
     total_rules: totalRules
-  }));
+  };
+  if (totalRules > SOFT_MAX_RULES) {
+    result.warning = `known-gotchas.md tiene ${totalRules} reglas (umbral recomendado: ${SOFT_MAX_RULES}). Considera consolidar reglas antiguas.`;
+  }
+  console.log(JSON.stringify(result));
   process.exit(0);
 }
 
