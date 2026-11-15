@@ -9,6 +9,8 @@
 
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
+const { execSync } = require('child_process');
 
 // --- Colores ANSI universales para terminal ---
 const colors = {
@@ -24,18 +26,35 @@ const colors = {
 // --- Parseo de Argumentos CLI ---
 const args = process.argv.slice(2);
 let migrationsDir = '';
+let migrationsDirExplicit = false;
 let securityDir = '';
 let engine = 'postgres';
 let noRls = false;
+let migrationMode = '';
+let sqlFromCmd = '';
+let downSqlFromCmd = '';
+let allowNosqlSkip = false;
+let jsonOutput = false;
 
 for (let i = 0; i < args.length; i++) {
   const arg = args[i];
   if (arg === '--migrations-dir' || arg === '-m') {
-    migrationsDir = args[++i];
+    migrationsDir = args[++i] || '';
+    migrationsDirExplicit = true;
   } else if (arg === '--security-dir' || arg === '-s') {
-    securityDir = args[++i];
+    securityDir = args[++i] || '';
   } else if (arg === '--engine' || arg === '-e') {
-    engine = args[++i];
+    engine = args[++i] || 'postgres';
+  } else if (arg === '--migration-mode') {
+    migrationMode = (args[++i] || '').toLowerCase().trim();
+  } else if (arg === '--sql-from-cmd') {
+    sqlFromCmd = args[++i] || '';
+  } else if (arg === '--down-sql-from-cmd') {
+    downSqlFromCmd = args[++i] || '';
+  } else if (arg === '--allow-nosql-skip') {
+    allowNosqlSkip = true;
+  } else if (arg === '--json') {
+    jsonOutput = true;
   } else if (arg === '--no-rls' || arg === '--disable-rls' || arg === '--rls=false') {
     noRls = true;
   }
@@ -48,44 +67,125 @@ if (securityDir && ['none', 'disabled', 'false'].includes(securityDir.toLowerCas
 
 const engineLower = (engine || 'postgres').toLowerCase().trim();
 
+function emitAndExit(code, status, payload = {}) {
+  if (jsonOutput) {
+    console.log(JSON.stringify({
+      status,
+      exitCode: code,
+      engine: engineLower,
+      migrationsDir: migrationsDir || null,
+      filesValidated: payload.filesValidated || 0,
+      passedChecks: payload.passedChecks || [],
+      warnings: payload.warnings || [],
+      failures: payload.failures || [],
+      message: payload.message || null
+    }, null, 2));
+  } else if (payload.message) {
+    const color = code === 0 ? colors.green : code === 3 ? colors.yellow : colors.red;
+    console.log(`${color}${payload.message}${colors.reset}`);
+  }
+  process.exit(code);
+}
+
 // 0. Manejo de motores NoSQL
 const noSqlEngines = ['mongodb', 'nosql', 'dynamodb', 'firestore', 'couchdb'];
 if (noSqlEngines.includes(engineLower)) {
-  console.log(`${colors.cyan}ℹ️ Motor NoSQL detectado ('${engineLower}').${colors.reset}`);
-  console.log('   Las validaciones mecánicas de DDL/RLS relacional no aplican a bases de datos documentales.');
-  console.log("   Se delega la validación de esquemas JSON / validadores de colecciones a 'db-qa-agent'.");
-  process.exit(0);
+  if (allowNosqlSkip) {
+    emitAndExit(0, 'skipped_nosql', {
+      message: `ℹ️ Motor NoSQL '${engineLower}' omitido explícitamente (--allow-nosql-skip).`
+    });
+  }
+  emitAndExit(3, 'nothing_to_validate', {
+    failures: [`❌ [NOSQL NO SOPORTADO]: El validador mecánico de DDL/RLS relacional no valida '${engineLower}'.`],
+    message: `❌ [NOSQL NO SOPORTADO]: El validador mecánico relacional no aplica a '${engineLower}'. Usa validación de esquemas en 'db-qa-agent' o pasa --allow-nosql-skip si la omisión es intencional.`
+  });
 }
 
-// 1. Auto-descubrimiento del directorio de migraciones
-const candidateMigrationDirs = [
-  'database/migrations',
-  'supabase/migrations',
-  'src/database/migrations',
-  'db/migrations',
-  'migrations',
-  'prisma/migrations'
-];
+// 1. Generación desde comando externo (--sql-from-cmd) o Auto-descubrimiento del directorio
+let tempCmdDir = null;
+function cleanupTempCmdDir() {
+  if (tempCmdDir && fs.existsSync(tempCmdDir)) {
+    fs.rmSync(tempCmdDir, { recursive: true, force: true });
+  }
+}
+process.on('exit', cleanupTempCmdDir);
 
-if (!migrationsDir || !fs.existsSync(migrationsDir)) {
-  let found = null;
-  if (migrationsDir && fs.existsSync(migrationsDir)) {
-    found = migrationsDir;
-  } else {
+if (sqlFromCmd) {
+  tempCmdDir = fs.mkdtempSync(path.join(os.tmpdir(), 'db-val-sql-'));
+  let upSqlOut = '';
+  try {
+    upSqlOut = execSync(sqlFromCmd, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+  } catch (err) {
+    const errMsg = (err.stderr || err.message || '').toString().trim();
+    emitAndExit(1, 'failed', {
+      failures: [`❌ [SQL-FROM-CMD]: El comando '${sqlFromCmd}' falló: ${errMsg}`],
+      message: `❌ [SQL-FROM-CMD]: El comando de migración falló:\n${errMsg}`
+    });
+  }
+
+  if (!upSqlOut || !upSqlOut.trim()) {
+    emitAndExit(3, 'nothing_to_validate', {
+      failures: [`❌ [NADA QUE VALIDAR]: '${sqlFromCmd}' no produjo sentencias SQL.`],
+      message: `❌ [NADA QUE VALIDAR]: El comando '${sqlFromCmd}' devolvió salida vacía.`
+    });
+  }
+
+  const isSym = migrationMode === 'symmetric' || Boolean(downSqlFromCmd);
+  const upFileName = isSym ? '0001_from_cmd.up.sql' : '0001_from_cmd.sql';
+  fs.writeFileSync(path.join(tempCmdDir, upFileName), upSqlOut, 'utf8');
+
+  if (downSqlFromCmd) {
+    let downSqlOut = '';
+    try {
+      downSqlOut = execSync(downSqlFromCmd, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+    } catch (err) {
+      const errMsg = (err.stderr || err.message || '').toString().trim();
+      emitAndExit(1, 'failed', {
+        failures: [`❌ [DOWN-SQL-FROM-CMD]: El comando '${downSqlFromCmd}' falló: ${errMsg}`],
+        message: `❌ [DOWN-SQL-FROM-CMD]: El comando de rollback falló:\n${errMsg}`
+      });
+    }
+    fs.writeFileSync(path.join(tempCmdDir, '0001_from_cmd.down.sql'), downSqlOut, 'utf8');
+  }
+
+  migrationsDir = tempCmdDir;
+} else {
+  const candidateMigrationDirs = [
+    'database/migrations',
+    'supabase/migrations',
+    'src/database/migrations',
+    'db/migrations',
+    'migrations',
+    'prisma/migrations'
+  ];
+
+  if (migrationsDirExplicit) {
+    if (!migrationsDir || !fs.existsSync(migrationsDir)) {
+      emitAndExit(3, 'nothing_to_validate', {
+        failures: [`❌ [NADA QUE VALIDAR]: El directorio indicado '${migrationsDir}' no existe.`],
+        message: `❌ [NADA QUE VALIDAR]: El directorio de migraciones '${migrationsDir}' no existe.`
+      });
+    }
+  } else if (!migrationsDir || !fs.existsSync(migrationsDir)) {
+    let found = null;
     for (const cand of candidateMigrationDirs) {
       if (fs.existsSync(cand)) {
         found = cand;
         break;
       }
     }
-  }
 
-  if (found) {
-    console.log(`${colors.cyan}ℹ️ Directorio de migraciones detectado automáticamente en: '${found}'${colors.reset}`);
-    migrationsDir = found;
-  } else {
-    console.log(`${colors.yellow}⚠️ El directorio de migraciones '${migrationsDir || 'database/migrations'}' no existe todavía. Se omite validación hasta generar código.${colors.reset}`);
-    process.exit(0);
+    if (found) {
+      if (!jsonOutput) {
+        console.log(`${colors.cyan}ℹ️ Directorio de migraciones detectado automáticamente en: '${found}'${colors.reset}`);
+      }
+      migrationsDir = found;
+    } else {
+      emitAndExit(3, 'nothing_to_validate', {
+        failures: [`❌ [NADA QUE VALIDAR]: No se encontró ningún directorio de migraciones.`],
+        message: `❌ [NADA QUE VALIDAR]: No se encontró un directorio de migraciones. Pasa --migrations-dir <dir> o --sql-from-cmd "<cmd>".`
+      });
+    }
   }
 }
 
@@ -113,16 +213,18 @@ if (isInSituExplicit) {
   }
 }
 
-console.log(`${colors.cyan}🔍 Iniciando validación mecánica determinista de migraciones...${colors.reset}`);
-console.log(`Directorio Migraciones: ${migrationsDir}`);
-if (!isRlsAuditActive) {
-  console.log(`Seguridad RLS en BD:    ${colors.yellow}Desactivada (seguridad gestionada en capa de aplicación / sin RLS)${colors.reset}`);
-} else if (securityDir) {
-  console.log(`Directorio Seguridad:   ${securityDir}`);
-} else {
-  console.log(`Directorio Seguridad:   (no detectado separado, se inspeccionarán migraciones in-situ)`);
+if (!jsonOutput) {
+  console.log(`${colors.cyan}🔍 Iniciando validación mecánica determinista de migraciones...${colors.reset}`);
+  console.log(`Directorio Migraciones: ${migrationsDir}`);
+  if (!isRlsAuditActive) {
+    console.log(`Seguridad RLS en BD:    ${colors.yellow}Desactivada (seguridad gestionada en capa de aplicación / sin RLS)${colors.reset}`);
+  } else if (securityDir) {
+    console.log(`Directorio Seguridad:   ${securityDir}`);
+  } else {
+    console.log(`Directorio Seguridad:   (no detectado separado, se inspeccionarán migraciones in-situ)`);
+  }
+  console.log(`Motor de Base de Datos: ${engineLower}\n`);
 }
-console.log(`Motor de Base de Datos: ${engineLower}\n`);
 
 // Helper para escanear archivos recursivamente
 function getFilesRecursively(dir, filterRegex) {
@@ -155,21 +257,36 @@ let isSymmetricMode = false;
 
 if (upFiles.length > 0) {
   targetFiles = upFiles;
-  isSymmetricMode = true;
+  isSymmetricMode = migrationMode !== 'forward-only';
 } else {
   targetFiles = getFilesRecursively(migrationsDir, /\.sql$/i).filter(
     (f) => !nonMigrationSqlFilter.test(f.name)
   );
+  if (migrationMode === 'symmetric') {
+    isSymmetricMode = true;
+  }
 }
 
 if (targetFiles.length === 0) {
-  console.log(`${colors.yellow}ℹ️ No se encontraron archivos de migración SQL en '${migrationsDir}'.${colors.reset}`);
-  process.exit(0);
+  const nonSqlFiles = getFilesRecursively(migrationsDir, /\.(ts|js|mjs|cjs|py|rb|go|java|kt|cs)$/i);
+  const hint = nonSqlFiles.length > 0
+    ? ` Se detectaron ${nonSqlFiles.length} archivo(s) no-SQL (${nonSqlFiles.slice(0, 3).map(f => f.name).join(', ')}). Usa --sql-from-cmd "<comando>" para exportar el SQL del ORM antes de validar.`
+    : '';
+  emitAndExit(3, 'nothing_to_validate', {
+    failures: [`❌ [NADA QUE VALIDAR]: No se encontraron migraciones SQL en '${migrationsDir}'.${hint}`],
+    message: `❌ [NADA QUE VALIDAR]: No se encontraron archivos de migración SQL en '${migrationsDir}'.${hint}`
+  });
 }
 
 const failures = [];
 const warnings = [];
 const passedChecks = [];
+
+if (migrationMode === 'symmetric' && upFiles.length === 0) {
+  for (const tf of targetFiles) {
+    failures.push(`❌ [SIMETRÍA]: Modo 'symmetric' declarado pero '${tf.name}' no sigue la convención '.up.sql' / '.down.sql'.`);
+  }
+}
 
 // 4. Validación de Simetría (Modo Simétrico)
 if (isSymmetricMode) {
@@ -448,6 +565,15 @@ for (const sqlFile of targetFiles) {
 }
 
 // --- REPORTE FINAL ---
+if (jsonOutput) {
+  emitAndExit(failures.length > 0 ? 1 : 0, failures.length > 0 ? 'failed' : 'passed', {
+    filesValidated: targetFiles.length,
+    passedChecks,
+    warnings,
+    failures
+  });
+}
+
 console.log(`${colors.gray}==================================================${colors.reset}`);
 console.log(`${colors.cyan}📊 REPORTE DE VALIDACIÓN MECÁNICA DE BASE DE DATOS${colors.reset}`);
 console.log(`${colors.gray}==================================================${colors.reset}`);

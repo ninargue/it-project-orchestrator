@@ -17,6 +17,9 @@ Versionado siguiendo [Semantic Versioning](https://semver.org/).
 - **Asignación de Modelos, Esfuerzo y Tiers por Agente y Skill (`AGENTS.md`, `agents/`, `.claude/_agents/`, `_skills/`):** Matriz de 3 tiers (`reasoning`: `opus`/`pro`, `balanced`: `sonnet`/`inherit`, `fast`: `haiku`/`flash_lite`) y niveles de `effort` (`high` para arquitectura, adversarial, mutation testing, QA, seguridad y auditoría; `medium` para implementación, discovery y tickets; `low` para materialización) declarados en los 21 agentes canónicos, sus 21 espejos de Claude Code y los 6 skills que invocan subagentes (#32).
 - **Memoria Híbrida ante Errores SDD (`scripts/sdd-error-memory.js`, `AGENTS.md`, `ORCHESTRATOR.md`, `_skills/`, `agents/`):** Gestión determinista 100% agnóstica al SO de memoria efímera por cambio (`openspec/changes/<change>/.sdd-state.json`) con detección anti-loop por firma de error normalizada (`exit 2`), resumen compacto para reintentos y promoción selectiva con confirmación HITL a `openspec/specs/<capa>/known-gotchas.md` antes de archivar (#34).
 
+### Corregido
+- **Validador de Migraciones sin Falso Verde (`scripts/validate-db-migrations.js`, `scripts/validate-db-migrations.test.js`, `_skills/db-sdd/SKILL.md`):** El validador ahora falla con `exit 3` cuando no encuentra directorio ni archivos SQL o cuando detecta motor NoSQL sin `--allow-nosql-skip`, agrega soporte `--sql-from-cmd` / `--down-sql-from-cmd` para migraciones de ORMs, `--migration-mode`, salida `--json` y su suite de pruebas deterministas con `node:test` (#36, #37).
+
 ---
 
 ## [0.2.0] — 2026-11-12

@@ -239,19 +239,20 @@ Si alguna de estas variables no está en memoria de sesión (usuario invocó dir
 ### Paso 5 — Validación Mecánica y Verificación en VERDE vía `opsx:verify` (`db-qa-agent` Fase B)
 
 1. **Validación Mecánica Determinista Multiplataforma (Node.js):**
-   - Leer `migrations_dir`, `security_dir`, `engine` y `rls_mode` desde `openspec/changes/<change-name>/design.md` y ejecutar:
+   - Leer `migrations_dir`, `security_dir`, `engine`, `migration_mode`, `rls_mode` y (si el proyecto usa ORM/migraciones no-SQL) `sql_from_cmd` desde `openspec/changes/<change-name>/design.md` y ejecutar:
      - **Si `rls_mode` es `dedicated` o `in-situ`:**
        ```bash
-       node "<plugin-root>/scripts/validate-db-migrations.js" --migrations-dir "<repo-destino>/<migrations_dir>" --security-dir "<repo-destino>/<security_dir>" --engine "<engine>"
+       node "<plugin-root>/scripts/validate-db-migrations.js" --migrations-dir "<repo-destino>/<migrations_dir>" --security-dir "<repo-destino>/<security_dir>" --engine "<engine>" --migration-mode "<migration_mode>"
        ```
      - **Si `rls_mode = 'none'`:**
        ```bash
-       node "<plugin-root>/scripts/validate-db-migrations.js" --migrations-dir "<repo-destino>/<migrations_dir>" --no-rls --engine "<engine>"
+       node "<plugin-root>/scripts/validate-db-migrations.js" --migrations-dir "<repo-destino>/<migrations_dir>" --no-rls --engine "<engine>" --migration-mode "<migration_mode>"
        ```
+     - Si el proyecto usa migraciones de ORM (no-SQL), agregar `--sql-from-cmd "<sql_from_cmd>"` (en lugar de esperar archivos `.sql` en disco).
 2. **Ejecución de Validadores Estándar del Proyecto (si existen):**
    - Ejecutar `validation_cmd` (según `design.md`) si fue detectado.
 3. **Gate de Validación Mecánica:**
-   - Si el validador mecánico devuelve `exit 1` o falla `validation_cmd`, **NO se invoca a `db-qa-agent`**. Registrar el fallo con `node "<plugin-root>/scripts/sdd-error-memory.js" --action record --change-dir "openspec/changes/<change-name>" --layer db --step "Paso 5" --message "<error>" --avoid "<restriccion>"`. Si devuelve `exit 2` (`loop_detected: true`), detener reintentos y escalar al usuario; de lo contrario, informar el fallo y re-despachar al Paso 3 (DDL) o Paso 4 (RLS) adjuntando el resumen compacto de `--action summary`.
+   - Si el validador mecánico devuelve `exit 1` (errores de DDL/RLS/simetría) o `exit 3` (nada que validar / sin archivos SQL / NoSQL no habilitado) o falla `validation_cmd`, **NO se invoca a `db-qa-agent`**. Registrar el fallo con `node "<plugin-root>/scripts/sdd-error-memory.js" --action record --change-dir "openspec/changes/<change-name>" --layer db --step "Paso 5" --message "<error>" --avoid "<restriccion>"`. Si devuelve `exit 2` (`loop_detected: true`), detener reintentos y escalar al usuario; de lo contrario, informar el fallo y re-despachar al Paso 3 (DDL) o Paso 4 (RLS) adjuntando el resumen compacto de `--action summary`.
 4. **Verificación en VERDE y Ejecución de `opsx:verify` con `db-qa-agent` (un solo subagente en este turno, §7.5.2):**
    - Si la validación mecánica pasó en verde, invocar únicamente a `db-qa-agent` (Fase B) con la referencia al workflow **[`opsx:verify`](.claude/commands/opsx/verify.md)**:
      - Ejecuta `test_cmd` mediante `Bash` y comprueba que **todos los tests del dominio en `<tests_dir>` pasen en VERDE**.
