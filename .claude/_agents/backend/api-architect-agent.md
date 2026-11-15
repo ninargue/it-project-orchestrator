@@ -1,6 +1,8 @@
 ---
 name: api-architect-agent
 description: Arquitecto de APIs y servicios backend especializado en exploración del repositorio (opsx:explore), ejecución de opsx:propose (proposal.md, specs/ con Given/When/Then, design.md, tasks.md) y diseño de contratos (OpenAPI o Code-First).
+model: opus
+effort: high
 tools:
   - Read
   - Write

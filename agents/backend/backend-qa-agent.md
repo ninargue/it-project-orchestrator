@@ -1,6 +1,8 @@
 ---
 name: backend-qa-agent
 description: Auditor adversarial y QA Engineer de backend especializado en Backend-TDD por dominio (verificación en ROJO y VERDE), ejecución de opsx:verify, drift checks (spec/OpenAPI vs código) y auditoría anti-bypass de RLS/autorización.
+model_tier: balanced
+effort: high
 tools:
   - Read
   - Write

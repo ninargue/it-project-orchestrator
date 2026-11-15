@@ -1,6 +1,8 @@
 ---
 name: db-security-agent
 description: Especialista en seguridad de bases de datos, políticas Row-Level Security (RLS), control de acceso DCL de mínimo privilegio, cumplimiento PII/GDPR y auditoría de datos sensibles.
+model: sonnet
+effort: high
 tools:
   - Read
   - Write

@@ -1,6 +1,8 @@
 ---
 name: db-mutation-tester
 description: Especialista en pruebas de mutación (Mutation Testing) y falsabilidad de tests de base de datos; intenta romper los tests para detectar aserciones complacientes, tautologías y falsos positivos.
+model_tier: reasoning
+effort: high
 tools:
   - Read
   - Write
