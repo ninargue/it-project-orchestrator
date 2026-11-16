@@ -106,8 +106,8 @@ Skill especializado en el diseño e implementación de la **capa frontend** medi
 
 ### Paso 2 — Suite Frontend-TDD Design-Blind en ROJO (`frontend-qa-agent` Fase A)
 
-1. Invocar a `frontend-qa-agent` (Fase A) con `<change-name>`.
-2. Crea/actualiza tests por dominio en `<tests_dir>` (lógica/estado + comportamiento UI *Design-Blind* + mocks MSW desde `<openapi_path>`) mapeando 1:1 los escenarios de `spec.md`, y confirma el fallo inicial en **🔴 ROJO** ejecutando `test_cmd`.
+1. Invocar a `frontend-qa-agent` (Fase A) con `<change-name>` indicando explícitamente que **tiene prohibido leer `<frontend_dir>`** en esta fase.
+2. Crea/actualiza tests por dominio en `<tests_dir>` (lógica/estado + comportamiento UI *Design-Blind* + catálogo ejecutable por estado de `ui-spec.json` con chequeo a11y + recorrido E2E único del camino crítico si aplica + mocks MSW desde `<openapi_path>`) mapeando 1:1 los escenarios de `spec.md`, y confirma el fallo inicial en **🔴 ROJO** ejecutando `test_cmd`.
 3. Registrar el snapshot inicial autorizado de tests en `.frontend-state.json` y notificar al usuario con enlaces a los archivos de test y confirmación de estado Rojo:
    ```bash
    node "<plugin-root>/scripts/validate-frontend.js" --gate none --snapshot-tests --repo-root "<repo-destino>" --change-dir "openspec/changes/<change-name>" --tests-dir "<tests_dir>" --node qa
@@ -123,7 +123,7 @@ Skill especializado en el diseño e implementación de la **capa frontend** medi
 1. Invocar a `frontend-ui-developer-agent` para implementar componentes puros/semánticos respetando el origen por pieza de `tasks.md` y los tokens en `<tokens_path>` dentro de `<frontend_dir>`.
 2. Ejecutar **Gate 3 Visual** (verificando inmutabilidad por instantánea inicial y emitiendo aviso no bloqueante ante colores literales fuera de `<tokens_path>`):
    ```bash
-   node "<plugin-root>/scripts/validate-frontend.js" --gate 3 --repo-root "<repo-destino>" --change-dir "openspec/changes/<change-name>" --frontend-dir "<frontend_dir>" --openapi-path "<openapi_path>" --tests-dir "<tests_dir>" --protected-dirs "<db_dirs>,<backend_dir>" --tokens-path "<tokens_path>" --lint-cmd "<lint_cmd>" --typecheck-cmd "<typecheck_cmd>" --node maquetador
+   node "<plugin-root>/scripts/validate-frontend.js" --gate 3 --repo-root "<repo-destino>" --change-dir "openspec/changes/<change-name>" --frontend-dir "<frontend_dir>" --openapi-path "<openapi_path>" --tests-dir "<tests_dir>" --protected-dirs "<db_dirs>,<backend_dir>" --tokens-path "<tokens_path>" --lint-cmd "<lint_cmd>" --typecheck-cmd "<typecheck_cmd>" --strict-cmds --node maquetador
    ```
    - Si falla (incluyendo `revision_count > 3` o regresión en `diff_history`), informar el log/escalamiento; si pasa, presentar resumen de componentes, avisos de colores literales (si hubo) y **solicitar revisión humana del aspecto** (vista previa, catálogo de estados o capturas para el PR) antes de pasar al Paso 4 (Integración Lógica).
 
@@ -136,7 +136,7 @@ Skill especializado en el diseño e implementación de la **capa frontend** medi
 1. Invocar a `frontend-integrator-agent` para conectar clientes API/mocks, estado global, sesión y colas offline, marcando sus tareas `[x]` en `tasks.md`.
 2. Ejecutar **Gate 3 Integración** (incluyendo `--test-cmd` en verde y detección de `openapi_hash` / `diff_history` / instantánea de rutas protegidas):
    ```bash
-   node "<plugin-root>/scripts/validate-frontend.js" --gate 3 --repo-root "<repo-destino>" --change-dir "openspec/changes/<change-name>" --frontend-dir "<frontend_dir>" --openapi-path "<openapi_path>" --tests-dir "<tests_dir>" --protected-dirs "<db_dirs>,<backend_dir>" --tokens-path "<tokens_path>" --lint-cmd "<lint_cmd>" --typecheck-cmd "<typecheck_cmd>" --build-dev-cmd "<build_dev_cmd>" --test-cmd "<test_cmd>" --node integrador
+   node "<plugin-root>/scripts/validate-frontend.js" --gate 3 --repo-root "<repo-destino>" --change-dir "openspec/changes/<change-name>" --frontend-dir "<frontend_dir>" --openapi-path "<openapi_path>" --tests-dir "<tests_dir>" --protected-dirs "<db_dirs>,<backend_dir>" --tokens-path "<tokens_path>" --lint-cmd "<lint_cmd>" --typecheck-cmd "<typecheck_cmd>" --build-dev-cmd "<build_dev_cmd>" --test-cmd "<test_cmd>" --strict-cmds --node integrador
    ```
    - Si `test_cmd` falla, aplicar triaje de `stderr`: DOM/a11y → `Maquetador` (Paso 3); lógica/mutación/offline → `Integrador` (Paso 4); **solo** error de sintaxis o setup de MSW en el test → `Tester` (Paso 2). Si `revision_count > 3`, escalar a revisión humana.
 3. Presentar resumen en chat y preguntar si procede al Paso 5 (Optimización/Refactor) o directo al Paso 6 si es exento.
@@ -151,7 +151,7 @@ Skill especializado en el diseño e implementación de la **capa frontend** medi
 1. Invocar a `frontend-auditor-agent` para aplicar *lazy loading*, Service Workers (`pwa_mode = 'enabled'`) y optimización de bundle (última edición productiva).
 2. Ejecutar **Gate 4**:
    ```bash
-   node "<plugin-root>/scripts/validate-frontend.js" --gate 4 --repo-root "<repo-destino>" --change-dir "openspec/changes/<change-name>" --frontend-dir "<frontend_dir>" --openapi-path "<openapi_path>" --tests-dir "<tests_dir>" --bundle-dir "<bundle_dir>" --max-bundle-kb "<max_bundle_kb>" --build-prod-cmd "<build_prod_cmd>" --test-cmd "<test_cmd>" --node auditor
+   node "<plugin-root>/scripts/validate-frontend.js" --gate 4 --repo-root "<repo-destino>" --change-dir "openspec/changes/<change-name>" --frontend-dir "<frontend_dir>" --openapi-path "<openapi_path>" --tests-dir "<tests_dir>" --bundle-dir "<bundle_dir>" --max-bundle-kb "<max_bundle_kb>" --build-prod-cmd "<build_prod_cmd>" --test-cmd "<test_cmd>" --strict-cmds --node auditor
    ```
 3. Presentar métricas de bundle y estado en verde.
 
