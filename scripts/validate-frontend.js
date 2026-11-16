@@ -24,6 +24,7 @@
  *   --build-dev-cmd <cmd>             Comando opcional de build en desarrollo
  *   --build-prod-cmd <cmd>            Comando opcional de build en producción
  *   --test-cmd <cmd>                  Comando opcional de runner de tests (Gate 3 y Gate 4)
+ *   --strict-cmds                     Falla en lugar de advertir si falta algún comando esperado en Gate 3/4
  *   --node <name>                     Nombre del nodo/agente actual (registra fallo automático si el Gate falla)
  *   --record-failure <node>           Fuerza registro de fallo consecutivo en .frontend-state.json (límite > 3)
  *   --reset-revision <node>           Reinicia revision_count del nodo y registra snapshot en diff_history
@@ -61,6 +62,7 @@ const opts = {
   buildDevCmd: '',
   buildProdCmd: '',
   testCmd: '',
+  strictCmds: false,
   node: '',
   recordFailure: '',
   resetRevision: '',
@@ -85,6 +87,7 @@ for (let i = 0; i < args.length; i++) {
   else if (a === '--build-dev-cmd') opts.buildDevCmd = args[++i] || '';
   else if (a === '--build-prod-cmd') opts.buildProdCmd = args[++i] || '';
   else if (a === '--test-cmd') opts.testCmd = args[++i] || '';
+  else if (a === '--strict-cmds') opts.strictCmds = true;
   else if (a === '--node') opts.node = args[++i] || '';
   else if (a === '--record-failure') opts.recordFailure = args[++i] || '';
   else if (a === '--reset-revision') opts.resetRevision = args[++i] || '';
@@ -325,8 +328,15 @@ function checkLiteralVisualValues() {
   }
 }
 
-function runShellCmd(label, cmd) {
-  if (!cmd) return true;
+function runShellCmd(label, cmd, required = true) {
+  if (!cmd) {
+    if (opts.strictCmds && required) {
+      fail(`${label} no configurado (requerido con --strict-cmds).`);
+      return false;
+    }
+    warn(`${label} omitido: comando no configurado.`);
+    return true;
+  }
   try {
     execSync(cmd, { cwd: opts.repoRoot, stdio: 'pipe', encoding: 'utf8' });
     pass(`${label} ejecutado con éxito.`);
@@ -423,8 +433,8 @@ function runGate3() {
 
   runShellCmd('Linter', opts.lintCmd);
   runShellCmd('Typecheck', opts.typecheckCmd);
-  runShellCmd('Build desarrollo', opts.buildDevCmd);
-  runShellCmd('Suite de tests', opts.testCmd);
+  runShellCmd('Build desarrollo', opts.buildDevCmd, opts.node !== 'maquetador');
+  runShellCmd('Suite de tests', opts.testCmd, opts.node !== 'maquetador');
 }
 
 function runGate4() {
