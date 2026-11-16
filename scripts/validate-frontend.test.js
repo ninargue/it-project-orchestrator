@@ -138,4 +138,15 @@ describe('validate-frontend.js (Gates 1-4)', () => {
     assert.match(res.out, /Valores visuales literales detectados fuera de tokens \(2 ocurrencia\(s\) en 1 archivo\(s\)\)/);
     assert.doesNotMatch(res.out, /palette\.css/);
   });
+
+  it('Gate 3 y Gate 4: advierte comandos omitidos y bloquea si --strict-cmds está activo', () => {
+    const warnRes = runValidator(`--gate 4 --repo-root "${tmp}" --change-dir openspec/changes/c1 --bundle-dir dist/assets --max-bundle-kb 250 --node auditor`);
+    assert.equal(warnRes.code, 0);
+    assert.match(warnRes.out, /Build producción omitido: comando no configurado/);
+    assert.match(warnRes.out, /Suite de tests omitido: comando no configurado/);
+
+    const strictRes = runValidator(`--gate 4 --repo-root "${tmp}" --change-dir openspec/changes/c1 --bundle-dir dist/assets --max-bundle-kb 250 --strict-cmds --node auditor`);
+    assert.notEqual(strictRes.code, 0);
+    assert.match(strictRes.out, /Build producción no configurado/);
+  });
 });
