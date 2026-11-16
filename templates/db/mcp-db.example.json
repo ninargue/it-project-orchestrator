@@ -1,0 +1,13 @@
+{
+  "$comment": "Ejemplo OPCIONAL de servidor MCP de solo lectura para PostgreSQL. El camino principal en it-project-orchestrator usa la CLI del motor con DB_DEV_RO_URL.",
+  "mcpServers": {
+    "db-readonly": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-postgres",
+        "${DB_DEV_RO_URL}"
+      ]
+    }
+  }
+}
