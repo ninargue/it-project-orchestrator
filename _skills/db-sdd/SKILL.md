@@ -177,8 +177,12 @@ Si alguna de estas variables no está en memoria de sesión (usuario invocó dir
    - Mapeo 1:1 de los escenarios Given/When/Then de `specs/<capability>/spec.md`.
    - Casos negativos estructurados para constraints (`NOT NULL`, `CHECK`, `UNIQUE`, FKs).
    - Pruebas de aislamiento RLS y privilegios DCL (solo si `rls_mode != 'none'`).
-3. **Verificación en ROJO:**
+3. **Verificación en ROJO y Congelamiento de Huella:**
    - `db-qa-agent` ejecuta `test_cmd` mediante `Bash` y confirma que los nuevos casos de prueba fallen en **ROJO** (porque el DDL aún no existe).
+   - Congelar la huella `sha256` de los tests en `.sdd-state.json`:
+     ```bash
+     node "<plugin-root>/scripts/db-test-fingerprint.js" --action freeze --change-dir "openspec/changes/<change-name>" --tests-dir "<repo-destino>/<tests_dir>"
+     ```
 4. Notificar al usuario con enlace a los tests de dominio y confirmación del estado Rojo:
 
 ```text
@@ -265,16 +269,16 @@ Si alguna de estas variables no está en memoria de sesión (usuario invocó dir
      node "<plugin-root>/scripts/db-roundtrip.js" --mode "<migration_mode>" --up-cmd "<up_cmd>" --down-cmd "<down_cmd>" --snapshot-cmd "<snapshot_cmd>"
      ```
      *(En `forward-only` omitir `--down-cmd`; el script valida idempotencia ejecutando `up` dos veces).*
-3. **Ejecución de Validadores Estándar del Proyecto (si existen):**
-   - Ejecutar `validation_cmd` (según `design.md`) si fue detectado.
-4. **Gate de Validación Mecánica y Roundtrip:**
-   - Si `validate-db-migrations.js` (`exit 1` o `exit 3`), `db-roundtrip.js` (`exit 1`, `2` o `3`) o `validation_cmd` fallan, **NO se invoca a `db-qa-agent`**. Registrar el fallo con `node "<plugin-root>/scripts/sdd-error-memory.js" --action record --change-dir "openspec/changes/<change-name>" --layer db --step "Paso 5" --message "<error>" --avoid "<restriccion>"`. Si devuelve `exit 2` (`loop_detected: true`), detener reintentos y escalar al usuario; de lo contrario, informar el fallo y re-despachar al Paso 3 (DDL) o Paso 4 (RLS) adjuntando el resumen compacto de `--action summary`.
-5. **Verificación en VERDE y Ejecución de `opsx:verify` con `db-qa-agent` (un solo subagente en este turno, §7.5.2):**
-   - Si la validación mecánica pasó en verde, invocar únicamente a `db-qa-agent` (Fase B) con la referencia al workflow **[`opsx:verify`](.claude/commands/opsx/verify.md)**:
-     - Ejecuta `test_cmd` mediante `Bash` y comprueba que **todos los tests del dominio en `<tests_dir>` pasen en VERDE**.
-     - Ejecuta `opsx:verify` evaluando sus 3 dimensiones oficiales (**Completeness**: todas las tareas `[x]` en `tasks.md` y requisitos de `specs/`; **Correctness**: cobertura de escenarios Given/When/Then en verde; **Coherence**: *Drift Check* 1:1 contra `design.md` y planes `EXPLAIN`).
-     - Escribe el reporte en `openspec/changes/<change-name>/verification-report.md`.
-5. **Evaluación del Dictamen de `opsx:verify` y Ruteo Condicional Anticipado:**
+3. **Gate de Huella, Suite en VERDE y Dictamen Independiente (`db-verify-gate.js`):**
+   - Ejecutar el dictamen determinista (verifica huella intacta respecto al ROJO, validador, roundtrip y `test_cmd`):
+     ```bash
+     node "<plugin-root>/scripts/db-verify-gate.js" --change-dir "openspec/changes/<change-name>" --tests-dir "<repo-destino>/<tests_dir>" --migrations-dir "<repo-destino>/<migrations_dir>" --engine "<engine>" --migration-mode "<migration_mode>" --test-cmd "<test_cmd>" --up-cmd "<up_cmd>" --down-cmd "<down_cmd>" --snapshot-cmd "<snapshot_cmd>"
+     ```
+     *(Agregar `--security-dir` o `--no-rls` y `--sql-from-cmd` según `design.md`).*
+   - Si falla cualquiera de los checks anteriores (`exit != 0`) o `validation_cmd`, **NO se emite `[APROBADO]`** ni se invoca a `db-qa-agent`. Registrar el fallo con `node "<plugin-root>/scripts/sdd-error-memory.js" --action record --change-dir "openspec/changes/<change-name>" --layer db --step "Paso 5" --message "<error>" --avoid "<restriccion>"`. Si devuelve `exit 2` (`loop_detected: true`), detener reintentos y escalar al usuario; de lo contrario, re-despachar al Paso 3 (DDL) o Paso 4 (RLS).
+4. **Auditoría Cualitativa `opsx:verify` con `db-qa-agent` (un solo subagente en este turno, §7.5.2):**
+   - Con `db-verify-gate.js` en verde (`[APROBADO]`), invocar únicamente a `db-qa-agent` (Fase B) con la referencia al workflow **[`opsx:verify`](.claude/commands/opsx/verify.md)** para evaluar drift 1:1 contra `design.md`, planes `EXPLAIN` y redactar `openspec/changes/<change-name>/verification-report.md` (adjuntando el dictamen del gate).
+5. **Evaluación del Dictamen y Ruteo Condicional Anticipado:**
 
    - **Escenario A — Dictamen `[OBSERVADO CON CORRECCIONES REQUERIDAS]` (Issues `CRITICAL`):**
      ```text
@@ -311,8 +315,9 @@ Si alguna de estas variables no está en memoria de sesión (usuario invocó dir
 > Este paso se ejecuta únicamente cuando el cambio introduce constraints (`UNIQUE`, `CHECK`, FKs) o políticas RLS. Si estuvo exento, fue ruteado directamente del Paso 5 al Paso 7.
 
 1. Invocar únicamente a `db-mutation-tester` (§7.5.2):
-   - Audita la falsabilidad de los archivos de prueba del dominio en `<tests_dir>/<modulo_o_entidad>...` frente al catálogo de mutantes canónicos (M1 a M5) en transacciones efímeras con `ROLLBACK` (sin dejar mutaciones en disco).
+   - Audita la falsabilidad de los archivos de prueba del dominio en `<tests_dir>/<modulo_o_entidad>...` frente al catálogo de mutantes canónicos (M1 a M5) en transacciones efímeras con `ROLLBACK` **exclusivamente contra `DB_TEST_URL` efímera** (especialmente M3 — RLS bypass; sin dejar mutaciones en disco).
    - Escribe directamente `openspec/changes/<change-name>/mutation-report.md`.
+   - *(Si se re-despacha a `db-qa-agent` para reforzar aserciones complacientes, ejecutar luego `db-test-fingerprint.js --action refreeze --reason "Refuerzo de aserciones tras Mutation Testing"`).*
 2. Ejecutar la validación formal del framework OpenSpec:
    ```bash
    openspec validate "<change-name>"
