@@ -1,5 +1,6 @@
 import type { Register } from 'claude-code';
 import { classifyBashCommand, classifyFileAccess } from './guards/destructive.js';
+import { classifyBackendRoleAccess } from './guards/backend-roles.js';
 
 export const register: Register = (on) => {
   on('session.start', async ($) => {
@@ -22,15 +23,30 @@ export const register: Register = (on) => {
     return next(e);
   }).catch(($, e, next) => (next.called ? next(e) : { deny: 'No se pudo verificar el permiso de Bash; comando bloqueado.' }));
 
-  // Bloquear lectura/edición de copias de producción (*.dump, *.bak, backups/)
+  // Bloquear lectura/edición de copias de producción (*.dump, *.bak, backups/) y fronteras de rol en backend
   on('tool.call', { tool: 'Read' }, async (_$, e, next) => {
-    const filePath = (e as { file_path?: string }).file_path;
-    const check = classifyFileAccess(filePath || '');
+    const filePath = (e as { file_path?: string }).file_path || '';
+    const check = classifyFileAccess(filePath);
     if (check.deny) {
       return { deny: check.reason || 'Acceso a copia de producción bloqueado.' };
     }
+    const roleCheck = classifyBackendRoleAccess(e.agentId, 'Read', filePath);
+    if (roleCheck.deny) {
+      return { deny: roleCheck.reason || 'Acceso bloqueado por frontera de rol.' };
+    }
     return next(e);
   }).catch(($, e, next) => (next.called ? next(e) : { deny: 'No se pudo verificar el permiso de lectura; acceso bloqueado.' }));
+
+  for (const writeTool of ['Write', 'Edit'] as const) {
+    on('tool.call', { tool: writeTool }, async (_$, e, next) => {
+      const filePath = (e as { file_path?: string }).file_path || '';
+      const roleCheck = classifyBackendRoleAccess(e.agentId, writeTool, filePath);
+      if (roleCheck.deny) {
+        return { deny: roleCheck.reason || 'Escritura bloqueada por frontera de rol.' };
+      }
+      return next(e);
+    }).catch(($, e, next) => (next.called ? next(e) : { deny: `No se pudo verificar el permiso de ${writeTool}; escritura bloqueada.` }));
+  }
 
   on('command.run', { command: 'it-project-orchestrator' }, async ($, _e, _next) => {
     const agentsContent = await $.fs.read($.plugin.root + '/AGENTS.md') as string;

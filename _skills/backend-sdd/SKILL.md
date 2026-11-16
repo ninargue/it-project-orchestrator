@@ -11,6 +11,7 @@ tools_required:
   - Bash
 subagents:
   - api-architect-agent
+  - backend-test-writer-agent
   - backend-developer-agent
   - backend-qa-agent
   - backend-mutation-tester
@@ -75,7 +76,7 @@ Si alguna de estas variables no está en memoria de sesión (usuario invocó dir
 6. **Persistencia en Disco y Concisión en Chat (Repositorio Obligatorio):**
    - El ciclo SDD de backend **requiere obligatoriamente un repositorio o workspace local** (`tiene_repositorio = true`) para operar con OpenSpec, escribir código/tests y ejecutar los 4 Gates mecánicos.
    - Los subagentes persisten directamente sus entregables en disco. En chat se muestra únicamente un resumen ejecutivo conciso con enlaces directos (`file:///...`).
-7. **Selección de Modelo por Tier (`AGENTS.md` §7.4.4):** Al invocar subagentes con `invoke_subagent`, pasar `Model: "pro"` para `api-architect-agent` y `backend-mutation-tester`, y `Model: "inherit"` para `backend-developer-agent` y `backend-qa-agent`. En Claude Code el campo `model:` de `.claude/_agents/` aplica automáticamente.
+7. **Selección de Modelo por Tier (`AGENTS.md` §7.4.4):** Al invocar subagentes con `invoke_subagent`, pasar `Model: "pro"` para `api-architect-agent` y `backend-mutation-tester`, y `Model: "inherit"` para `backend-test-writer-agent`, `backend-developer-agent` y `backend-qa-agent`. En Claude Code el campo `model:` de `.claude/_agents/` aplica automáticamente.
 8. **Memoria Híbrida ante Errores (`AGENTS.md` §7.5.4):** Si existe `openspec/specs/backend/known-gotchas.md`, `api-architect-agent` debe leerlo en `opsx:explore`. Ante fallos de Gates 1–4 o QA, registrar en `openspec/changes/<change-name>/.sdd-state.json` con `scripts/sdd-error-memory.js --action record` (detener y escalar si devuelve `exit 2`).
 
 ---
@@ -172,18 +173,22 @@ Si alguna de estas variables no está en memoria de sesión (usuario invocó dir
 
 ---
 
-### Paso 2 — Suite Backend-TDD por Dominio y Verificación en ROJO (`backend-qa-agent` Fase A)
+### Paso 2 — Suite Backend-TDD por Dominio y Verificación en ROJO (`backend-test-writer-agent` Fase A)
 
 1. **Configuración de Hooks / CI (solo si el usuario lo autorizó en el Paso 1):**
    - Si el usuario autorizó crear `pre-commit`, `pre-push` o el workflow de CI, generar los archivos correspondientes antes de ejecutar el Paso 2.
-2. Invocar a `backend-qa-agent` (Fase A) entregando el `<change-name>` para que cargue los artefactos desde `openspec instructions apply --change "<change-name>" --json` (incluyendo las convenciones persistidas en `design.md`).
-3. `backend-qa-agent` crea o actualiza los archivos de prueba **respetando estrictamente la estructura de directorios y nombres de dominio/módulo del repositorio** (`<tests_dir>/<modulo_o_entidad>...`, **nunca** con el ID del ticket ni `<change-name>`):
+2. Invocar a `backend-test-writer-agent` (Fase A — **sin acceso de lectura a `<backend_dir>`**) entregando el `<change-name>` para que cargue los artefactos desde `openspec instructions apply --change "<change-name>" --json` (incluyendo las convenciones persistidas en `design.md`).
+3. `backend-test-writer-agent` crea o actualiza los archivos de prueba **respetando estrictamente la estructura de directorios y nombres de dominio/módulo del repositorio** (`<tests_dir>/<modulo_o_entidad>...`, **nunca** con el ID del ticket ni `<change-name>`):
    - Mapeo 1:1 de los escenarios Given/When/Then de `specs/<capability>/spec.md`.
    - Casos negativos de validación y reglas de negocio (`400/404/409/422`).
    - Pruebas negativas de seguridad y aislamiento multi-tenant (`401/403`/IDOR según `rls_mode` y `auth_mode`).
-4. **Verificación en ROJO y Congelamiento de Tests:**
-   - `backend-qa-agent` ejecuta `test_cmd` mediante `Bash` y confirma que los nuevos casos de prueba fallen en **ROJO** (porque el código productivo del cambio aún no fue implementado).
-   - Tras verificar el ROJO, congelar la huella SHA-256 de `<tests_dir>` en `.sdd-state.json`:
+4. **Verificación de ROJO Válido y Congelamiento de Tests:**
+   - Validar mecánicamente que la suite falle por un motivo esperado (y **detenerse si algún test nace en VERDE o falla por sintaxis/import roto**):
+     ```bash
+     node "<plugin-root>/scripts/validate-backend.js" --action verify-red --repo-root "<repo-destino>" --test-cmd "<test_cmd>"
+     ```
+   - Si `verify-red` devuelve `exit 1`, detener el flujo: corregir los tests rotos o escalar al usuario si el comportamiento ya estaba implementado.
+   - Tras verificar el ROJO válido, congelar la huella SHA-256 de `<tests_dir>` en `.sdd-state.json`:
      ```bash
      node "<plugin-root>/scripts/validate-backend.js" --action snapshot-tests --repo-root "<repo-destino>" --change-dir "openspec/changes/<change-name>" --tests-dir "<tests_dir>"
      ```
@@ -214,6 +219,8 @@ Si alguna de estas variables no está en memoria de sesión (usuario invocó dir
    - Consulta `openspec instructions apply --change "<change-name>" --json` y lee `contextFiles` (`proposal`, `specs`, `design`, `tasks`).
    - Implementa en `<backend_dir>` los DTOs/Schemas, Repositorios (si `db_mode = 'with-db'`), Servicios de Dominio y Controladores/Routers/Workers respetando `arch_pattern`, `rls_mode` y `auth_mode`.
    - **Actualiza `tasks.md`:** Marca cada tarea implementada (`- [ ]` → `- [x]`) en `openspec/changes/<change-name>/tasks.md`.
+   - **Canal de Disputa (`[DISPUTA DE TEST]`):** Si `backend-developer-agent` reporta `[DISPUTA DE TEST]` porque un test contradice `specs/` o `design.md` (sin haber tocado `<tests_dir>`), **detener el flujo inmediatamente** y presentar la disputa al usuario para decidir si se ajusta `specs/` + `backend-test-writer-agent` (re-congelando tests) o si se mantiene el test:
+     **🛑 FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:** Detén tu turno aquí y espera la decisión explícita del usuario.
 4. **Ejecución del Gate 3 — Análisis Estático, Tipado e Inmutabilidad de BD (No-DB-Diff):**
    - Ejecutar el validador mecánico universal (Gate 3):
      ```bash
@@ -311,7 +318,7 @@ Si alguna de estas variables no está en memoria de sesión (usuario invocó dir
      - Estado: [TESTS COMPLACIENTES DETECTADOS]
      - Mutantes sobrevivientes: <lista de mutantes no atrapados en <tests_dir>>
 
-     ¿Autorizas re-despachar a backend-qa-agent (con mutation-report.md) para reforzar las aserciones y re-validar Gate 4 + Paso 5 (o volver al Paso 3 si el test reforzado destapa un bug real en <backend_dir>)?
+     ¿Autorizas re-despachar a backend-test-writer-agent (con mutation-report.md) para reforzar las aserciones, re-congelar la huella de tests y re-validar Gate 4 + Paso 5 (o volver al Paso 3 si el test reforzado destapa un bug real en <backend_dir>)?
      ```
      **🛑 FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:** Detén tu turno aquí y espera la confirmación explícita del usuario.
 

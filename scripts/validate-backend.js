@@ -668,13 +668,41 @@ function runActionSnapshotTests() {
   }
 }
 
+function runActionVerifyRed() {
+  console.log(`\n${colors.bold}${colors.cyan}🔴 [Verify Red] Validando que la suite TDD falle en ROJO por motivo válido...${colors.reset}`);
+  if (!testCmd) {
+    fail(`[Verify Red] Se requiere '--test-cmd' para verificar el estado ROJO real.`);
+    return;
+  }
+  try {
+    execSync(testCmd, { cwd: repoRoot, encoding: 'utf8', stdio: 'pipe' });
+    fail(`[Verify Red] VIOLACIÓN TDD: La suite de pruebas nació en VERDE (exit 0) antes de implementar. Deteniendo flujo.`);
+  } catch (err) {
+    const output = `${err.stdout || ''}\n${err.stderr || ''}`;
+    const brokenPatterns = [
+      { label: 'SyntaxError / IndentationError', regex: /\b(?:SyntaxError|IndentationError)\b/ },
+      { label: 'Import / módulo no encontrado', regex: /\b(?:ModuleNotFoundError|ImportError|ERR_MODULE_NOT_FOUND)\b|Cannot find module/ },
+      { label: 'Sin tests ejecutados (0 tests)', regex: /collected 0 items|no tests found|\b0 tests?\b/i }
+    ];
+    for (const bp of brokenPatterns) {
+      if (bp.regex.test(output)) {
+        fail(`[Verify Red] ROJO INVÁLIDO (${bp.label}): Corrige los archivos de prueba o imports antes de congelar los tests.`);
+        return;
+      }
+    }
+    pass(`[Verify Red] ROJO válido verificado: la suite ejecutó y falló esperadamente (exit ${err.status ?? 1}).`);
+  }
+}
+
 // --- Ejecución según Acción o Gate solicitado ---
 if (action === 'snapshot-db') {
   runActionSnapshotDb();
 } else if (action === 'snapshot-tests') {
   runActionSnapshotTests();
+} else if (action === 'verify-red') {
+  runActionVerifyRed();
 } else if (action) {
-  fail(`Acción desconocida '${action}'. Valores permitidos: snapshot-db, snapshot-tests.`);
+  fail(`Acción desconocida '${action}'. Valores permitidos: snapshot-db, snapshot-tests, verify-red.`);
 } else {
   if (gate === '1' || gate === 'all') runGate1();
   if (gate === '2' || gate === 'all') runGate2();
