@@ -5,23 +5,28 @@
  *
  * Uso:
  *   node validate-backend.js --gate <1|2|3|4|all> [opciones]
+ *   node validate-backend.js --action <snapshot-db|snapshot-tests> [opciones]
  *
  * Opciones:
+ *   --action <snapshot-db|snapshot-tests> Captura instantánea SHA-256 de BD o tests en .sdd-state.json
  *   --gate <1|2|3|4|all>        Gate determinista a ejecutar (por defecto: all)
  *   --repo-root <dir>           Raíz del repositorio destino (por defecto: process.cwd())
  *   --backend-dir <dir>         Directorio de código backend relativo o absoluto (ej: backend, src, app)
  *   --change-dir <dir>          Carpeta del cambio OpenSpec (ej: openspec/changes/0001-crear-ventas)
  *   --db-mode <with-db|stateless> Modo de acoplamiento con BD (por defecto: with-db)
  *   --db-dirs <csv>             Directorios de BD separados por coma (ej: database,supabase,prisma/migrations)
+ *   --migration-exts <csv>      Extensiones válidas de migración/esquema en Gate 1 (ej: .sql,.prisma,.py,.ts)
  *   --rls-mode <dedicated|in-situ|none> Modo de seguridad RLS en BD (por defecto: none)
  *   --contract-style <style>    Estilo de contrato: code-first | openapi-first | worker-job | graphql | grpc
  *   --openapi-path <file>       Ruta a openapi.yaml / openapi.json (requerido si contract-style = openapi-first)
  *   --tests-dir <dir>           Directorio de pruebas (ej: tests, backend/tests)
- *   --test-cmd <cmd>            Comando opcional de runner de tests para ejecutar en Gate 4
+ *   --test-cmd <cmd>            Comando obligatorio de runner de tests para ejecutar en Gate 4
+ *   --require-tests-freeze      Exige que exista instantánea previa de tests en .sdd-state.json durante Gate 4
  */
 
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const { execSync } = require('child_process');
 
 const colors = {
@@ -36,31 +41,37 @@ const colors = {
 
 // --- Parseo de Argumentos CLI ---
 const args = process.argv.slice(2);
+let action = '';
 let gate = 'all';
 let repoRoot = process.cwd();
 let backendDir = '';
 let changeDir = '';
 let dbMode = 'with-db';
 let dbDirsCsv = '';
+let migrationExtsCsv = '';
 let rlsMode = 'none';
 let contractStyle = 'code-first';
 let openapiPath = '';
 let testsDir = '';
 let testCmd = '';
+let requireTestsFreeze = false;
 
 for (let i = 0; i < args.length; i++) {
   const arg = args[i];
-  if (arg === '--gate' || arg === '-g') gate = String(args[++i] || 'all').toLowerCase();
+  if (arg === '--action') action = String(args[++i] || '').toLowerCase();
+  else if (arg === '--gate' || arg === '-g') gate = String(args[++i] || 'all').toLowerCase();
   else if (arg === '--repo-root') repoRoot = args[++i] || process.cwd();
   else if (arg === '--backend-dir') backendDir = args[++i] || '';
   else if (arg === '--change-dir') changeDir = args[++i] || '';
   else if (arg === '--db-mode') dbMode = (args[++i] || 'with-db').toLowerCase();
   else if (arg === '--db-dirs') dbDirsCsv = args[++i] || '';
+  else if (arg === '--migration-exts') migrationExtsCsv = args[++i] || '';
   else if (arg === '--rls-mode') rlsMode = (args[++i] || 'none').toLowerCase();
   else if (arg === '--contract-style') contractStyle = (args[++i] || 'code-first').toLowerCase();
   else if (arg === '--openapi-path') openapiPath = args[++i] || '';
   else if (arg === '--tests-dir') testsDir = args[++i] || '';
   else if (arg === '--test-cmd') testCmd = args[++i] || '';
+  else if (arg === '--require-tests-freeze') requireTestsFreeze = true;
 }
 
 repoRoot = path.resolve(repoRoot);
@@ -137,6 +148,89 @@ function getDbDirectories(strictExplicit = false) {
   return candidates.map(c => resolveInRepo(c)).filter(d => fs.existsSync(d));
 }
 
+// --- Helpers de Instantáneas SHA-256 y .sdd-state.json ---
+function getStateFilePath() {
+  if (!changeDir) return '';
+  return path.join(resolveInRepo(changeDir), '.sdd-state.json');
+}
+
+function loadSddState() {
+  const statePath = getStateFilePath();
+  if (!statePath || !fs.existsSync(statePath)) return null;
+  try {
+    return JSON.parse(fs.readFileSync(statePath, 'utf8'));
+  } catch (err) {
+    fail(`[State] El archivo '${path.relative(repoRoot, statePath)}' no es JSON válido: ${err.message}`);
+    return null;
+  }
+}
+
+function saveSddState(updater) {
+  const statePath = getStateFilePath();
+  if (!statePath) {
+    fail(`[State] Se requiere '--change-dir' para guardar instantáneas en '.sdd-state.json'.`);
+    return null;
+  }
+  const dir = path.dirname(statePath);
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  let state = { schema_version: 1, layer: 'backend', max_repeat: 2, attempt: 0, errors: [] };
+  if (fs.existsSync(statePath)) {
+    try {
+      state = JSON.parse(fs.readFileSync(statePath, 'utf8'));
+    } catch (err) {
+      fail(`[State] El archivo '${path.relative(repoRoot, statePath)}' está corrupto: ${err.message}`);
+      return null;
+    }
+  }
+  updater(state);
+  fs.writeFileSync(statePath, JSON.stringify(state, null, 2) + '\n', 'utf8');
+  return statePath;
+}
+
+function computeFilesSnapshot(filePaths) {
+  const files = {};
+  const uniqueSorted = [...new Set(filePaths)].sort();
+  for (const fp of uniqueSorted) {
+    if (!fs.existsSync(fp) || fs.statSync(fp).isDirectory()) continue;
+    const rel = path.relative(repoRoot, fp).replace(/\\/g, '/');
+    const hash = crypto.createHash('sha256').update(fs.readFileSync(fp)).digest('hex');
+    files[rel] = hash;
+  }
+  const digest = crypto.createHash('sha256').update(JSON.stringify(files)).digest('hex');
+  return { captured_at: new Date().toISOString(), file_count: Object.keys(files).length, digest, files };
+}
+
+function diffSnapshots(expectedFiles, currentFiles) {
+  const added = [];
+  const removed = [];
+  const modified = [];
+  for (const rel of Object.keys(currentFiles)) {
+    if (!(rel in expectedFiles)) added.push(rel);
+    else if (expectedFiles[rel] !== currentFiles[rel]) modified.push(rel);
+  }
+  for (const rel of Object.keys(expectedFiles)) {
+    if (!(rel in currentFiles)) removed.push(rel);
+  }
+  return { added, removed, modified, hasChanges: added.length > 0 || removed.length > 0 || modified.length > 0 };
+}
+
+function getCandidateTestDirs() {
+  return testsDir
+    ? [resolveInRepo(testsDir)].filter(d => fs.existsSync(d))
+    : ['tests', 'backend/tests', 'src/__tests__', '__tests__'].map(d => resolveInRepo(d)).filter(d => fs.existsSync(d));
+}
+
+function getMigrationExtensions() {
+  if (migrationExtsCsv) {
+    return migrationExtsCsv
+      .split(',')
+      .map(s => s.trim().toLowerCase())
+      .filter(Boolean)
+      .map(ext => (ext.startsWith('.') ? ext : `.${ext}`));
+  }
+  return ['.sql', '.prisma', '.py', '.ts', '.js', '.go', '.rb'];
+}
+
 // ============================================================================
 // GATE 1: Pre-condición de Base de Datos e Introspección
 // ============================================================================
@@ -159,16 +253,23 @@ function runGate1() {
     return;
   }
 
-  const sqlOrSchemaFiles = [];
+  const allowedExts = getMigrationExtensions();
+  const migrationFiles = [];
   for (const dir of detectedDbDirs) {
-    sqlOrSchemaFiles.push(...listFilesRecursive(dir, ['.sql', '.prisma']));
+    migrationFiles.push(
+      ...listFilesRecursive(dir, allowedExts).filter(f => path.basename(f).toLowerCase() !== '__init__.py')
+    );
   }
-  if (hasPrisma) sqlOrSchemaFiles.push(prismaSchema);
+  if (hasPrisma) migrationFiles.push(prismaSchema);
 
-  if (sqlOrSchemaFiles.length === 0) {
-    fail(`[Gate 1] Los directorios de BD detectados no contienen archivos '.sql' ni '.prisma'. Debe existir al menos una migración o esquema validado antes de iniciar Backend.`);
+  if (migrationFiles.length === 0) {
+    fail(
+      `[Gate 1] Los directorios de BD detectados no contienen archivos con extensiones válidas (${allowedExts.join(', ')}). Debe existir al menos una migración o esquema validado antes de iniciar Backend.`
+    );
   } else {
-    pass(`[Gate 1] Artefactos de BD verificados (${sqlOrSchemaFiles.length} archivo(s) en ${detectedDbDirs.map(d => path.relative(repoRoot, d)).join(', ') || 'prisma'}).`);
+    pass(
+      `[Gate 1] Artefactos de BD verificados (${migrationFiles.length} archivo(s) en ${detectedDbDirs.map(d => path.relative(repoRoot, d)).join(', ') || 'prisma'}).`
+    );
   }
 }
 
@@ -304,25 +405,57 @@ function runGate2() {
 // ============================================================================
 // GATE 3: Inmutabilidad de BD (No-DB-Diff) y Escaneo Estático de Seguridad
 // ============================================================================
+function collectDbFiles(dbDirs) {
+  const files = [];
+  for (const dir of dbDirs) {
+    files.push(...listFilesRecursive(dir));
+  }
+  const prismaSchema = resolveInRepo('prisma/schema.prisma');
+  if (fs.existsSync(prismaSchema)) files.push(prismaSchema);
+  return files;
+}
+
 function runGate3() {
   console.log(`\n${colors.bold}${colors.cyan}🔍 [Gate 3] Verificando Inmutabilidad de BD (No-DB-Diff) y Guardrails de Código Backend...${colors.reset}`);
 
-  // 1. Verificar que git diff sobre directorios de BD esté vacío
+  // 1. Verificar inmutabilidad de BD: contra instantánea inicial en .sdd-state.json si existe, o git diff como respaldo
   if (dbMode !== 'stateless' && dbMode !== 'none') {
     const dbDirs = getDbDirectories(true);
-    for (const dir of dbDirs) {
-      const relDir = path.relative(repoRoot, dir);
-      try {
-        execSync(`git -C "${repoRoot}" diff --exit-code -- "${relDir}"`, { stdio: 'pipe' });
-        execSync(`git -C "${repoRoot}" diff --cached --exit-code -- "${relDir}"`, { stdio: 'pipe' });
-        const untracked = execSync(`git -C "${repoRoot}" ls-files --others --exclude-standard -- "${relDir}"`, { encoding: 'utf8' }).trim();
-        if (untracked) {
-          fail(`[Gate 3] VIOLACIÓN DE INMUTABILIDAD DE BD: Se crearon archivos no autorizados en '${relDir}':\n   ${untracked.split('\n').join(', ')}`);
-        } else {
-          pass(`[Gate 3] Inmutabilidad de BD respetada en '${relDir}' (0 modificaciones).`);
+    const state = changeDir ? loadSddState() : null;
+    const dbSnapshot = state && state.backend_snapshots && state.backend_snapshots.db;
+
+    if (dbSnapshot && dbSnapshot.files) {
+      const currentSnapshot = computeFilesSnapshot(collectDbFiles(dbDirs));
+      const diff = diffSnapshots(dbSnapshot.files, currentSnapshot.files);
+      if (diff.hasChanges) {
+        const details = [
+          diff.added.length ? `agregados: ${diff.added.join(', ')}` : '',
+          diff.modified.length ? `modificados: ${diff.modified.join(', ')}` : '',
+          diff.removed.length ? `eliminados: ${diff.removed.join(', ')}` : ''
+        ]
+          .filter(Boolean)
+          .join(' | ');
+        fail(
+          `[Gate 3] VIOLACIÓN DE INMUTABILIDAD DE BD: Se alteraron archivos de base de datos respecto a la instantánea inicial del paso (${details}). La capa backend tiene prohibido alterar migraciones o políticas RLS.`
+        );
+      } else {
+        pass(`[Gate 3] Inmutabilidad de BD respetada contra instantánea inicial (${currentSnapshot.file_count} archivo(s) sin cambios).`);
+      }
+    } else {
+      for (const dir of dbDirs) {
+        const relDir = path.relative(repoRoot, dir);
+        try {
+          execSync(`git -C "${repoRoot}" diff --exit-code -- "${relDir}"`, { stdio: 'pipe' });
+          execSync(`git -C "${repoRoot}" diff --cached --exit-code -- "${relDir}"`, { stdio: 'pipe' });
+          const untracked = execSync(`git -C "${repoRoot}" ls-files --others --exclude-standard -- "${relDir}"`, { encoding: 'utf8' }).trim();
+          if (untracked) {
+            fail(`[Gate 3] VIOLACIÓN DE INMUTABILIDAD DE BD: Se crearon archivos no autorizados en '${relDir}':\n   ${untracked.split('\n').join(', ')}`);
+          } else {
+            pass(`[Gate 3] Inmutabilidad de BD respetada en '${relDir}' (0 modificaciones).`);
+          }
+        } catch (err) {
+          fail(`[Gate 3] VIOLACIÓN DE INMUTABILIDAD DE BD: 'backend-developer-agent' modificó archivos dentro de '${relDir}'. La capa backend tiene prohibido alterar migraciones o políticas RLS.`);
         }
-      } catch (err) {
-        fail(`[Gate 3] VIOLACIÓN DE INMUTABILIDAD DE BD: 'backend-developer-agent' modificó archivos dentro de '${relDir}'. La capa backend tiene prohibido alterar migraciones o políticas RLS.`);
       }
     }
   }
@@ -379,9 +512,7 @@ function runGate3() {
 function runGate4() {
   console.log(`\n${colors.bold}${colors.cyan}🔍 [Gate 4] Verificando Suite de Pruebas Backend-TDD y Ejecución...${colors.reset}`);
 
-  const candidateTestDirs = testsDir
-    ? [resolveInRepo(testsDir)]
-    : ['tests', 'backend/tests', 'src/__tests__', '__tests__'].map(d => resolveInRepo(d)).filter(d => fs.existsSync(d));
+  const candidateTestDirs = getCandidateTestDirs();
 
   const rawTestFiles = [];
   for (const td of candidateTestDirs) {
@@ -443,7 +574,39 @@ function runGate4() {
     }
   }
 
-  if (testCmd) {
+  // Verificación de congelamiento de tests (huella SHA-256 tras ROJO)
+  if (changeDir) {
+    const state = loadSddState();
+    const testsSnapshot = state && state.backend_snapshots && state.backend_snapshots.tests;
+    if (testsSnapshot && testsSnapshot.files) {
+      const currentTestsFiles = [];
+      for (const td of candidateTestDirs) {
+        currentTestsFiles.push(...listFilesRecursive(td));
+      }
+      const currentSnapshot = computeFilesSnapshot(currentTestsFiles);
+      const diff = diffSnapshots(testsSnapshot.files, currentSnapshot.files);
+      if (diff.hasChanges) {
+        const details = [
+          diff.added.length ? `agregados: ${diff.added.join(', ')}` : '',
+          diff.modified.length ? `modificados: ${diff.modified.join(', ')}` : '',
+          diff.removed.length ? `eliminados: ${diff.removed.join(', ')}` : ''
+        ]
+          .filter(Boolean)
+          .join(' | ');
+        fail(
+          `[Gate 4] VIOLACIÓN DE CONGELAMIENTO DE TESTS: Los archivos de prueba cambiaron después del ROJO (${details}). El implementador tiene prohibido modificar tests.`
+        );
+      } else {
+        pass(`[Gate 4] Huella de tests congelados verificada (${currentSnapshot.file_count} archivo(s) intactos desde ROJO).`);
+      }
+    } else if (requireTestsFreeze) {
+      fail(`[Gate 4] Falta la huella de tests congelados en '${path.join(changeDir, '.sdd-state.json')}'. Ejecuta '--action snapshot-tests' tras el ROJO.`);
+    }
+  }
+
+  if (!testCmd) {
+    fail(`[Gate 4] Se requiere '--test-cmd' para ejecutar el runner de pruebas real. Gate 4 no puede aprobar solo revisando archivos.`);
+  } else {
     try {
       console.log(`${colors.gray}   Ejecutando comando de pruebas: ${testCmd}${colors.reset}`);
       execSync(testCmd, { cwd: repoRoot, stdio: 'inherit' });
@@ -454,14 +617,74 @@ function runGate4() {
   }
 }
 
-// --- Ejecución según el Gate solicitado ---
-if (gate === '1' || gate === 'all') runGate1();
-if (gate === '2' || gate === 'all') runGate2();
-if (gate === '3' || gate === 'all') runGate3();
-if (gate === '4' || gate === 'all') runGate4();
+// ============================================================================
+// ACCIONES DE INSTANTÁNEA (snapshot-db / snapshot-tests)
+// ============================================================================
+function runActionSnapshotDb() {
+  console.log(`\n${colors.bold}${colors.cyan}📸 [Snapshot DB] Capturando instantánea inicial de base de datos...${colors.reset}`);
+  if (!changeDir) {
+    fail(`[Snapshot DB] Se requiere '--change-dir' para persistir la instantánea.`);
+    return;
+  }
+  let snapshot;
+  if (dbMode === 'stateless' || dbMode === 'none') {
+    snapshot = { db_mode: dbMode, captured_at: new Date().toISOString(), file_count: 0, digest: '', files: {} };
+  } else {
+    const dbDirs = getDbDirectories(true);
+    if (errors.length > 0) return;
+    snapshot = { db_mode: dbMode, ...computeFilesSnapshot(collectDbFiles(dbDirs)) };
+  }
+  const savedPath = saveSddState(state => {
+    state.backend_snapshots = state.backend_snapshots || {};
+    state.backend_snapshots.db = snapshot;
+  });
+  if (savedPath) {
+    pass(`[Snapshot DB] Instantánea de BD guardada en '${path.relative(repoRoot, savedPath)}' (${snapshot.file_count} archivo(s)).`);
+  }
+}
+
+function runActionSnapshotTests() {
+  console.log(`\n${colors.bold}${colors.cyan}📸 [Snapshot Tests] Congelando huella SHA-256 de la suite de pruebas...${colors.reset}`);
+  if (!changeDir) {
+    fail(`[Snapshot Tests] Se requiere '--change-dir' para persistir la huella.`);
+    return;
+  }
+  const candidateTestDirs = getCandidateTestDirs();
+  const allFiles = [];
+  for (const td of candidateTestDirs) {
+    allFiles.push(...listFilesRecursive(td));
+  }
+  if (allFiles.length === 0) {
+    fail(`[Snapshot Tests] No se encontraron archivos de prueba en ${testsDir || 'tests/'} para congelar.`);
+    return;
+  }
+  const snapshot = computeFilesSnapshot(allFiles);
+  const savedPath = saveSddState(state => {
+    state.backend_snapshots = state.backend_snapshots || {};
+    state.backend_snapshots.tests = snapshot;
+  });
+  if (savedPath) {
+    pass(`[Snapshot Tests] Huella de tests congelada en '${path.relative(repoRoot, savedPath)}' (${snapshot.file_count} archivo(s), digest ${snapshot.digest.slice(0, 12)}).`);
+  }
+}
+
+// --- Ejecución según Acción o Gate solicitado ---
+if (action === 'snapshot-db') {
+  runActionSnapshotDb();
+} else if (action === 'snapshot-tests') {
+  runActionSnapshotTests();
+} else if (action) {
+  fail(`Acción desconocida '${action}'. Valores permitidos: snapshot-db, snapshot-tests.`);
+} else {
+  if (gate === '1' || gate === 'all') runGate1();
+  if (gate === '2' || gate === 'all') runGate2();
+  if (gate === '3' || gate === 'all') runGate3();
+  if (gate === '4' || gate === 'all') runGate4();
+}
 
 // --- Resumen Final ---
-console.log(`\n${colors.bold}📋 Resumen de Validación Mecánica Backend (Gate: ${gate.toUpperCase()}):${colors.reset}`);
+const modeLabel = action ? `Action: ${action.toUpperCase()}` : `Gate: ${gate.toUpperCase()}`;
+console.log(`\n${colors.bold}📋 Resumen de Validación Mecánica Backend (${modeLabel}):${colors.reset}`);
 for (const c of checks) console.log(`  ${c}`);
 
 if (errors.length > 0) {
