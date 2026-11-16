@@ -26,6 +26,8 @@ let testCmd = '';
 let upCmd = '';
 let downCmd = '';
 let snapshotCmd = '';
+let schemaCodegenCmd = '';
+let typecheckCmd = '';
 let skipRoundtrip = false;
 let jsonOutput = false;
 
@@ -43,6 +45,8 @@ for (let i = 0; i < args.length; i++) {
   else if (a === '--up-cmd') upCmd = args[++i] || '';
   else if (a === '--down-cmd') downCmd = args[++i] || '';
   else if (a === '--snapshot-cmd') snapshotCmd = args[++i] || '';
+  else if (a === '--schema-codegen-cmd') schemaCodegenCmd = args[++i] || '';
+  else if (a === '--typecheck-cmd') typecheckCmd = args[++i] || '';
   else if (a === '--skip-roundtrip') skipRoundtrip = true;
   else if (a === '--json') jsonOutput = true;
 }
@@ -121,6 +125,22 @@ try {
   };
 }
 gates.push(testRes);
+
+// 5. Codegen de esquema y chequeo de tipos post-migración (si se configuraron)
+for (const [gateName, cmd] of [['schema-codegen', schemaCodegenCmd], ['typecheck', typecheckCmd]]) {
+  if (!cmd) continue;
+  try {
+    const out = execSync(cmd, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+    gates.push({ name: gateName, ok: true, code: 0, out: out.trim() });
+  } catch (err) {
+    gates.push({
+      name: gateName,
+      ok: false,
+      code: err.status ?? 1,
+      out: `${err.stdout || ''}${err.stderr || ''}`.trim()
+    });
+  }
+}
 
 const allPassed = gates.every((g) => g.ok);
 const verdict = allPassed ? '[APROBADO]' : '[OBSERVADO CON CORRECCIONES REQUERIDAS]';

@@ -183,18 +183,9 @@ Si alguna de estas variables no está en memoria de sesión (usuario invocó dir
      ```bash
      node "<plugin-root>/scripts/db-test-fingerprint.js" --action freeze --change-dir "openspec/changes/<change-name>" --tests-dir "<repo-destino>/<tests_dir>"
      ```
-4. Notificar al usuario con enlace a los tests de dominio y confirmación del estado Rojo:
-
-```text
-🧪 Suite DB-TDD de dominio preparada y verificada en ROJO:
-- Archivos de prueba (por dominio/entidad): [<entidad>.test...](file:///<ruta>/<tests_dir>/<archivo_test_dominio>)
-- Estado inicial: 🔴 ROJO verificado (las aserciones fallan esperadamente antes del DDL).
-- Cobertura: 100% de escenarios Given/When/Then de spec.md.
-
-¿Procedemos al Paso 3 (opsx:apply — Implementación DDL y migraciones)?
-```
-
-**🛑 FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:** Detén tu turno aquí y espera la confirmación explícita del usuario.
+4. **Avance automático tras ROJO + Freeze:**
+   - Si los nuevos tests fallaron en **ROJO** como se esperaba y `db-test-fingerprint.js --action freeze` salió con `exit 0`, informa brevemente la ruta de los tests y **avanza directamente al Paso 3 (`opsx:apply` DDL)** sin pausa.
+   - Si los tests ya pasaron en verde antes de existir el DDL o falla el runner, **detente y escala al usuario** (`🛑 FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO`).
 
 ---
 
@@ -205,22 +196,9 @@ Si alguna de estas variables no está en memoria de sesión (usuario invocó dir
    - Consulta `openspec instructions apply --change "<change-name>" --json` y lee `contextFiles` (`proposal`, `specs`, `design`, `tasks`).
    - Escribe las migraciones en `<migrations_dir>` (`symmetric`: `.up.sql` y `.down.sql`; `forward-only`: `.sql`) y los seeds en `<seeds_dir>` (solo si `requires_seeds = true`).
    - **Actualiza `tasks.md`:** Marca cada tarea de DDL/seeds completada (`- [ ]` → `- [x]`) en `openspec/changes/<change-name>/tasks.md`.
-3. Presentar resumen ejecutivo en chat con **ruteo condicional anticipado** (según `rls_mode` leído de `design.md`):
-   - **Si `rls_mode != 'none'` y el cambio requiere políticas RLS/DCL:** solicitar paso al **Paso 4 (Seguridad y RLS)**.
-   - **Si `rls_mode = 'none'` (o tabla exenta de RLS):** informar que el Paso 4 se omite por arquitectura (`rls_mode = 'none'`) y solicitar paso directo al **Paso 5 (Validación Mecánica y `opsx:verify` en VERDE)**.
-
-```text
-🛠️ Scripts DDL y migraciones implementados vía opsx:apply:
-- Migración: [up.sql / migration.sql](file:///<ruta>/<migrations_dir>/<archivo_migracion>)
-- Rollback DOWN: [down.sql](file:///<ruta>/<migrations_dir>/<archivo_down>) (si aplica)
-- Datos sintéticos (seeds): [seeds.sql](file:///<ruta>/<seeds_dir>/<archivo_seeds>) (si aplica)
-- Progreso en tasks.md: <N>/<M> tareas completadas [x]
-
-<Si rls_mode != 'none': "¿Validás el DDL generado para proceder al Paso 4 (opsx:apply — Políticas de Seguridad y RLS)?">
-<Si rls_mode = 'none': "ℹ️ El proyecto tiene rls_mode = 'none' (seguridad en capa de aplicación), por lo que se omite el Paso 4. ¿Validás el DDL generado para avanzar directamente al Paso 5 (Validación Mecánica y opsx:verify en VERDE)?">
-```
-
-**🛑 FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:** Detén tu turno aquí y espera la confirmación explícita del usuario.
+3. **Avance automático:**
+   - Si `db-developer-agent` reporta drift o bloqueos en el diseño, **detente y escala al usuario** (`🛑 FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO`).
+   - De lo contrario, avanza directamente al **Paso 4** (si `rls_mode != 'none'`) o al **Paso 5** (si `rls_mode = 'none'`).
 
 ---
 
@@ -234,19 +212,7 @@ Si alguna de estas variables no está en memoria de sesión (usuario invocó dir
    - Consulta `openspec instructions apply --change "<change-name>" --json`, lee `contextFiles` e inspecciona el DDL del Paso 3.
    - Escribe en `<security_dir>` (o `<migrations_dir>` si `in-situ`) las políticas RLS para las 4 operaciones (`SELECT`, `INSERT`, `UPDATE` con `USING` + `WITH CHECK`, `DELETE`), índices de soporte, permisos DCL y el rollback simétrico (`*.down.sql`).
    - **Actualiza `tasks.md`:** Marca con `- [x]` las tareas de seguridad en `openspec/changes/<change-name>/tasks.md`.
-3. Presentar resumen ejecutivo en chat:
-
-```text
-🔒 Políticas de Seguridad y RLS implementadas vía opsx:apply:
-- Script RLS: [security_rls.sql](file:///<ruta>/<security_dir_o_migraciones>/<archivo_rls>)
-- Rollback RLS: [security_rls.down.sql](file:///<ruta>/<security_dir_o_migraciones>/<archivo_rls_down>) (si aplica)
-- Tablas protegidas: <lista_de_tablas_con_RLS> (cobertura SELECT, INSERT, UPDATE, DELETE)
-- Progreso en tasks.md: <M>/<M> tareas completadas [x]
-
-¿Procedemos al Paso 5 (Validación mecánica determinista y verificación en VERDE con opsx:verify)?
-```
-
-**🛑 FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:** Detén tu turno aquí y espera la confirmación explícita del usuario.
+3. **Avance automático:** Una vez completado sin bloqueos, avanza directamente al **Paso 5**.
 
 ---
 
@@ -274,7 +240,7 @@ Si alguna de estas variables no está en memoria de sesión (usuario invocó dir
      ```bash
      node "<plugin-root>/scripts/db-verify-gate.js" --change-dir "openspec/changes/<change-name>" --tests-dir "<repo-destino>/<tests_dir>" --migrations-dir "<repo-destino>/<migrations_dir>" --engine "<engine>" --migration-mode "<migration_mode>" --test-cmd "<test_cmd>" --up-cmd "<up_cmd>" --down-cmd "<down_cmd>" --snapshot-cmd "<snapshot_cmd>"
      ```
-     *(Agregar `--security-dir` o `--no-rls` y `--sql-from-cmd` según `design.md`).*
+     *(Agregar `--security-dir` o `--no-rls`, `--sql-from-cmd`, `--schema-codegen-cmd` y `--typecheck-cmd` según `design.md`).*
    - Si falla cualquiera de los checks anteriores (`exit != 0`) o `validation_cmd`, **NO se emite `[APROBADO]`** ni se invoca a `db-qa-agent`. Registrar el fallo con `node "<plugin-root>/scripts/sdd-error-memory.js" --action record --change-dir "openspec/changes/<change-name>" --layer db --step "Paso 5" --message "<error>" --avoid "<restriccion>"`. Si devuelve `exit 2` (`loop_detected: true`), detener reintentos y escalar al usuario; de lo contrario, re-despachar al Paso 3 (DDL) o Paso 4 (RLS).
 4. **Auditoría Cualitativa `opsx:verify` con `db-qa-agent` (un solo subagente en este turno, §7.5.2):**
    - Con `db-verify-gate.js` en verde (`[APROBADO]`), invocar únicamente a `db-qa-agent` (Fase B) con la referencia al workflow **[`opsx:verify`](.claude/commands/opsx/verify.md)** para evaluar drift 1:1 contra `design.md`, planes `EXPLAIN` y redactar `openspec/changes/<change-name>/verification-report.md` (adjuntando el dictamen del gate).
@@ -292,20 +258,18 @@ Si alguna de estas variables no está en memoria de sesión (usuario invocó dir
      ```
      **🛑 FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:** Detén tu turno aquí y espera la confirmación explícita del usuario.
 
-   - **Escenario B — Dictamen `[APROBADO]` en `opsx:verify`:**
-     - **Si el cambio NO incluye constraints (`UNIQUE`, `CHECK`, FKs) ni RLS falsables (exento de Mutation Testing):** ejecutar `openspec validate "<change-name>"` ahora mismo y pedir confirmación para pasar directamente al **Paso 7 (Archive y Commit)** sin detenerse en un Paso 6 vacío.
-     - **Si el cambio incluye constraints o políticas RLS:** solicitar confirmación para avanzar al **Paso 6 (Mutation Testing)**.
-     ```text
-     📊 Verificación opsx:verify y DB-TDD en VERDE completada:
-     - Reporte: [verification-report.md](file:///<ruta>/openspec/changes/<change-name>/verification-report.md)
-     - Veredicto: [APROBADO] (Completeness, Correctness y Coherence 100% verificadas)
-     - Suite DB-TDD en <tests_dir>: 🟢 100% en VERDE
-     - Validación mecánica universal: Superada
-     
-     <Si aplica Mutation Testing: "¿Procedemos al Paso 6 (Mutation Testing de falsabilidad sobre constraints y RLS)?">
-     <Si está exento de Mutation Testing: "ℹ️ Cambio exento de Mutation Testing (sin constraints ni RLS falsables) y validado con 'openspec validate'. ¿Confirmas la entrega para pasar directo al Paso 7 (opsx:archive y Commit por el Orquestador)?">
-     ```
-     **🛑 FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:** Detén tu turno aquí y espera la confirmación explícita del usuario.
+   - **Escenario B — Dictamen `[APROBADO]` y sin hallazgos `CRITICAL`:**
+     - **Si el cambio incluye constraints (`UNIQUE`, `CHECK`, FKs) o políticas RLS:** avanzar automáticamente al **Paso 6 (Mutation Testing)** sin pausa.
+     - **Si está exento de Mutation Testing:** ejecutar `openspec validate "<change-name>"` y presentar el cierre para confirmar entrega (`Paso 7`):
+       ```text
+       📊 Verificación y DB-TDD en VERDE completada (exento de Mutation Testing):
+       - Reporte: [verification-report.md](file:///<ruta>/openspec/changes/<change-name>/verification-report.md)
+       - Dictamen db-verify-gate: [APROBADO]
+       - Validación OpenSpec CLI: Superada (openspec validate "<change-name>")
+
+       ¿Confirmas la entrega para que el Orquestador ejecute el Paso 7 (opsx:archive y Commit en Git)?
+       ```
+       **🛑 FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:** Detén tu turno aquí y espera la confirmación explícita del usuario.
 
 ---
 
@@ -359,3 +323,4 @@ Si alguna de estas variables no está en memoria de sesión (usuario invocó dir
    - Sincroniza las delta specs hacia `openspec/specs/<capability>/spec.md` (vía `opsx:sync`).
    - Mueve la carpeta del cambio (incluyendo `verification-report.md` y `mutation-report.md`) a `openspec/changes/archive/YYYY-MM-DD-<change-name>/`.
    - Realiza el `git commit` atómico de la entrega tras confirmación del usuario.
+   - Recuerda el despliegue por ambiente: `test` ya fue validada, `dev` puede aplicarse tras el verde, y **producción la aplica únicamente una persona** (nunca el agente).

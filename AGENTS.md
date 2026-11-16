@@ -64,7 +64,7 @@ Según la elección, invocar el recurso correspondiente antes de continuar:
 ## 4. Reglas de Oro Globales (Invariantes del Sistema)
 
 1. **Gobernanza de Git:** Ningún subagente ni skill ejecuta commits directamente. Solo el orquestador principal interactúa con Git, y **siempre tras confirmación explícita del usuario**.
-2. **Validación Humana Obligatoria:** Nunca avanzar de etapa ni sobrescribir acuerdos sin confirmación del usuario (respetar rigurosamente las pausas `⏸️` y `🛑`).
+2. **Validación Humana Obligatoria:** Nunca avanzar de etapa ni sobrescribir acuerdos sin confirmación del usuario (respetar rigurosamente las pausas `⏸️` y `🛑`). *(Excepción SDD gobernada: dentro de un ciclo SDD cuyo plan/specs ya fue aprobado por el usuario, los pasos de implementación y verificación técnica pueden avanzar sin pausa intermedia únicamente cuando todos los gates deterministas precedentes están en verde; ante cualquier fallo o en el cierre final es obligatorio detenerse).*
 3. **Separación Estricta de Responsabilidades:**
    - `agents/<nombre>.md`: Contiene la personalidad, modelo mental y restricciones ontológicas del agente (quién es y qué tiene prohibido hacer).
    - `_skills/<nombre>/SKILL.md`: Contiene el flujo de trabajo procedural (cuándo se le invoca, qué insumos se le entregan y cómo se procesa la salida).
@@ -246,7 +246,7 @@ Cualquier agente o desarrollador que cree o modifique un Skill (`_skills/`), un 
 ### 7.5. Protocolo HITL (Human-in-the-Loop) e Idempotencia
 1. **Plantilla Obligatoria de Fin de Turno:** Todo paso interactivo dentro de un `SKILL.md` debe cerrar con el bloque literal:
    `**🛑 FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:**` seguido de las instrucciones explícitas de detención.
-2. **Un Subagente por Turno Interactivo:** Prohibido encadenar dos subagentes en un mismo turno si el output del primero requiere validación humana o sirve de especificación (`spec.md` / `plan.md` / `PRD`) para el segundo.
+2. **Un Subagente por Turno Interactivo:** Prohibido encadenar dos subagentes en un mismo turno si el output del primero requiere validación humana o sirve de especificación (`spec.md` / `plan.md` / `PRD`) para el segundo. Tras aprobar el plan (`opsx:propose`), los subagentes de ejecución/verificación pueden encadenarse cuando cada gate determinista intermedio resulte en verde, deteniéndose ante cualquier fallo (escalada) y en el cierre.
 3. **Trazabilidad SDD 1:1 (Anti-Invención):** En flujos de desarrollo o base de datos (SDD), ningún agente de implementación puede agregar tablas, columnas, endpoints o lógica que no estén declarados en el `spec.md` aprobado. Cualquier omisión detectada durante la implementación o QA obliga a reportar el *drift* y actualizar el `spec.md` antes de regenerar código.
 4. **Memoria Híbrida ante Errores (`.sdd-state.json` + `known-gotchas.md`):** Ante fallos de Gates, tests o QA en un ciclo SDD, registrar el error con `node "<plugin-root>/scripts/sdd-error-memory.js" --action record`. Si la misma `error_signature` se repite 2 veces (`exit 2`), detener reintentos automáticos y escalar al usuario. Al archivar con `opsx:archive` / `opsx:bulk-archive`, si hubo errores estructurales, proponer (previa confirmación HITL) promover una regla breve a `openspec/specs/<capa>/known-gotchas.md` vía `--action promote`.
 

@@ -18,6 +18,7 @@
  *   --protected-dirs <csv>            Rutas inmutables separadas por coma (ej: database,backend)
  *   --tokens-path <csv>               Ruta(s) de archivos/carpetas de tokens excluidas del aviso de colores literales
  *   --bundle-dir <dir>                Directorio de build de producción para medir tamaño (ej: dist/assets)
+ *   --entry-pattern <regex>           Patrón opcional para identificar el chunk inicial en --bundle-dir
  *   --max-bundle-kb <num>             Presupuesto máximo de bundle JS inicial en KB (por defecto: 250)
  *   --lint-cmd <cmd>                  Comando opcional de linter
  *   --typecheck-cmd <cmd>             Comando opcional de typecheck
@@ -56,6 +57,7 @@ const opts = {
   protectedDirs: '',
   tokensPath: '',
   bundleDir: '',
+  entryPattern: '^(?:index|main|app|entry)(?:[-.].+)?\\.m?js$',
   maxBundleKb: 250,
   lintCmd: '',
   typecheckCmd: '',
@@ -81,6 +83,7 @@ for (let i = 0; i < args.length; i++) {
   else if (a === '--protected-dirs') opts.protectedDirs = args[++i] || '';
   else if (a === '--tokens-path') opts.tokensPath = args[++i] || '';
   else if (a === '--bundle-dir') opts.bundleDir = args[++i] || '';
+  else if (a === '--entry-pattern') opts.entryPattern = args[++i] || opts.entryPattern;
   else if (a === '--max-bundle-kb') opts.maxBundleKb = Number(args[++i] || 250) || 250;
   else if (a === '--lint-cmd') opts.lintCmd = args[++i] || '';
   else if (a === '--typecheck-cmd') opts.typecheckCmd = args[++i] || '';
@@ -446,12 +449,18 @@ function runGate4() {
   const bDir = resolveInRepo(opts.bundleDir);
   if (bDir && fs.existsSync(bDir)) {
     const jsFiles = listFiles(bDir, ['.js', '.mjs']);
+    const entryRegex = new RegExp(opts.entryPattern, 'i');
+    const entryFiles = jsFiles.filter((f) => entryRegex.test(path.basename(f)));
+    const measuredFiles = entryFiles.length > 0 ? entryFiles : jsFiles;
+    const initialBytes = measuredFiles.reduce((acc, f) => acc + fs.statSync(f).size, 0);
     const totalBytes = jsFiles.reduce((acc, f) => acc + fs.statSync(f).size, 0);
+    const initialKb = Math.round((initialBytes / 1024) * 100) / 100;
     const totalKb = Math.round((totalBytes / 1024) * 100) / 100;
-    if (totalKb > opts.maxBundleKb) {
-      fail(`Presupuesto de bundle excedido: ${totalKb} KB > ${opts.maxBundleKb} KB en ${opts.bundleDir}.`);
+    const metricLabel = entryFiles.length > 0 ? 'Bundle inicial' : 'Bundle total (sin entrypoint detectado)';
+    if (initialKb > opts.maxBundleKb) {
+      fail(`${metricLabel} excedido: ${initialKb} KB > ${opts.maxBundleKb} KB (total: ${totalKb} KB) en ${opts.bundleDir}.`);
     } else {
-      pass(`Bundle dentro de presupuesto: ${totalKb} KB <= ${opts.maxBundleKb} KB.`);
+      pass(`${metricLabel} dentro de presupuesto: ${initialKb} KB <= ${opts.maxBundleKb} KB (total: ${totalKb} KB).`);
     }
   }
 }

@@ -1,20 +1,17 @@
 schema: spec-driven
 
-# Project context (optional)
-# This is shown to AI when creating artifacts.
-# Add your tech stack, conventions, style guides, domain knowledge, etc.
-# Example:
-#   context: |
-#     Tech stack: TypeScript, React, Node.js
-#     We use conventional commits
-#     Domain: e-commerce platform
+context: |
+  Tech stack: Plugin multi-agente en Markdown + scripts deterministas en Node.js nativo (sin dependencias externas) + hooks TypeScript/JS para Claude Code.
+  Testing: node --test sobre scripts/*.test.js y hooks/**/*.test.js.
+  Git & Commits: Conventional Commits; ramas desde develop y PRs por fase/feature.
+  DB Conventions: Ver templates/db/conventions.md como fuente única.
 
-# Per-artifact rules (optional)
-# Add custom rules for specific artifacts.
-# Example:
-#   rules:
-#     proposal:
-#       - Keep proposals under 500 words
-#       - Always include a "Non-goals" section
-#     tasks:
-#       - Break tasks into chunks of max 2 hours
+rules:
+  proposal:
+    - Mantener las propuestas enfocadas en el problema y declarar Non-goals.
+  specs:
+    - Redactar requisitos en formato Given / When / Then observables.
+  design:
+    - Seguir la fuente única de convenciones de BD en templates/db/conventions.md (exploración RO, reversibilidad, normalización, expand/contract y matriz de ambientes).
+  tasks:
+    - Tareas atómicas de media jornada ordenadas topológicamente.

@@ -102,9 +102,11 @@ describe('validate-frontend.js (Gates 1-4)', () => {
     assert.notEqual(fourth.code, 0);
   });
 
-  it('Gate 4: valida presupuesto de tamaño de bundle', () => {
+  it('Gate 4: valida presupuesto de tamaño de bundle inicial sin penalizar chunks diferidos', () => {
+    fs.writeFileSync(path.join(tmp, 'dist/assets/lazy-chart.js'), Buffer.alloc(1024 * 300));
     const ok = runValidator(`--gate 4 --repo-root "${tmp}" --change-dir openspec/changes/c1 --bundle-dir dist/assets --max-bundle-kb 250 --node auditor`);
     assert.equal(ok.code, 0);
+    assert.match(ok.out, /Bundle inicial dentro de presupuesto: 10 KB <= 250 KB/);
 
     const over = runValidator(`--gate 4 --repo-root "${tmp}" --change-dir openspec/changes/c1 --bundle-dir dist/assets --max-bundle-kb 5 --node auditor`);
     assert.notEqual(over.code, 0);
