@@ -123,9 +123,9 @@ Si alguna de estas variables no está en memoria de sesión (usuario invocó dir
 
 2. **Ejecución del Gate 1 — Pre-condición de Base de Datos e Introspección Determinista:**
    - Determinar si el ticket interactúa con base de datos (`db_mode = 'with-db'`) o es independiente (`db_mode = 'stateless'`).
-   - Ejecutar el Gate 1 del validador determinista:
+   - Ejecutar el Gate 1 del validador determinista (pasando `--migration-exts` si el proyecto usa migraciones ORM no-SQL declaradas):
      ```bash
-     node "<plugin-root>/scripts/validate-backend.js" --gate 1 --repo-root "<repo-destino>" --db-mode "<db_mode>" --db-dirs "<db_dirs_csv>"
+     node "<plugin-root>/scripts/validate-backend.js" --gate 1 --repo-root "<repo-destino>" --db-mode "<db_mode>" --db-dirs "<db_dirs_csv>" --migration-exts "<migration_exts_csv_si_aplica>"
      ```
    - Si `db_mode = 'with-db'` y el Gate 1 devuelve `exit 1` (faltan artefactos de BD), **detenerse** e informar que debe completarse primero `_skills/db-sdd/SKILL.md`.
    - Si el proyecto cuenta con comando de introspección/autogeneración de tipos desde la BD (`typegen_cmd`: ej. `supabase gen types`, `npx prisma generate`), ejecutarlo y verificar `exit 0`.
@@ -181,8 +181,12 @@ Si alguna de estas variables no está en memoria de sesión (usuario invocó dir
    - Mapeo 1:1 de los escenarios Given/When/Then de `specs/<capability>/spec.md`.
    - Casos negativos de validación y reglas de negocio (`400/404/409/422`).
    - Pruebas negativas de seguridad y aislamiento multi-tenant (`401/403`/IDOR según `rls_mode` y `auth_mode`).
-4. **Verificación en ROJO:**
+4. **Verificación en ROJO y Congelamiento de Tests:**
    - `backend-qa-agent` ejecuta `test_cmd` mediante `Bash` y confirma que los nuevos casos de prueba fallen en **ROJO** (porque el código productivo del cambio aún no fue implementado).
+   - Tras verificar el ROJO, congelar la huella SHA-256 de `<tests_dir>` en `.sdd-state.json`:
+     ```bash
+     node "<plugin-root>/scripts/validate-backend.js" --action snapshot-tests --repo-root "<repo-destino>" --change-dir "openspec/changes/<change-name>" --tests-dir "<tests_dir>"
+     ```
 5. Notificar al usuario con enlace a los tests de dominio y confirmación del estado Rojo:
 
 ```text
@@ -200,15 +204,20 @@ Si alguna de estas variables no está en memoria de sesión (usuario invocó dir
 
 ### Paso 3 — Implementación Backend vía `opsx:apply` y Gate 3 (`backend-developer-agent`)
 
-1. Invocar a `backend-developer-agent` entregando el `<change-name>` y la referencia al workflow **[`opsx:apply`](.claude/commands/opsx/apply.md)** (o `.agent/workflows/opsx-apply.md`).
-2. `backend-developer-agent` ejecuta `opsx:apply` para las tareas de código backend:
+1. **Instantánea inicial de BD (antes de implementar):**
+   - Capturar la instantánea SHA-256 de `<db_dirs>` en `.sdd-state.json` para medir No-DB-Diff contra el inicio del paso (y no contra `git diff`, evitando falsos bloqueos en tickets multicapa):
+     ```bash
+     node "<plugin-root>/scripts/validate-backend.js" --action snapshot-db --repo-root "<repo-destino>" --change-dir "openspec/changes/<change-name>" --db-mode "<db_mode>" --db-dirs "<db_dirs_csv>"
+     ```
+2. Invocar a `backend-developer-agent` entregando el `<change-name>` y la referencia al workflow **[`opsx:apply`](.claude/commands/opsx/apply.md)** (o `.agent/workflows/opsx-apply.md`).
+3. `backend-developer-agent` ejecuta `opsx:apply` para las tareas de código backend:
    - Consulta `openspec instructions apply --change "<change-name>" --json` y lee `contextFiles` (`proposal`, `specs`, `design`, `tasks`).
    - Implementa en `<backend_dir>` los DTOs/Schemas, Repositorios (si `db_mode = 'with-db'`), Servicios de Dominio y Controladores/Routers/Workers respetando `arch_pattern`, `rls_mode` y `auth_mode`.
    - **Actualiza `tasks.md`:** Marca cada tarea implementada (`- [ ]` → `- [x]`) en `openspec/changes/<change-name>/tasks.md`.
-3. **Ejecución del Gate 3 — Análisis Estático, Tipado e Inmutabilidad de BD (No-DB-Diff):**
+4. **Ejecución del Gate 3 — Análisis Estático, Tipado e Inmutabilidad de BD (No-DB-Diff):**
    - Ejecutar el validador mecánico universal (Gate 3):
      ```bash
-     node "<plugin-root>/scripts/validate-backend.js" --gate 3 --repo-root "<repo-destino>" --backend-dir "<backend_dir>" --db-mode "<db_mode>" --db-dirs "<db_dirs_csv>" --rls-mode "<rls_mode>"
+     node "<plugin-root>/scripts/validate-backend.js" --gate 3 --repo-root "<repo-destino>" --change-dir "openspec/changes/<change-name>" --backend-dir "<backend_dir>" --db-mode "<db_mode>" --db-dirs "<db_dirs_csv>" --rls-mode "<rls_mode>"
      ```
    - Ejecutar los comandos nativos de linter y typecheck del proyecto (`<lint_cmd>` y `<typecheck_cmd>`).
    - Si el Gate 3 o los linters fallan (`exit != 0`): si hubo modificación prohibida en `<db_dirs>`, revertirla inmediatamente; registrar el fallo con `node "<plugin-root>/scripts/sdd-error-memory.js" --action record --change-dir "openspec/changes/<change-name>" --layer backend --step "Gate 3" --message "<error>" --avoid "<restriccion>"`. Si devuelve `exit 2` (`loop_detected: true`), detener reintentos automáticos y escalar al usuario; de lo contrario, re-despachar a `backend-developer-agent` con el resumen compacto de `--action summary` hasta que el Gate 3 pase limpiamente.
@@ -233,10 +242,10 @@ Si alguna de estas variables no está en memoria de sesión (usuario invocó dir
 
 ### Paso 4 — Gate 4 (Tests en VERDE) y Verificación vía `opsx:verify` (`backend-qa-agent` Fase B)
 
-1. **Ejecución del Gate 4 — Corrida Determinista de la Suite de Pruebas:**
+1. **Ejecución del Gate 4 — Corrida Determinista de la Suite de Pruebas e Integridad de Tests Congelados:**
    - Leer `tests_dir` y `test_cmd` desde `openspec/changes/<change-name>/design.md` y ejecutar:
      ```bash
-     node "<plugin-root>/scripts/validate-backend.js" --gate 4 --repo-root "<repo-destino>" --change-dir "openspec/changes/<change-name>" --tests-dir "<tests_dir>" --test-cmd "<test_cmd>"
+     node "<plugin-root>/scripts/validate-backend.js" --gate 4 --repo-root "<repo-destino>" --change-dir "openspec/changes/<change-name>" --tests-dir "<tests_dir>" --test-cmd "<test_cmd>" --require-tests-freeze
      ```
 2. **Verificación en VERDE y Ejecución de `opsx:verify` con `backend-qa-agent` (§7.5.2):**
    - Invocar únicamente a `backend-qa-agent` (Fase B) con la referencia al workflow **[`opsx:verify`](.claude/commands/opsx/verify.md)**:
