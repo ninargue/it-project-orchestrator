@@ -10,6 +10,10 @@ Versionado siguiendo [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+---
+
+## [0.3.0] — 2026-11-15
+
 ### Añadido
 - **Mutation Testing en el ciclo SDD de Backend (`agents/backend/backend-mutation-tester.md` y `_skills/backend-sdd/`):** Nuevo subagente especializado en falsabilidad (`1 Orquestador + 4 Subagentes`) como Gate Condicional (Paso 5) posterior a `opsx:verify` en verde, con soporte para `mutation_cmd` nativo o catálogo canónico `M1–M5`, verificación determinista de árbol limpio sin `git`, ruteo condicional anticipado en Paso 4 y reporte en `openspec/changes/<change-name>/mutation-report.md` (#29).
 - **Sistema Multi-Agente y Ciclo SDD de Frontend (`_skills/frontend-sdd/`, `_skills/ui-discovery/`, `agents/frontend/` y `.claude/_agents/frontend/`):** Flujo de desarrollo frontend Contract-First (con soporte `frontend-driven` gobernado y paralelización condicional post-Gate 2 de Backend), **Frontend-TDD Design-Blind**, `opsx:verify` post-auditoría y **Mutation Testing** (`frontend-mutation-tester`) con 7 subagentes especializados (#28).
@@ -22,6 +26,10 @@ Versionado siguiendo [Semantic Versioning](https://semver.org/).
 - **Recorte de Herramientas, Huella de Tests y Dictamen Independiente (`hooks/policies/db.js`, `scripts/db-test-fingerprint.js`, `scripts/db-verify-gate.js`, `agents/db/`, `.claude/_agents/db/`):** Políticas por subagente DB en `hooks/register.ts` (quitando `Edit` a `db-mutation-tester` y aislando rutas/comandos), congelamiento/verificación SHA-256 de tests entre ROJO y VERDE en `.sdd-state.json`, dictamen `[APROBADO]` emitido por `db-verify-gate.js` en lugar de `db-qa-agent`, y M3 acotado exclusivamente a `DB_TEST_URL` (#36, #46).
 - **Reducción de Pausas en `db-sdd` (`AGENTS.md`, `_skills/db-sdd/SKILL.md`):** Excepción SDD gobernada en `AGENTS.md` (§4.2 y §7.5.2) para avanzar sin pausa cuando todos los gates deterministas están en verde; `db-sdd` pasa de 6–7 pausas por ticket a 2 (aprobación del plan y cierre), manteniendo escaladas ante cualquier fallo (#36, #49).
 - **Convenciones Únicas, Seeds, Copia de Producción y Verificación en Base Viva (`templates/db/conventions.md`, `_skills/db-sdd/references/prod-copy.md`, `openspec/config.yaml`, `_skills/sdd-init/`, `agents/db/`, `scripts/db-verify-gate.js`):** Fuente única de convenciones BD (con matriz de aplicación `test`/`dev`/`prod` y estilos ERD fuera de los invariantes del arquitecto), seeds con 4 condiciones (reglas de negocio, inventados, fechas relativas, idempotentes/solo dev), runbook de anonimización de copias de producción ejecutado por persona, `--schema-codegen-cmd` / `--typecheck-cmd` en `db-verify-gate.js`, y verificación contra `information_schema` + sección `## Punto ciego` en `verification-report.md` (#36, #50).
+
+### Mejorado
+- **Blindaje del Ciclo SDD de Backend (`_skills/backend-sdd/`, `agents/backend/`, `hooks/guards/backend-roles.js`, `scripts/validate-backend.js`):** Huella SHA-256 de tests entre ROJO y VERDE, separación de permisos y hooks por subagente, validación de rojo válido (`verify-red`), canal de disputa humano, soporte de migraciones ORM no-SQL en Gate 1, instantánea inicial en Gate 3, `--test-cmd` obligatorio en Gate 4, aislamiento de `backend-mutation-tester` y consolidación de pausas (#38, #39, #47, #51).
+- **Blindaje del Sistema de Diseño y Ciclo SDD de Frontend (`_skills/frontend-sdd/`, `_skills/ui-discovery/`, `agents/frontend/`, `scripts/validate-frontend.js`):** Gate 3 por instantánea inicial sin falso rojo por archivos sin commitear, inventario del sistema de diseño y origen explícito por pieza en `design.md`/`tasks.md`, tokens atados al catálogo existente, aviso no bloqueante de colores literales fuera de tokens (`--tokens-path`), revisión humana del aspecto, catálogo ejecutable por estado con a11y, recorrido E2E único, aislamiento de QA Fase A, `--strict-cmds`, métrica de bundle inicial (`--entry-pattern`), aislamiento de `frontend-mutation-tester` y consolidación de pausas (#41, #42, #45, #48).
 
 ### Corregido
 - **Validador de Migraciones sin Falso Verde (`scripts/validate-db-migrations.js`, `scripts/validate-db-migrations.test.js`, `_skills/db-sdd/SKILL.md`):** El validador ahora falla con `exit 3` cuando no encuentra directorio ni archivos SQL o cuando detecta motor NoSQL sin `--allow-nosql-skip`, agrega soporte `--sql-from-cmd` / `--down-sql-from-cmd` para migraciones de ORMs, `--migration-mode`, salida `--json` y su suite de pruebas deterministas con `node:test` (#36, #37).
@@ -57,6 +65,10 @@ Versionado siguiendo [Semantic Versioning](https://semver.org/).
 ---
 
 ## [0.1.1] — 2026-11-09
+
+### Mejorado
+- **Blindaje del Ciclo SDD de Backend (`_skills/backend-sdd/`, `agents/backend/`, `hooks/guards/backend-roles.js`, `scripts/validate-backend.js`):** Huella SHA-256 de tests entre ROJO y VERDE, separación de permisos y hooks por subagente, validación de rojo válido (`verify-red`), canal de disputa humano, soporte de migraciones ORM no-SQL en Gate 1, instantánea inicial en Gate 3, `--test-cmd` obligatorio en Gate 4, aislamiento de `backend-mutation-tester` y consolidación de pausas (#38, #39, #47, #51).
+- **Blindaje del Sistema de Diseño y Ciclo SDD de Frontend (`_skills/frontend-sdd/`, `_skills/ui-discovery/`, `agents/frontend/`, `scripts/validate-frontend.js`):** Gate 3 por instantánea inicial sin falso rojo por archivos sin commitear, inventario del sistema de diseño y origen explícito por pieza en `design.md`/`tasks.md`, tokens atados al catálogo existente, aviso no bloqueante de colores literales fuera de tokens (`--tokens-path`), revisión humana del aspecto, catálogo ejecutable por estado con a11y, recorrido E2E único, aislamiento de QA Fase A, `--strict-cmds`, métrica de bundle inicial (`--entry-pattern`), aislamiento de `frontend-mutation-tester` y consolidación de pausas (#41, #42, #45, #48).
 
 ### Corregido
 - **Límites de turno:** Directivas taxativas de fin de turno obligatorio en pausas para evitar ejecución desatendida en lote.
