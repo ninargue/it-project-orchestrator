@@ -73,14 +73,14 @@ Skill especializado en el diseño e implementación de la **capa frontend** medi
 ### Paso 0 — Input Gate, Modo de Contrato y Gate 1
 
 1. Verificar pre-condiciones obligatorias: `tiene_repositorio = true`, existencia de `openspec/config.yaml` (si falta, detener e indicar `_skills/sdd-init/SKILL.md`) y ticket/requerimiento de frontend.
-2. Si `contract_mode` no fue provisto explícitamente por el usuario, preguntar:
+2. Detectar automáticamente `contract_mode` si es inequívoco: si existe `<openapi_path>` en disco usar `contract-first`; si el requerimiento es UI pura sin API usar `none`. Preguntar al usuario **únicamente** si existe ambigüedad entre `contract-first`, `frontend-driven` y `none`:
    ```text
    📄 ¿Con qué modo de contrato iniciamos este cambio frontend?
      [1] contract-first (por defecto — exige <openapi_path> validado en disco)
      [2] frontend-driven (propone <openapi_path> en el Paso 1 tras aprobación)
      [3] none (UI pura sin endpoints ni contrato OpenAPI)
    ```
-   **🛑 FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:** Detén tu turno aquí hasta que el usuario confirme el modo y ruta de OpenAPI (si aplica).
+   *(Si se preguntó por ambigüedad, **🛑 FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO** hasta que confirme el modo).*
 3. Definir `<change-name>` (ej. `<ticket_id>-frontend` o `<prefijo_avance>-<sufijo>`) y ejecutar **Gate 1**:
    ```bash
    node "<plugin-root>/scripts/validate-frontend.js" --gate 1 --repo-root "<repo-destino>" --contract-mode "<contract_mode>" --openapi-path "<openapi_path>" --change-dir "openspec/changes/<change-name>"
@@ -108,13 +108,11 @@ Skill especializado en el diseño e implementación de la **capa frontend** medi
 
 1. Invocar a `frontend-qa-agent` (Fase A) con `<change-name>` indicando explícitamente que **tiene prohibido leer `<frontend_dir>`** en esta fase.
 2. Crea/actualiza tests por dominio en `<tests_dir>` (lógica/estado + comportamiento UI *Design-Blind* + catálogo ejecutable por estado de `ui-spec.json` con chequeo a11y + recorrido E2E único del camino crítico si aplica + mocks MSW desde `<openapi_path>`) mapeando 1:1 los escenarios de `spec.md`, y confirma el fallo inicial en **🔴 ROJO** ejecutando `test_cmd`.
-3. Registrar el snapshot inicial autorizado de tests en `.frontend-state.json` y notificar al usuario con enlaces a los archivos de test y confirmación de estado Rojo:
+3. Registrar el snapshot inicial autorizado de tests en `.frontend-state.json` y continuar al Paso 3 si el rojo es válido (pausar solo si hay escalada o ambigüedad):
    ```bash
    node "<plugin-root>/scripts/validate-frontend.js" --gate none --snapshot-tests --repo-root "<repo-destino>" --change-dir "openspec/changes/<change-name>" --tests-dir "<tests_dir>" --node qa
    ```
    *(Este mismo comando `--snapshot-tests --node qa` debe ejecutarse tras cualquier actualización autorizada de `frontend-qa-agent` por triaje de sintaxis/MSW o refuerzo post-mutation testing).*
-
-**🛑 FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:** Detén tu turno aquí y espera confirmación para iniciar la maquetación visual.
 
 ---
 
@@ -138,10 +136,8 @@ Skill especializado en el diseño e implementación de la **capa frontend** medi
    ```bash
    node "<plugin-root>/scripts/validate-frontend.js" --gate 3 --repo-root "<repo-destino>" --change-dir "openspec/changes/<change-name>" --frontend-dir "<frontend_dir>" --openapi-path "<openapi_path>" --tests-dir "<tests_dir>" --protected-dirs "<db_dirs>,<backend_dir>" --tokens-path "<tokens_path>" --lint-cmd "<lint_cmd>" --typecheck-cmd "<typecheck_cmd>" --build-dev-cmd "<build_dev_cmd>" --test-cmd "<test_cmd>" --strict-cmds --node integrador
    ```
-   - Si `test_cmd` falla, aplicar triaje de `stderr`: DOM/a11y → `Maquetador` (Paso 3); lógica/mutación/offline → `Integrador` (Paso 4); **solo** error de sintaxis o setup de MSW en el test → `Tester` (Paso 2). Si `revision_count > 3`, escalar a revisión humana.
-3. Presentar resumen en chat y preguntar si procede al Paso 5 (Optimización/Refactor) o directo al Paso 6 si es exento.
-
-**🛑 FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:** Detén tu turno aquí y espera confirmación explícita.
+   - Si `test_cmd` falla, aplicar triaje de `stderr`: DOM/a11y → `Maquetador` (Paso 3); lógica/mutación/offline → `Integrador` (Paso 4); **solo** error de sintaxis o setup de MSW en el test → `Tester` (Paso 2). Si `revision_count > 3`, escalar a revisión humana (`🛑 FIN DE TURNO OBLIGATORIO`).
+3. Si Gate 3 Integración pasa en verde, avanzar automáticamente al Paso 5 (o al Paso 6 si es exento).
 
 ---
 
@@ -153,9 +149,7 @@ Skill especializado en el diseño e implementación de la **capa frontend** medi
    ```bash
    node "<plugin-root>/scripts/validate-frontend.js" --gate 4 --repo-root "<repo-destino>" --change-dir "openspec/changes/<change-name>" --frontend-dir "<frontend_dir>" --openapi-path "<openapi_path>" --tests-dir "<tests_dir>" --bundle-dir "<bundle_dir>" --max-bundle-kb "<max_bundle_kb>" --build-prod-cmd "<build_prod_cmd>" --test-cmd "<test_cmd>" --strict-cmds --node auditor
    ```
-3. Presentar métricas de bundle y estado en verde.
-
-**🛑 FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:** Detén tu turno aquí y espera confirmación para la verificación final.
+3. Si Gate 4 pasa en verde, avanzar al Paso 6 con las métricas de bundle inicial.
 
 ---
 
