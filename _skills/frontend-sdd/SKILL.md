@@ -94,9 +94,9 @@ Skill especializado en el diseño e implementación de la **capa frontend** medi
 
 1. Invocar a `frontend-architect-agent` con `<change-name>`, ticket, `contract_mode`, `<openapi_path>` y `ui-spec.json` (si existe).
 2. `frontend-architect-agent` ejecuta `opsx:explore` y `opsx:propose` generando `proposal.md`, `specs/<capability>/spec.md`, `design.md` (convenciones detectadas, árbol de componentes, estado global, almacenamiento offline y presupuesto de bundle) y `tasks.md` (más `<openapi_path>` si `contract_mode = 'frontend-driven'`).
-3. Ejecutar `openspec validate "<change-name>"` y **Gate 2**:
+3. Ejecutar `openspec validate "<change-name>"` y **Gate 2** (capturando también instantánea inicial de rutas protegidas de otras capas si aplica):
    ```bash
-   node "<plugin-root>/scripts/validate-frontend.js" --gate 2 --repo-root "<repo-destino>" --change-dir "openspec/changes/<change-name>" --contract-mode "<contract_mode>" --openapi-path "<openapi_path>" --node architect
+   node "<plugin-root>/scripts/validate-frontend.js" --gate 2 --repo-root "<repo-destino>" --change-dir "openspec/changes/<change-name>" --contract-mode "<contract_mode>" --openapi-path "<openapi_path>" --tests-dir "<tests_dir>" --protected-dirs "<db_dirs>,<backend_dir>" --node architect
    ```
 4. Presentar resumen ejecutivo con enlaces a los artefactos en `openspec/changes/<change-name>/` y preguntar si aprueba congelar la especificación y el contrato para pasar a TDD en Rojo.
 
@@ -120,23 +120,23 @@ Skill especializado en el diseño e implementación de la **capa frontend** medi
 
 ### Paso 3 — Maquetación Visual vía `opsx:apply` (`frontend-ui-developer-agent` + Gate 3 Visual)
 
-1. Invocar a `frontend-ui-developer-agent` para implementar componentes puros/semánticos y tokens en `<frontend_dir>`.
-2. Ejecutar **Gate 3 Visual**:
+1. Invocar a `frontend-ui-developer-agent` para implementar componentes puros/semánticos respetando el origen por pieza de `tasks.md` y los tokens en `<tokens_path>` dentro de `<frontend_dir>`.
+2. Ejecutar **Gate 3 Visual** (verificando inmutabilidad por instantánea inicial y emitiendo aviso no bloqueante ante colores literales fuera de `<tokens_path>`):
    ```bash
-   node "<plugin-root>/scripts/validate-frontend.js" --gate 3 --repo-root "<repo-destino>" --change-dir "openspec/changes/<change-name>" --frontend-dir "<frontend_dir>" --openapi-path "<openapi_path>" --tests-dir "<tests_dir>" --protected-dirs "<tests_dir>,<openapi_path>,<db_dirs>,<backend_dir>" --lint-cmd "<lint_cmd>" --typecheck-cmd "<typecheck_cmd>" --node maquetador
+   node "<plugin-root>/scripts/validate-frontend.js" --gate 3 --repo-root "<repo-destino>" --change-dir "openspec/changes/<change-name>" --frontend-dir "<frontend_dir>" --openapi-path "<openapi_path>" --tests-dir "<tests_dir>" --protected-dirs "<db_dirs>,<backend_dir>" --tokens-path "<tokens_path>" --lint-cmd "<lint_cmd>" --typecheck-cmd "<typecheck_cmd>" --node maquetador
    ```
-   - Si falla (incluyendo `revision_count > 3` o regresión en `diff_history`), informar el log/escalamiento; si pasa, presentar resumen de componentes y preguntar si continúa al Paso 4 (Integración Lógica).
+   - Si falla (incluyendo `revision_count > 3` o regresión en `diff_history`), informar el log/escalamiento; si pasa, presentar resumen de componentes, avisos de colores literales (si hubo) y **solicitar revisión humana del aspecto** (vista previa, catálogo de estados o capturas para el PR) antes de pasar al Paso 4 (Integración Lógica).
 
-**🛑 FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:** Detén tu turno aquí y espera confirmación explícita.
+**🛑 FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:** Detén tu turno aquí y espera confirmación explícita (incluyendo visto bueno visual).
 
 ---
 
 ### Paso 4 — Integración Lógica vía `opsx:apply` (`frontend-integrator-agent` + Gate 3 Integración)
 
 1. Invocar a `frontend-integrator-agent` para conectar clientes API/mocks, estado global, sesión y colas offline, marcando sus tareas `[x]` en `tasks.md`.
-2. Ejecutar **Gate 3 Integración** (incluyendo `--test-cmd` en verde y detección de `openapi_hash` / `diff_history`):
+2. Ejecutar **Gate 3 Integración** (incluyendo `--test-cmd` en verde y detección de `openapi_hash` / `diff_history` / instantánea de rutas protegidas):
    ```bash
-   node "<plugin-root>/scripts/validate-frontend.js" --gate 3 --repo-root "<repo-destino>" --change-dir "openspec/changes/<change-name>" --frontend-dir "<frontend_dir>" --openapi-path "<openapi_path>" --tests-dir "<tests_dir>" --protected-dirs "<tests_dir>,<openapi_path>,<db_dirs>,<backend_dir>" --lint-cmd "<lint_cmd>" --typecheck-cmd "<typecheck_cmd>" --build-dev-cmd "<build_dev_cmd>" --test-cmd "<test_cmd>" --node integrador
+   node "<plugin-root>/scripts/validate-frontend.js" --gate 3 --repo-root "<repo-destino>" --change-dir "openspec/changes/<change-name>" --frontend-dir "<frontend_dir>" --openapi-path "<openapi_path>" --tests-dir "<tests_dir>" --protected-dirs "<db_dirs>,<backend_dir>" --tokens-path "<tokens_path>" --lint-cmd "<lint_cmd>" --typecheck-cmd "<typecheck_cmd>" --build-dev-cmd "<build_dev_cmd>" --test-cmd "<test_cmd>" --node integrador
    ```
    - Si `test_cmd` falla, aplicar triaje de `stderr`: DOM/a11y → `Maquetador` (Paso 3); lógica/mutación/offline → `Integrador` (Paso 4); **solo** error de sintaxis o setup de MSW en el test → `Tester` (Paso 2). Si `revision_count > 3`, escalar a revisión humana.
 3. Presentar resumen en chat y preguntar si procede al Paso 5 (Optimización/Refactor) o directo al Paso 6 si es exento.
@@ -163,7 +163,7 @@ Skill especializado en el diseño e implementación de la **capa frontend** medi
 
 1. Invocar a `frontend-qa-agent` (Fase B) sobre el código final congelado para ejecutar `opsx:verify` y generar `openspec/changes/<change-name>/verification-report.md`.
 2. Si el veredicto es `[OBSERVADO CON CORRECCIONES REQUERIDAS]`, presentar los hallazgos y el triaje (`Maquetador`, `Integrador`, `Auditor` o `Tester` solo por sintaxis/MSW) y esperar autorización para corregir.
-3. Si es `[APROBADO]`, presentar el scorecard y preguntar si avanza al Paso 7 (Mutation Testing o cierre si es exento).
+3. Si es `[APROBADO]`, presentar el scorecard, recordar adjuntar al PR la evidencia visual (regresión visual o catálogo de estados publicado) y preguntar si avanza al Paso 7 (Mutation Testing o cierre si es exento).
 
 **🛑 FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:** Detén tu turno aquí y espera confirmación explícita.
 
