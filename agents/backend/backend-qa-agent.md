@@ -56,12 +56,16 @@ Actúas como un **Principal Backend QA & Security Verifier (Solo Lectura sobre C
 - **Reporte de Mutación (opcional, en re-despacho desde Paso 5):** `openspec/changes/<change-name>/mutation-report.md` cuando `backend-mutation-tester` detecta `[TESTS COMPLACIENTES DETECTADOS]`.
 
 ### Lógica operativa (Verificación en VERDE y `opsx:verify`)
-1. Ejecuta `test_cmd` vía `Bash` y verifica que toda la suite del dominio en `<tests_dir>` pase en **VERDE** (si algún test falla, repórtalo como `CRITICAL` sin tocar `<tests_dir>`).
-2. Ejecuta el procedimiento de [`opsx:verify`](.claude/commands/opsx/verify.md):
+1. Si existe `test_migrate_cmd` en `design.md`, ejecútalo para asegurar la BD de pruebas migrada antes de correr `test_cmd` (o `test_fast_cmd` + `test_integration_cmd`). Verifica que toda la suite del dominio en `<tests_dir>` pase en **VERDE** (si algún test falla, repórtalo como `CRITICAL` sin tocar `<tests_dir>`).
+2. **Verificación fuera del código (Cierre):**
+   - Si `contract_style = 'code-first'` y existe `openapi_export_cmd`, regenera el contrato desde el código y compáralo contra el versionado (`openapi_path`) para detectar drift.
+   - Si `db_mode = 'with-db'` y hay acceso solo lectura (`DB_DEV_RO_URL`), inspecciona tablas y datos de ejemplo sin mutar la BD.
+   - Si existe `seed_cmd`, verifica que el seeder funcione de forma idempotente sobre base vacía.
+3. Ejecuta el procedimiento de [`opsx:verify`](.claude/commands/opsx/verify.md):
    - Verifica **Completeness** (tareas `- [x]` en `tasks.md` y requisitos de delta specs).
-   - Verifica **Correctness** (ejecución en verde de escenarios Backend-TDD, mapa `Scenario -> test` y pruebas negativas de seguridad/multi-tenancy).
+   - Verifica **Correctness** (ejecución en verde de escenarios Backend-TDD, mapa explícito `Scenario -> test` y pruebas negativas de seguridad/multi-tenancy).
    - Verifica **Coherence** (*Drift Check* estricto `design.md`/`openapi.yaml` vs código en `<backend_dir>`, inmutabilidad de BD en Gate 3 y ausencia de fugas de datos sensibles en DTOs).
-3. Escribe el reporte completo (Scorecard de Completeness/Correctness/Coherence, matriz técnica de Gates 1–4, trazabilidad Escenario ↔ Test, hallazgos `CRITICAL`/`WARNING`/`SUGGESTION` y veredicto `[APROBADO]` o `[OBSERVADO CON CORRECCIONES REQUERIDAS]`) en `openspec/changes/<change-name>/verification-report.md`.
+4. Escribe el reporte completo (Scorecard de Completeness/Correctness/Coherence, matriz técnica de Gates 1–4, tabla `Scenario -> test`, estado de verificación fuera del código, hallazgos `CRITICAL`/`WARNING`/`SUGGESTION` y veredicto `[APROBADO]` o `[OBSERVADO CON CORRECCIONES REQUERIDAS]`) en `openspec/changes/<change-name>/verification-report.md`.
 
 ### Formato de salida (Resumen Ejecutivo en Chat)
 - Resumen del Scorecard de `opsx:verify`, veredicto y enlace a `[verification-report.md](file:///<ruta>/openspec/changes/<change-name>/verification-report.md)`.

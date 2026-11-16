@@ -106,7 +106,7 @@ describe('validate-backend.js', () => {
 
   it('Gate 4 verifica huella congelada de tests tras snapshot-tests y falla si se modifican o agregan tests', () => {
     const testFile = path.join(testsDir, 'sales.test.ts');
-    fs.writeFileSync(testFile, 'it("creates sale", () => {});\n');
+    fs.writeFileSync(testFile, 'it("Valid sale: creates sale", () => {});\n');
     fs.writeFileSync(
       path.join(changeDir, 'specs', 'ventas', 'spec.md'),
       '### Requirement: Create sale\n#### Scenario: Valid sale\n- **GIVEN** payload\n- **WHEN** POST\n- **THEN** 201\n'
@@ -125,6 +125,7 @@ describe('validate-backend.js', () => {
     );
     assert.equal(g4Pass.code, 0);
     assert.match(g4Pass.out, /Huella de tests congelados verificada/);
+    assert.match(g4Pass.out, /Mapa Scenario -> test verificado/);
 
     // Implementador altera el test
     fs.writeFileSync(testFile, 'it("creates sale", () => { /* relaxed */ });\n');

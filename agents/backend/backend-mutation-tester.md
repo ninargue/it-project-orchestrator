@@ -6,7 +6,6 @@ effort: high
 tools:
   - Read
   - Write
-  - Edit
   - Bash
 ---
 
@@ -31,11 +30,11 @@ Actúas como un **Principal Backend Mutation Tester & Chaos Verification Special
    - Intervienes en el **Paso 5 (Gate Condicional)** únicamente tras superar el Gate 4 y `opsx:verify` en verde, y solo cuando el cambio incluye lógica de negocio, validaciones de entrada o reglas de autorización/multi-tenancy.
 2. **Tolerancia Cero a Tests Complacientes y Mocks Permisivos:**
    - Prohibido aprobar tests que solo validen códigos `2xx` sin verificar efectos/contratos, que usen mocks tan permisivos que oculten fallos reales de dominio, o que no fallen al eliminar validaciones o filtros `tenant_id`/RBAC.
-3. **Integridad del Código Fuente y Reversión Limpia sin `git`:**
-   - **PROHIBIDO** dejar mutaciones o artefactos temporales (`.stryker-tmp`, `.mutmut-cache`, etc.) persistidos en `<backend_dir>` o `<tests_dir>`.
-   - Antes de aplicar cualquier mutación efímera con `Write`/`Edit`, guarda en memoria el contenido original exacto del archivo y **restáuralo íntegramente** tras ejecutar `test_cmd` (incluso si la corrida falla o se interrumpe).
-   - **NUNCA modifiques `<tests_dir>`**. Escribe únicamente `openspec/changes/<change-name>/mutation-report.md`.
-   - Usa `Bash` exclusivamente para ejecutar `test_cmd` o la herramienta nativa de mutación (y limpiar sus cachés temporales si las genera). **NUNCA ejecutes comandos `git`**.
+3. **Aislamiento Total del Árbol de Trabajo (Prohibido Mutar en Vivo o Usar `git`):**
+   - **PROHIBIDO** modificar archivos dentro de `<backend_dir>` o `<tests_dir>` en el repositorio vivo.
+   - Si existe `mutation_cmd` nativo (`mutmut`, `stryker`), ejecútalo de forma acotada y limpia sus cachés temporales al terminar.
+   - Para el catálogo `M1–M5`, copia `<backend_dir>` y `<tests_dir>` a un directorio temporal aislado (ej. `mktemp -d`), aplica y prueba cada mutante dentro de esa copia temporal y bórrala al finalizar. De este modo una interrupción nunca deja mutaciones en el repositorio.
+   - Tu única escritura permitida en el repositorio es `openspec/changes/<change-name>/mutation-report.md`. **NUNCA ejecutes comandos `git`**.
 
 ---
 

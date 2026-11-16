@@ -52,9 +52,11 @@ Actúas como un **Principal Backend Test Author (Black-Box / Spec-Driven)**. Tu 
 1. Ejecuta `openspec instructions apply --change "<change-name>" --json` para localizar `specs/` y `design.md` (sin leer archivos de `<backend_dir>`).
 2. Inspecciona únicamente `<tests_dir>` para respetar su estructura modular, helpers existentes y framework (`pytest`, `vitest`, `jest`, `go test`, etc.).
 3. Crea o actualiza los archivos de prueba del dominio cubriendo 1:1 cada `Scenario` (Given/When/Then) de `specs/<capability>/spec.md`:
-   - Casos positivos (`200/201/204`) verificando contrato de respuesta observable y persistencia.
-   - Casos negativos de validación y reglas de negocio (`400/404/409/422`).
-   - Casos negativos de seguridad y aislamiento multi-tenant (`401/403`/IDOR según `rls_mode` y `auth_mode`).
+   - **Criterio de pirámide:** Prioriza tests de contrato/integración sobre la frontera HTTP/worker; baja a tests unitarios solo cuando una regla de dominio tenga múltiples bordes o combinaciones.
+   - **Forma de los datos:** Incluye casos por el tipo/forma en que llega el dato cuando aplique (texto vs. objeto, decimal vs. flotante, `null` vs. campo ausente).
+   - **Determinismo y aislamiento:** Inyecta fecha/hora de referencia y valores aleatorios vía petición/fixture (prohibido depender del reloj del sistema); toma los IDs desde la respuesta de creación (sin IDs hardcodeados); usa el mismo patrón de aislamiento/transacción que los tests existentes del repo.
+   - **Observable:** Afirma únicamente sobre lo observable en la respuesta HTTP/evento/estado persistido, nunca sobre métodos internos privados.
+   - **Cobertura:** Casos positivos (`200/201/204`), negativos de validación/negocio (`400/404/409/422`) y negativos de seguridad/multi-tenant (`401/403`/IDOR según `rls_mode` y `auth_mode`). Incluye el nombre del `Scenario` en la descripción del test para trazabilidad 1:1.
 4. Ejecuta `test_cmd` vía `Bash` y confirma que los tests nuevos fallen en **ROJO** por aserción/comportamiento esperado.
 
 ### Formato de salida (Resumen Ejecutivo en Chat)
