@@ -6,7 +6,6 @@ effort: high
 tools:
   - Read
   - Write
-  - Edit
   - Bash
 ---
 

@@ -1,5 +1,6 @@
 import type { Register } from 'claude-code';
 import { classifyBashCommand, classifyFileAccess } from './guards/destructive.js';
+import { classifyDbToolCall } from './policies/db.js';
 
 export const register: Register = (on) => {
   on('session.start', async ($) => {
@@ -9,8 +10,9 @@ export const register: Register = (on) => {
     });
   });
 
-  // Ningún subagente puede tocar git; y ni orquestador ni subagentes pueden ejecutar órdenes destructivas de BD o leer copias de prod.
-  on('tool.call', { tool: 'Bash' }, async (_$, e, next) => {
+  // Ningún subagente puede tocar git; ni orquestador ni subagentes pueden ejecutar órdenes destructivas de BD;
+  // y los subagentes DB quedan acotados a sus comandos permitidos.
+  on('tool.call', { tool: 'Bash' }, async ($, e, next) => {
     if (e.tool !== 'Bash') return next(e);
     if (e.agentId && /\bgit\b/i.test(e.command)) {
       return { deny: 'Ningún subagente puede ejecutar git: solo el orquestador opera git, tras confirmación del usuario.' };
@@ -18,6 +20,12 @@ export const register: Register = (on) => {
     const check = classifyBashCommand(e.command, process.env);
     if (check.deny) {
       return { deny: check.reason || 'Comando destructivo de base de datos bloqueado.' };
+    }
+    if (e.agentId) {
+      const agents = await $.agent.list();
+      const agentType = agents.find((a) => a.id === e.agentId)?.type;
+      const policy = classifyDbToolCall({ agentType, tool: 'Bash', command: e.command });
+      if (policy.deny) return { deny: policy.reason || 'Comando Bash fuera de política del subagente DB.' };
     }
     return next(e);
   }).catch(($, e, next) => (next.called ? next(e) : { deny: 'No se pudo verificar el permiso de Bash; comando bloqueado.' }));
@@ -31,6 +39,24 @@ export const register: Register = (on) => {
     }
     return next(e);
   }).catch(($, e, next) => (next.called ? next(e) : { deny: 'No se pudo verificar el permiso de lectura; acceso bloqueado.' }));
+
+  // Acotar rutas de escritura/edición por subagente DB
+  for (const toolName of ['Write', 'Edit'] as const) {
+    on('tool.call', { tool: toolName }, async ($, e, next) => {
+      const filePath = (e as { file_path?: string }).file_path || '';
+      const accessCheck = classifyFileAccess(filePath);
+      if (accessCheck.deny) {
+        return { deny: accessCheck.reason || 'Acceso a copia de producción bloqueado.' };
+      }
+      if (e.agentId) {
+        const agents = await $.agent.list();
+        const agentType = agents.find((a) => a.id === e.agentId)?.type;
+        const policy = classifyDbToolCall({ agentType, tool: toolName, filePath });
+        if (policy.deny) return { deny: policy.reason || `Ruta no autorizada para ${agentType}.` };
+      }
+      return next(e);
+    }).catch(($, e, next) => (next.called ? next(e) : { deny: `No se pudo verificar permiso de ${toolName}; operación bloqueada.` }));
+  }
 
   on('command.run', { command: 'it-project-orchestrator' }, async ($, _e, _next) => {
     const agentsContent = await $.fs.read($.plugin.root + '/AGENTS.md') as string;
