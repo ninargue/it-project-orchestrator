@@ -16,6 +16,7 @@
  *   --openapi-path <file>             Ruta a openapi.yaml / openapi.json
  *   --tests-dir <dir>                 Directorio de pruebas frontend
  *   --protected-dirs <csv>            Rutas inmutables separadas por coma (ej: database,backend)
+ *   --tokens-path <csv>               Ruta(s) de archivos/carpetas de tokens excluidas del aviso de colores literales
  *   --bundle-dir <dir>                Directorio de build de producción para medir tamaño (ej: dist/assets)
  *   --max-bundle-kb <num>             Presupuesto máximo de bundle JS inicial en KB (por defecto: 250)
  *   --lint-cmd <cmd>                  Comando opcional de linter
@@ -52,6 +53,7 @@ const opts = {
   openapiPath: '',
   testsDir: '',
   protectedDirs: '',
+  tokensPath: '',
   bundleDir: '',
   maxBundleKb: 250,
   lintCmd: '',
@@ -75,6 +77,7 @@ for (let i = 0; i < args.length; i++) {
   else if (a === '--openapi-path') opts.openapiPath = args[++i] || '';
   else if (a === '--tests-dir') opts.testsDir = args[++i] || '';
   else if (a === '--protected-dirs') opts.protectedDirs = args[++i] || '';
+  else if (a === '--tokens-path') opts.tokensPath = args[++i] || '';
   else if (a === '--bundle-dir') opts.bundleDir = args[++i] || '';
   else if (a === '--max-bundle-kb') opts.maxBundleKb = Number(args[++i] || 250) || 250;
   else if (a === '--lint-cmd') opts.lintCmd = args[++i] || '';
@@ -143,17 +146,18 @@ function getStateFilePath() {
 function readState() {
   const file = getStateFilePath();
   if (!file || !fs.existsSync(file)) {
-    return { openapi_hash: '', revision_count: {}, diff_history: [] };
+    return { openapi_hash: '', protected_snapshots: {}, revision_count: {}, diff_history: [] };
   }
   try {
     const parsed = JSON.parse(fs.readFileSync(file, 'utf8'));
     return {
       openapi_hash: parsed.openapi_hash || '',
+      protected_snapshots: (parsed.protected_snapshots && typeof parsed.protected_snapshots === 'object') ? parsed.protected_snapshots : {},
       revision_count: parsed.revision_count || {},
       diff_history: Array.isArray(parsed.diff_history) ? parsed.diff_history : []
     };
   } catch {
-    return { openapi_hash: '', revision_count: {}, diff_history: [] };
+    return { openapi_hash: '', protected_snapshots: {}, revision_count: {}, diff_history: [] };
   }
 }
 
@@ -240,25 +244,85 @@ function checkOpenApiDrift(updateIfEmpty = false) {
   return currentHash;
 }
 
-function getModifiedRepoPaths() {
-  const pathsSet = new Set();
-  const porcelain = execSync('git status --porcelain', { cwd: opts.repoRoot, encoding: 'utf8' });
-  for (const line of porcelain.split(/\r?\n/)) {
-    if (!line || line.length < 4) continue;
-    const raw = line.slice(3).trim();
-    if (raw.includes(' -> ')) {
-      const [fromPath, toPath] = raw.split(' -> ').map((p) => p.replace(/^"|"$/g, '').replace(/\\/g, '/'));
-      if (fromPath) pathsSet.add(fromPath);
-      if (toPath) pathsSet.add(toPath);
-    } else {
-      pathsSet.add(raw.replace(/^"|"$/g, '').replace(/\\/g, '/'));
+function normalizeRelPath(p) {
+  return String(p || '').trim().replace(/\\/g, '/').replace(/^\.\//, '').replace(/\/+$/, '');
+}
+
+function computePathHash(relOrAbs) {
+  const abs = resolveInRepo(relOrAbs);
+  if (!abs || !fs.existsSync(abs)) return '__MISSING__';
+  const st = fs.statSync(abs);
+  return st.isDirectory() ? computeDirTreeHash(abs) : computeFileHash(abs);
+}
+
+function getEffectiveProtectedDirs() {
+  if (!opts.protectedDirs) return [];
+  const excluded = new Set([normalizeRelPath(opts.testsDir), normalizeRelPath(opts.openapiPath)].filter(Boolean));
+  return opts.protectedDirs
+    .split(',')
+    .map(normalizeRelPath)
+    .filter((p) => p && !excluded.has(p));
+}
+
+function syncProtectedSnapshots(mode = 'verify') {
+  const protList = getEffectiveProtectedDirs();
+  if (protList.length === 0) return;
+  const state = readState();
+  let updated = false;
+  const violations = [];
+  for (const p of protList) {
+    const currentHash = computePathHash(p);
+    if (!state.protected_snapshots[p]) {
+      state.protected_snapshots[p] = currentHash;
+      updated = true;
+    } else if (mode === 'verify' && state.protected_snapshots[p] !== currentHash) {
+      violations.push(p);
     }
   }
-  const diffHead = execSync('git diff --name-only HEAD', { cwd: opts.repoRoot, encoding: 'utf8' });
-  for (const p of diffHead.split(/\r?\n/).map((s) => s.trim().replace(/\\/g, '/')).filter(Boolean)) {
-    pathsSet.add(p);
+  if (updated) writeState(state);
+  if (mode === 'verify') {
+    if (violations.length > 0) {
+      fail(`Inmutabilidad violada en rutas protegidas (cambios respecto a instantánea inicial): ${violations.join(', ')}`);
+    } else {
+      pass(`Inmutabilidad de capas protegidas verificada contra instantánea inicial (${protList.join(', ')}).`);
+    }
+  } else if (updated) {
+    pass(`Instantánea inicial de rutas protegidas capturada (${protList.join(', ')}).`);
   }
-  return [...pathsSet];
+}
+
+function checkLiteralVisualValues() {
+  const fDir = resolveInRepo(opts.frontendDir);
+  if (!fDir || !fs.existsSync(fDir)) return;
+  const tDir = resolveInRepo(opts.testsDir);
+  const tokenExcludes = opts.tokensPath
+    .split(',')
+    .map(normalizeRelPath)
+    .filter(Boolean)
+    .map((p) => resolveInRepo(p));
+
+  const codeFiles = listFiles(fDir, ['.ts', '.tsx', '.js', '.jsx', '.css', '.scss', '.vue', '.svelte']);
+  const colorRegex = /#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})\b|\b(?:rgb|rgba|hsl|hsla|oklch|oklab|lab|lch)\s*\(/g;
+  const findings = [];
+  let totalMatches = 0;
+
+  for (const file of codeFiles) {
+    if (tDir && (file === tDir || file.startsWith(tDir + path.sep))) continue;
+    if (tokenExcludes.some((ex) => file === ex || file.startsWith(ex + path.sep))) continue;
+    if (!opts.tokensPath && /(?:^|[\\/])(?:tokens|theme|variables)\.[^\\/]+$/i.test(file)) continue;
+    const txt = fs.readFileSync(file, 'utf8');
+    const matches = txt.match(colorRegex);
+    if (matches && matches.length > 0) {
+      totalMatches += matches.length;
+      findings.push(`${path.relative(opts.repoRoot, file).replace(/\\/g, '/')} (${matches.length})`);
+    }
+  }
+
+  if (findings.length > 0) {
+    warn(`Valores visuales literales detectados fuera de tokens (${totalMatches} ocurrencia(s) en ${findings.length} archivo(s)): ${findings.slice(0, 5).join(', ')}${findings.length > 5 ? ', ...' : ''}. Usa tokens del sistema de diseño.`);
+  } else if (codeFiles.length > 0) {
+    pass('Sin colores literales fuera de los archivos de tokens.');
+  }
 }
 
 function runShellCmd(label, cmd) {
@@ -331,26 +395,14 @@ function runGate2() {
   } else if (opts.contractMode === 'frontend-driven') {
     fail('Gate 2 (frontend-driven): El borrador OpenAPI (--openapi-path) debe existir tras opsx:propose.');
   }
+  syncProtectedSnapshots('capture');
 }
 
 function runGate3() {
   checkOpenApiDrift(false);
   checkRegressionAgainstTests(opts.node);
-
-  if (opts.protectedDirs) {
-    try {
-      const modified = getModifiedRepoPaths();
-      const protList = opts.protectedDirs.split(',').map((s) => s.trim().replace(/\\/g, '/')).filter(Boolean);
-      const violations = modified.filter((m) => protList.some((p) => m === p || m.startsWith(p.endsWith('/') ? p : p + '/')));
-      if (violations.length > 0) {
-        fail(`Inmutabilidad violada en rutas protegidas: ${violations.join(', ')}`);
-      } else {
-        pass('Inmutabilidad de capas protegidas verificada (0 cambios ni renames indebidos).');
-      }
-    } catch (err) {
-      fail(`Gate 3: No se pudo verificar inmutabilidad con Git (${err.message}).`);
-    }
-  }
+  syncProtectedSnapshots('verify');
+  checkLiteralVisualValues();
 
   const tDir = resolveInRepo(opts.testsDir);
   if (tDir && fs.existsSync(tDir)) {
