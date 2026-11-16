@@ -140,7 +140,7 @@ Si alguna de estas variables no está en memoria de sesión (usuario invocó dir
 
 1. Invocar a `api-architect-agent` entregando el `<change-name>`, el ticket técnico y la referencia al workflow **[`opsx:propose`](.claude/commands/opsx/propose.md)** (o `.agent/workflows/opsx-propose.md`).
 2. `api-architect-agent` ejecuta el flujo oficial de `opsx:propose`:
-   - **Exploración del Repositorio (`opsx:explore`):** Detecta y registra en `design.md` la infraestructura y convenciones reales del proyecto: `stack`, `backend_dir`, `arch_pattern` (capas Greenfield vs. estructura Brownfield), `db_mode` (`with-db` | `stateless`), `db_dirs`, `typegen_cmd`, `rls_mode` (`dedicated` / `in-situ` / `none`), `auth_mode` (`jwt` / `session` / `api-key` / `none`), `contract_style` (`code-first` como FastAPI/Pydantic vs. `openapi-first` vs. `worker-job` / `graphql` / `grpc`), `tests_dir` (y su convención modular por entidad/dominio), `lint_cmd`, `typecheck_cmd`, `test_cmd`, `mutation_cmd` (opcional, ej. `mutmut` / `stryker`) y `ci_hooks_status` (existencia de `pre-commit` / `pre-push` / CI).
+   - **Exploración del Repositorio (`opsx:explore`):** Detecta y registra en `design.md` la infraestructura y convenciones reales del proyecto: `stack`, `backend_dir`, `arch_pattern` (capas Greenfield vs. estructura Brownfield), `db_mode` (`with-db` | `stateless`), `db_dirs`, `migration_exts`, `typegen_cmd`, `rls_mode` (`dedicated` / `in-situ` / `none`), `auth_mode` (`jwt` / `session` / `api-key` / `none`), `contract_style` (`code-first` como FastAPI/Pydantic vs. `openapi-first` vs. `worker-job` / `graphql` / `grpc`), `openapi_export_cmd`, `tests_dir`, `lint_cmd`, `typecheck_cmd`, `test_cmd` (`test_fast_cmd`, `test_integration_cmd`, `test_migrate_cmd`), `scaffold_cmd`, `seed_cmd` y `mutation_cmd` (opcional).
    - **Creación Guiada por el Grafo de OpenSpec:** Ejecuta `openspec new change "<change-name>"`, consulta `openspec status --change "<change-name>" --json` y para cada artefacto obtiene su `template`, `context`, `rules` y `outputPath` con `openspec instructions <artifact-id> --change "<change-name>" --json`:
      - `openspec/changes/<change-name>/proposal.md`: Why, What, Non-goals y compatibilidad.
      - `openspec/changes/<change-name>/specs/<capability>/spec.md`: Requisitos formales y escenarios Given/When/Then (`2xx`, errores `4xx` y seguridad/multi-tenancy).
@@ -153,20 +153,19 @@ Si alguna de estas variables no está en memoria de sesión (usuario invocó dir
      node "<plugin-root>/scripts/validate-backend.js" --gate 2 --repo-root "<repo-destino>" --change-dir "openspec/changes/<change-name>" --contract-style "<contract_style>" --openapi-path "<openapi_path_si_aplica>"
      ```
    - Si `contract_style = 'openapi-first'` y existe linter OpenAPI (`spectral` / `openapi-spec-validator`), ejecutarlo complementariamente.
-4. **Presentar en chat el resumen ejecutivo unificado (incluyendo sugerencia proactiva de Hooks/CI si no existen):**
+4. **Presentar en chat el resumen ejecutivo unificado:**
 
 ```text
 📐 Paquete de Propuesta y Diseño Backend generado vía opsx:propose (Gates 1 y 2 superados):
 - Ticket: <ID o título> | Cambio: <change-name>
 - Infraestructura detectada: Stack <stack> (<arch_pattern>) en <backend_dir>, BD: <db_mode>, Seguridad: <auth_mode> / RLS: <rls_mode>, Contrato: <contract_style>, Tests: <tests_dir>
-- Hooks / CI (`ci_hooks_status`): <'Configurados' | '⚠️ No se detectó validación pre-commit / pre-push / CI en el proyecto — ¿Deseas que la configure con tu autorización?'>
 - Propuesta: [proposal.md](file:///<ruta>/openspec/changes/<change-name>/proposal.md)
 - Especificación: [spec.md](file:///<ruta>/openspec/changes/<change-name>/specs/<capability>/spec.md)
 - Diseño y Convenciones: [design.md](file:///<ruta>/openspec/changes/<change-name>/design.md)
 - Contrato OpenAPI: [openapi.yaml](file:///<ruta>/<openapi_path>) (solo si contract_style = 'openapi-first')
 - Plan de Tareas: [tasks.md](file:///<ruta>/openspec/changes/<change-name>/tasks.md)
 
-¿Apruebas esta especificación, diseño y plan de tareas (y me indicas si deseas crear la configuración de pre-commit/pre-push/CI en caso de faltar) para avanzar al Paso 2 (Suite Backend-TDD en ROJO)?
+¿Apruebas esta especificación, diseño y plan de tareas para avanzar con la implementación (ROJO → Apply → Verificación)?
 ```
 
 **🛑 FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:** Detén tu turno aquí y espera la confirmación explícita del usuario.
@@ -175,14 +174,12 @@ Si alguna de estas variables no está en memoria de sesión (usuario invocó dir
 
 ### Paso 2 — Suite Backend-TDD por Dominio y Verificación en ROJO (`backend-test-writer-agent` Fase A)
 
-1. **Configuración de Hooks / CI (solo si el usuario lo autorizó en el Paso 1):**
-   - Si el usuario autorizó crear `pre-commit`, `pre-push` o el workflow de CI, generar los archivos correspondientes antes de ejecutar el Paso 2.
-2. Invocar a `backend-test-writer-agent` (Fase A — **sin acceso de lectura a `<backend_dir>`**) entregando el `<change-name>` para que cargue los artefactos desde `openspec instructions apply --change "<change-name>" --json` (incluyendo las convenciones persistidas en `design.md`).
-3. `backend-test-writer-agent` crea o actualiza los archivos de prueba **respetando estrictamente la estructura de directorios y nombres de dominio/módulo del repositorio** (`<tests_dir>/<modulo_o_entidad>...`, **nunca** con el ID del ticket ni `<change-name>`):
-   - Mapeo 1:1 de los escenarios Given/When/Then de `specs/<capability>/spec.md`.
+1. Invocar a `backend-test-writer-agent` (Fase A — **sin acceso de lectura a `<backend_dir>`**) entregando el `<change-name>` para que cargue los artefactos desde `openspec instructions apply --change "<change-name>" --json` (incluyendo las convenciones persistidas en `design.md`).
+2. `backend-test-writer-agent` crea o actualiza los archivos de prueba **respetando estrictamente la estructura de directorios y nombres de dominio/módulo del repositorio** (`<tests_dir>/<modulo_o_entidad>...`, **nunca** con el ID del ticket ni `<change-name>`):
+   - Mapeo 1:1 de los escenarios Given/When/Then de `specs/<capability>/spec.md` (criterio de pirámide, forma de datos, determinismo y aserciones observables).
    - Casos negativos de validación y reglas de negocio (`400/404/409/422`).
    - Pruebas negativas de seguridad y aislamiento multi-tenant (`401/403`/IDOR según `rls_mode` y `auth_mode`).
-4. **Verificación de ROJO Válido y Congelamiento de Tests:**
+3. **Verificación de ROJO Válido y Congelamiento de Tests:**
    - Validar mecánicamente que la suite falle por un motivo esperado (y **detenerse si algún test nace en VERDE o falla por sintaxis/import roto**):
      ```bash
      node "<plugin-root>/scripts/validate-backend.js" --action verify-red --repo-root "<repo-destino>" --test-cmd "<test_cmd>"
@@ -192,18 +189,7 @@ Si alguna de estas variables no está en memoria de sesión (usuario invocó dir
      ```bash
      node "<plugin-root>/scripts/validate-backend.js" --action snapshot-tests --repo-root "<repo-destino>" --change-dir "openspec/changes/<change-name>" --tests-dir "<tests_dir>"
      ```
-5. Notificar al usuario con enlace a los tests de dominio y confirmación del estado Rojo:
-
-```text
-🧪 Suite Backend-TDD de dominio preparada y verificada en ROJO:
-- Archivos de prueba (por dominio/módulo): [<modulo>.test...](file:///<ruta>/<tests_dir>/<archivo_test_dominio>)
-- Estado inicial: 🔴 ROJO verificado (las aserciones fallan esperadamente antes de la implementación).
-- Cobertura: 100% de escenarios Given/When/Then de spec.md.
-
-¿Procedemos al Paso 3 (opsx:apply — Implementación del Backend y Gate 3)?
-```
-
-**🛑 FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:** Detén tu turno aquí y espera la confirmación explícita del usuario.
+4. **Avance automático al Paso 3:** Si `verify-red` y `snapshot-tests` superan con `exit 0`, avanzar directamente al Paso 3 sin pausa intermedia.
 
 ---
 
@@ -228,37 +214,23 @@ Si alguna de estas variables no está en memoria de sesión (usuario invocó dir
      ```
    - Ejecutar los comandos nativos de linter y typecheck del proyecto (`<lint_cmd>` y `<typecheck_cmd>`).
    - Si el Gate 3 o los linters fallan (`exit != 0`): si hubo modificación prohibida en `<db_dirs>`, revertirla inmediatamente; registrar el fallo con `node "<plugin-root>/scripts/sdd-error-memory.js" --action record --change-dir "openspec/changes/<change-name>" --layer backend --step "Gate 3" --message "<error>" --avoid "<restriccion>"`. Si devuelve `exit 2` (`loop_detected: true`), detener reintentos automáticos y escalar al usuario; de lo contrario, re-despachar a `backend-developer-agent` con el resumen compacto de `--action summary` hasta que el Gate 3 pase limpiamente.
-4. Presentar resumen ejecutivo en chat:
-
-```text
-🛠️ Implementación Backend vía opsx:apply completada y Gate 3 superado:
-- Archivos implementados en `<backend_dir>`:
-  - Schemas / DTOs: <enlaces>
-  - Repositorios / Acceso a Datos: <enlaces> (si db_mode = 'with-db')
-  - Servicios / Lógica de Dominio: <enlaces>
-  - Routers / Controladores / Workers: <enlaces>
-- Progreso en tasks.md: <M>/<M> tareas completadas [x]
-- Gate 3 (Linter, Typecheck & 0 Diff en BD): ✅ Superado
-
-¿Procedemos al Paso 4 (Gate 4 de ejecución de tests y verificación en VERDE con opsx:verify)?
-```
-
-**🛑 FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:** Detén tu turno aquí y espera la confirmación explícita del usuario.
+5. **Avance automático al Paso 4:** Cuando el Gate 3, linter y typecheck pasen con `exit 0` (sin `[DISPUTA DE TEST]`), avanzar directamente al Paso 4 sin pausa intermedia.
 
 ---
 
 ### Paso 4 — Gate 4 (Tests en VERDE) y Verificación vía `opsx:verify` (`backend-qa-agent` Fase B)
 
-1. **Ejecución del Gate 4 — Corrida Determinista de la Suite de Pruebas e Integridad de Tests Congelados:**
-   - Leer `tests_dir` y `test_cmd` desde `openspec/changes/<change-name>/design.md` y ejecutar:
+1. **Ejecución del Gate 4 — Auto-migración de BD de pruebas, Suite en VERDE e Integridad de Tests Congelados:**
+   - Leer `tests_dir`, `test_cmd` (o `test_fast_cmd` + `test_integration_cmd`) y `test_migrate_cmd` desde `openspec/changes/<change-name>/design.md`. Si existe `test_migrate_cmd`, ejecutarlo antes de correr las pruebas.
+   - Ejecutar el Gate 4 determinista:
      ```bash
      node "<plugin-root>/scripts/validate-backend.js" --gate 4 --repo-root "<repo-destino>" --change-dir "openspec/changes/<change-name>" --tests-dir "<tests_dir>" --test-cmd "<test_cmd>" --require-tests-freeze
      ```
-2. **Verificación en VERDE y Ejecución de `opsx:verify` con `backend-qa-agent` (§7.5.2):**
+2. **Verificación en VERDE, Cierre fuera de código y `opsx:verify` (`backend-qa-agent` Fase B):**
    - Invocar únicamente a `backend-qa-agent` (Fase B) con la referencia al workflow **[`opsx:verify`](.claude/commands/opsx/verify.md)**:
-     - Verifica que **todos los tests del dominio en `<tests_dir>` pasen en VERDE**.
-     - Ejecuta `opsx:verify` evaluando sus 3 dimensiones oficiales (**Completeness**: todas las tareas `[x]` en `tasks.md` y requisitos de `specs/`; **Correctness**: cobertura de escenarios Given/When/Then en verde y pruebas negativas de seguridad/multi-tenancy; **Coherence**: *Drift Check* 1:1 contra `design.md`/`openapi.yaml` e inmutabilidad de BD).
-     - Escribe el reporte en `openspec/changes/<change-name>/verification-report.md`.
+     - Verifica que **todos los tests del dominio en `<tests_dir>` pasen en VERDE** y construye el mapa `Scenario -> test`.
+     - Ejecuta comprobaciones fuera del código si aplican (`openapi_export_cmd` en `code-first`, inspección solo lectura en `DB_DEV_RO_URL`, idempotencia de `seed_cmd` sobre base vacía).
+     - Ejecuta `opsx:verify` evaluando **Completeness**, **Correctness** y **Coherence**, escribiendo `openspec/changes/<change-name>/verification-report.md`.
 3. **Validación Formal OpenSpec:**
    ```bash
    openspec validate "<change-name>"
@@ -300,8 +272,7 @@ Si alguna de estas variables no está en memoria de sesión (usuario invocó dir
 > Este paso se ejecuta únicamente cuando el cambio incluye lógica de negocio, validaciones de entrada o reglas de autorización/multi-tenancy. Si estuvo exento, fue ruteado directamente del Paso 4 al Paso 6.
 
 1. Invocar únicamente a `backend-mutation-tester` entregando `<change-name>`, `design.md`, `specs/`, `<backend_dir>` y `<tests_dir>`:
-   - Audita la falsabilidad de la suite en `<tests_dir>` ejecutando mutaciones controladas sobre `<backend_dir>` (`mutation_cmd` si fue detectado en `design.md` o catálogo canónico `M1–M5`).
-   - Restaura íntegramente los archivos de `<backend_dir>` sin usar comandos `git`, limpia cachés temporales y escribe únicamente `openspec/changes/<change-name>/mutation-report.md`.
+   - Audita la falsabilidad de la suite en `<tests_dir>` ejecutando `mutation_cmd` nativo o el catálogo `M1–M5` **dentro de una copia temporal aislada** (sin mutar `<backend_dir>` en vivo ni usar `git`), y escribe únicamente `openspec/changes/<change-name>/mutation-report.md`.
 2. **Validación determinista post-corrida de árbol limpio e integridad:**
    - Comprobar en disco que no existan artefactos residuales de mutación (`.stryker-tmp`, `.mutmut-cache`).
    - Re-ejecutar `test_cmd` (o Gate 4 con `node "<plugin-root>/scripts/validate-backend.js" --gate 4 ...`) tras `backend-mutation-tester` para certificar con `exit 0` que `<backend_dir>` fue restaurado íntegramente y la suite volvió a quedar 100% en VERDE.

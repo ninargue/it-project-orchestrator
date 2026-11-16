@@ -557,20 +557,33 @@ function runGate4() {
     pass(`[Gate 4] Suite de pruebas por dominio detectada y validada (${testFiles.length} archivo(s), ${totalTestCases} caso(s) de prueba).`);
   }
 
-  // Trazabilidad mínima contra escenarios declarados en specs/ del changeDir
+  // Trazabilidad Scenario -> test contra escenarios declarados en specs/ del changeDir
   if (changeDir) {
     const specsDir = path.join(resolveInRepo(changeDir), 'specs');
     const specFiles = listFilesRecursive(specsDir, ['.md']);
-    let specScenarioCount = 0;
+    const scenarios = [];
     for (const sf of specFiles) {
       const sfContent = fs.readFileSync(sf, 'utf8');
-      const matches = sfContent.match(/^\s*#{2,4}\s*Scenario\s*:/gim) || [];
-      specScenarioCount += matches.length;
+      for (const m of sfContent.matchAll(/^\s*#{2,4}\s*Scenario\s*:\s*(.+)$/gim)) {
+        scenarios.push(m[1].trim());
+      }
     }
-    if (specScenarioCount > 0 && totalTestCases < specScenarioCount) {
-      fail(`[Gate 4] Cobertura insuficiente: 'specs/' declara ${specScenarioCount} escenario(s) pero la suite solo contiene ${totalTestCases} caso(s) de prueba.`);
-    } else if (specScenarioCount > 0) {
-      pass(`[Gate 4] Trazabilidad de escenarios verificada (${totalTestCases} test(s) >= ${specScenarioCount} escenario(s) en specs/).`);
+    if (scenarios.length > 0) {
+      const allTestsText = testFiles.map(tf => fs.readFileSync(tf, 'utf8')).join('\n').toLowerCase();
+      const unmapped = scenarios.filter(title => {
+        const clean = title.toLowerCase().replace(/[^a-z0-9áéíóúñü]+/g, ' ').trim();
+        const snake = clean.replace(/\s+/g, '_');
+        const kebab = clean.replace(/\s+/g, '-');
+        return !allTestsText.includes(clean) && !allTestsText.includes(snake) && !allTestsText.includes(kebab);
+      });
+      if (unmapped.length > 0) {
+        warn(`[Gate 4] Escenarios sin referencia explícita en los tests de '${testsDir || 'tests/'}': ${unmapped.join(', ')}. Incluye el nombre del Scenario en la descripción o nombre del test.`);
+      } else {
+        pass(`[Gate 4] Mapa Scenario -> test verificado (${scenarios.length}/${scenarios.length} escenario(s) referenciados en la suite).`);
+      }
+      if (totalTestCases < scenarios.length) {
+        fail(`[Gate 4] Cobertura insuficiente: 'specs/' declara ${scenarios.length} escenario(s) pero la suite solo contiene ${totalTestCases} caso(s) de prueba.`);
+      }
     }
   }
 

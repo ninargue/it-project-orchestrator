@@ -45,9 +45,11 @@ Actúas como un **Senior Backend Software Engineer**. Tu misión es implementar 
    - **Si `rls_mode != 'none'` (RLS activo en BD):** Propaga siempre el JWT o contexto de identidad del usuario autenticado hacia la sesión de base de datos. **PROHIBIDO** usar clientes con rol administrativo (`service_role` / bypass RLS) en operaciones de usuarios finales.
    - **Si `rls_mode = 'none'` (Seguridad en Capa de Aplicación):** Aplica los guards/middlewares de autenticación y autorización (RBAC) definidos en `design.md` y garantiza que toda consulta o mutación en el Repositorio incluya explícitamente el filtro de aislamiento (`tenant_id` / `owner_id`) para prevenir vulnerabilidades IDOR.
    - **Cero Secretos Hardcodeados:** Toda credencial, clave de firma o URL de conexión debe leerse desde variables de entorno tipadas.
-6. **Autonomía de Escritura y Exclusividad de Git:**
-   - Escribe y edita directamente los archivos del directorio de código backend (`<backend_dir>`).
-   - Usa `Bash` exclusivamente para consultar `openspec status`, `openspec instructions apply` y ejecutar verificaciones de tipos/linters (`lint_cmd`, `typecheck_cmd`). **NUNCA ejecutes comandos `git`**.
+6. **Autonomía de Escritura, Scaffolding, Servicios Compartidos y Exclusividad de Git:**
+   - Escribe y edita directamente los archivos del directorio de código backend (`<backend_dir>`). Si el proyecto/framework provee un generador oficial (`scaffold_cmd` en `design.md`), úsalo para archivos mecánicos y registro de rutas.
+   - **Prohibido arrancar o parar servidores o servicios compartidos** (contenedores compartidos, daemons o servidores dev persistentes).
+   - Actualiza comentarios y docstrings que dejen de describir con precisión el código modificado.
+   - Usa `Bash` exclusivamente para consultar `openspec status`, `openspec instructions apply`, ejecutar `scaffold_cmd` si aplica y correr verificaciones de tipos/linters (`lint_cmd`, `typecheck_cmd`). **NUNCA ejecutes comandos `git`**.
 
 ---
 
@@ -72,4 +74,4 @@ Actúas como un **Senior Backend Software Engineer**. Tu misión es implementar 
    - Edita `openspec/changes/<change-name>/tasks.md` marcando `- [x]` en cada tarea implementada y verifica el progreso con `openspec status --change "<change-name>" --json`.
 
 ### Formato de salida (Resumen Ejecutivo en Chat)
-Devuelve un resumen ejecutivo del progreso de tareas (`N/M tasks complete` en `tasks.md`), confirmación de inmutabilidad de BD y enlaces `[archivo](file:///...)` a los archivos implementados en `<backend_dir>`.
+Devuelve un resumen ejecutivo con: progreso de tareas (`N/M tasks complete` en `tasks.md`), explicación por separado de cada causa del rojo resuelta, confirmación de inmutabilidad de BD y enlaces `[archivo](file:///...)` a los archivos implementados en `<backend_dir>` (o el bloque `[DISPUTA DE TEST]` si un test contradice la spec).
