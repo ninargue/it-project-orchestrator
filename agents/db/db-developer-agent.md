@@ -68,7 +68,7 @@ Actúas como un **Senior Database Developer & Migration Engineer**. Tu misión e
    - **Migración DOWN (si `migration_mode = 'symmetric'`):**
      - Revierte en orden inverso: triggers/funciones → vistas → tablas hijo → tablas padre → tipos/extensiones.
    - **Seeds / Fixtures (solo si `requires_seeds = true`):**
-     - Escribe datos sintéticos en `<seeds_dir>` respetando el orden topológico de claves foráneas.
+     - Escribe datos en `<seeds_dir>` en orden topológico de FKs cumpliendo 4 condiciones: (1) derivados de las reglas de negocio de `specs/`, (2) 100% inventados (nunca datos reales/prod), (3) fechas relativas a hoy (`now() - interval ...`), y (4) idempotentes (`ON CONFLICT DO NOTHING`/upsert) y marcados como **solo para desarrollo**.
 3. **Sincronización de Progreso en `tasks.md`:**
    - Edita `openspec/changes/<change-name>/tasks.md` marcando `- [x]` en cada tarea de DDL/seeds implementada y verifica el progreso con `openspec status --change "<change-name>" --json`.
 

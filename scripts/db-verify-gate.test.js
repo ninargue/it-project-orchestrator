@@ -79,4 +79,23 @@ describe('scripts/db-verify-gate.js', () => {
     assert.equal(parsed.verdict, '[OBSERVADO CON CORRECCIONES REQUERIDAS]');
     assert.equal(parsed.gates.find((g) => g.name === 'db-test-fingerprint').ok, false);
   });
+
+  it('falla el gate si typecheck-cmd devuelve exit != 0 tras pasar tests', () => {
+    const res = run(GATE_SCRIPT, [
+      '--change-dir', changeDir,
+      '--tests-dir', testsDir,
+      '--migrations-dir', migDir,
+      '--no-rls',
+      '--skip-roundtrip',
+      '--test-cmd', 'node -e "process.exit(0)"',
+      '--schema-codegen-cmd', 'node -e "process.exit(0)"',
+      '--typecheck-cmd', 'node -e "process.exit(1)"',
+      '--json'
+    ]);
+    assert.equal(res.code, 1);
+    const parsed = JSON.parse(res.out);
+    assert.equal(parsed.verdict, '[OBSERVADO CON CORRECCIONES REQUERIDAS]');
+    assert.equal(parsed.gates.find((g) => g.name === 'schema-codegen').ok, true);
+    assert.equal(parsed.gates.find((g) => g.name === 'typecheck').ok, false);
+  });
 });
