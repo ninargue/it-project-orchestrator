@@ -122,6 +122,16 @@ Si alguna de estas variables no está en memoria de sesión (usuario invocó dir
        Por favor, indica el ID del ticket (ej. US-03-T1 o issue #17) o describe el requerimiento de base de datos a desarrollar.
        ```
        **🛑 FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:** Detén tu turno aquí y espera a que el usuario provea el requerimiento.
+   - **Pre-condición D (Separación de Ambientes, Healthcheck de Test y Rol RO):**
+     - Leer la sección `db.environments` de `openspec/config.yaml`.
+     - Comprobar que `DB_TEST_URL` esté definida, sea distinta de `DB_DEV_URL` (mismo host/puerto/base = bloqueo inmediato) y responda al `healthcheck` configurado.
+     - Si falta `DB_TEST_URL`, falla el `healthcheck` o `DB_TEST_URL == DB_DEV_URL`:
+       ```text
+       ❌ [INPUT GATE]: La base de pruebas efímera no está lista o coincide con la base de desarrollo.
+       Verifica DB_TEST_URL != DB_DEV_URL y el healthcheck declarado en openspec/config.yaml antes de continuar.
+       ```
+       **🛑 FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:** Detén tu turno aquí hasta que la base de pruebas efímera esté aislada y saludable.
+     - Verificar si `DB_DEV_RO_URL` (rol `agent_ro`) está disponible para exploración en vivo; en proyectos *brownfield* sin `DB_DEV_RO_URL`, advertir al usuario que puede crearlo con `<plugin-root>/templates/db/readonly-role.<engine>.sql`.
 
 2. **Handoff Inmediato al Paso 1:**
    - Cumplidas las pre-condiciones, definir el identificador del cambio `<change-name>` en `kebab-case` (ej. `0017-crear-esquema-usuarios` o `<ticket_id>-db`).
@@ -133,7 +143,7 @@ Si alguna de estas variables no está en memoria de sesión (usuario invocó dir
 
 1. Invocar a `db-architect-agent` entregando el `<change-name>`, el ticket técnico y la referencia al workflow **[`opsx:propose`](.claude/commands/opsx/propose.md)** (o `.agent/workflows/opsx-propose.md`).
 2. `db-architect-agent` ejecuta el flujo oficial de `opsx:propose`:
-   - **Exploración del Repositorio (`opsx:explore`):** Detecta y registra en `design.md` la infraestructura real del proyecto: `engine`, `migrations_dir`, `security_dir` (`dedicated` / `in-situ` / `none`), `seeds_dir`, `tests_dir` (y su convención modular por entidad/dominio), `migration_mode` (`symmetric` vs `forward-only`), `rls_mode` (`dedicated` / `in-situ` / `none`), `requires_seeds`, `test_cmd` y `validation_cmd`.
+   - **Exploración del Repositorio y Base Viva (`opsx:explore`):** Detecta y registra en `design.md` la infraestructura real del proyecto: `engine`, `migrations_dir`, `security_dir` (`dedicated` / `in-situ` / `none`), `seeds_dir`, `tests_dir` (y su convención modular por entidad/dominio), `migration_mode` (`symmetric` vs `forward-only`), `rls_mode` (`dedicated` / `in-situ` / `none`), `requires_seeds`, `test_cmd` y `validation_cmd`. Si `DB_DEV_RO_URL` está disponible, consulta el esquema real y valores existentes mediante `ro_cli` (o MCP opcional) y los registra en `design.md › ## Estado observado de la base`.
    - **Creación Guiada por el Grafo de OpenSpec:** Ejecuta `openspec new change "<change-name>"`, consulta `openspec status --change "<change-name>" --json` y para cada artefacto obtiene su `template`, `context`, `rules` y `outputPath` con `openspec instructions <artifact-id> --change "<change-name>" --json`:
      - `openspec/changes/<change-name>/proposal.md`: Why, What, Non-goals y compatibilidad.
      - `openspec/changes/<change-name>/specs/<capability>/spec.md`: Requisitos formales y escenarios Given/When/Then.
