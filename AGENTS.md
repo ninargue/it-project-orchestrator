@@ -16,6 +16,8 @@ Este proyecto es un sistema multi-agente agnóstico diseñado para cubrir el cic
    - `_skills/sdd-init/`: Inicializa la estructura OpenSpec y `config.yaml` contextual en el repositorio de desarrollo sin instalar herramientas locales (usadas vía plugin).
    - `_skills/db-sdd/`: Ciclo SDD de Base de Datos guiado por especificaciones, DB-TDD y validaciones mecánicas deterministas.
    - `_skills/backend-sdd/`: Ciclo SDD de la capa Backend guiado por especificaciones, contratos de API, Backend-TDD y 4 Gates deterministas.
+   - `_skills/ui-discovery/`: Conceptualización visual previa opcional (Text-to-Wireframe o Figma Extractor) generando `ui-spec.json`.
+   - `_skills/frontend-sdd/`: Ciclo SDD de la capa Frontend con Contract-First (o Frontend-Driven), Frontend-TDD *Design-Blind*, 4 Gates deterministas, `opsx:verify` post-auditoría y Mutation Testing.
    - `sdd/`: Implementación de código guiada por especificaciones técnicas rigurosas a partir de tickets priorizados del backlog y especificaciones OpenSpec.
 
 ---
@@ -39,7 +41,7 @@ Según la elección, invocar el recurso correspondiente antes de continuar:
 - `[4]` → Si `openspec/config.yaml` no existe en el repositorio de destino: `_skills/sdd-init/SKILL.md`. Si ya está inicializado, el orquestador solicita el ticket o requerimiento técnico y activa el **Dispatcher por Capa**:
   - `capa:db` → `_skills/db-sdd/SKILL.md` (Ciclo SDD de Base de Datos con equipo multi-agente en `agents/db/`)
   - `capa:backend` → `_skills/backend-sdd/SKILL.md` (Ciclo SDD de Backend con equipo multi-agente en `agents/backend/`)
-  - `capa:frontend` → Ciclo SDD correspondiente
+  - `capa:frontend` → `_skills/frontend-sdd/SKILL.md` (Ciclo SDD de Frontend con equipo multi-agente en `agents/frontend/`, precedido opcionalmente por `_skills/ui-discovery/SKILL.md`)
 
 ---
 
@@ -49,11 +51,12 @@ Según la elección, invocar el recurso correspondiente antes de continuar:
 |---|---|---|
 | **Subagentes Core** | `agents/<nombre>.md` | Discovery, análisis de producto, backlog, tickets y materialización |
 | **Subagentes de Base de Datos** | `agents/db/<nombre>.md` | Equipo especializado de BD: Architect, Developer, Security DBA, Mutation Tester y QA |
-| **Subagentes de Backend** | `agents/backend/<nombre>.md` | Equipo especializado de Backend: API Architect, Backend Developer y Backend QA |
+| **Subagentes de Backend** | `agents/backend/<nombre>.md` | Equipo especializado de Backend: API Architect, Backend Developer, Backend QA y Mutation Tester |
+| **Subagentes de Frontend** | `agents/frontend/<nombre>.md` | Equipo especializado de Frontend: UX Designer, Architect, QA, UI Developer, Integrator, Auditor y Mutation Tester |
 | **Skills** | `_skills/<nombre>/SKILL.md` | Runbooks y procedimientos operativos paso a paso con interacción humana |
 | **Orquestador** | `orchestrator/ORCHESTRATOR.md` | Secuenciación de flujos completos punta a punta, dispatching de tickets y gobernanza Git |
 | **Especificaciones SDD** | `openspec/` y `sdd/` | Framework OpenSpec, planes y especificaciones técnicas de desarrollo guiado |
-| **Scripts Deterministas** | `scripts/` | Validaciones mecánicas automatizadas (`validate-db-migrations.js`, `validate-backend.js`: FKs, simetría up/down, RLS, contratos OpenAPI, No-DB-Diff) |
+| **Scripts Deterministas** | `scripts/` | Validaciones mecánicas automatizadas (`validate-db-migrations.js`, `validate-backend.js`, `validate-frontend.js`, `sdd-error-memory.js`) |
 | **Templates** | `templates/` y `docs/` | Plantillas oficiales para issues (GitHub/Linear) y documentos (briefings, tool-config) |
 
 ---
@@ -61,7 +64,7 @@ Según la elección, invocar el recurso correspondiente antes de continuar:
 ## 4. Reglas de Oro Globales (Invariantes del Sistema)
 
 1. **Gobernanza de Git:** Ningún subagente ni skill ejecuta commits directamente. Solo el orquestador principal interactúa con Git, y **siempre tras confirmación explícita del usuario**.
-2. **Validación Humana Obligatoria:** Nunca avanzar de etapa ni sobrescribir acuerdos sin confirmación del usuario (respetar rigurosamente las pausas `⏸️` y `🛑`).
+2. **Validación Humana Obligatoria:** Nunca avanzar de etapa ni sobrescribir acuerdos sin confirmación del usuario (respetar rigurosamente las pausas `⏸️` y `🛑`). *(Excepción SDD gobernada: dentro de un ciclo SDD cuyo plan/specs ya fue aprobado por el usuario, los pasos de implementación y verificación técnica pueden avanzar sin pausa intermedia únicamente cuando todos los gates deterministas precedentes están en verde; ante cualquier fallo o en el cierre final es obligatorio detenerse).*
 3. **Separación Estricta de Responsabilidades:**
    - `agents/<nombre>.md`: Contiene la personalidad, modelo mental y restricciones ontológicas del agente (quién es y qué tiene prohibido hacer).
    - `_skills/<nombre>/SKILL.md`: Contiene el flujo de trabajo procedural (cuándo se le invoca, qué insumos se le entregan y cómo se procesa la salida).
@@ -131,6 +134,7 @@ El orquestador organiza los artefactos generados bajo una estructura canónica e
 │   ├── prd/
 │   │   ├── <NNNN>-alcance-<sufijo>.md   # Alcance consensuado (ej: 0001-alcance-registro-ventas-mvp.md)
 │   │   └── <NNNN>-<proyecto>-<sufijo>.md # PRD estructurado (ej: 0001-sistema-ventas-registro-ventas-mvp.md)
+│   ├── ui/                              # Especificaciones visuales opcionales (<NNNN>-ui-spec-<sufijo>.json)
 │   └── backlog/
 │       └── <NNNN>-<proyecto>-<sufijo>/  # Subcarpeta homónima al PRD para cada avance
 │           ├── <NNNN>-backlog-priorizado.md # Grafo de dependencias, sizing y matriz
@@ -150,7 +154,12 @@ El orquestador organiza los artefactos generados bajo una estructura canónica e
 │   ├── services/                        # Capa de lógica de negocio y orquestación transaccional
 │   ├── routers/                         # Controladores HTTP / Routers / Workers de entrada (o controllers/)
 │   └── tests/                           # Suites Backend-TDD organizadas por dominio/módulo (<modulo>.test..., nunca por ticket)
-├── openspec/                            # Especificaciones OpenSpec (specs/, changes/<change>/ con verification-report.md, config.yaml)
+├── frontend/                            # Ciclo de capa frontend (o estructura propia del repo: src/, app/, frontend/)
+│   ├── components/                      # Componentes presentacionales puros y tokens de diseño
+│   ├── hooks/                           # Hooks de consulta/mutación, estado global y colas offline
+│   ├── services/                        # Clientes API alineados con OpenAPI / mocks MSW
+│   └── tests/                           # Suites Frontend-TDD Design-Blind organizadas por dominio/módulo (nunca por ticket)
+├── openspec/                            # Especificaciones OpenSpec (specs/, changes/<change>/ con verification-report.md y mutation-report.md, config.yaml)
 └── sdd/                                 # Specification-Driven Development (fase de desarrollo)
     └── <modulo-o-feature>/
         ├── spec.md                      # Especificación técnica detallada
@@ -198,7 +207,7 @@ Cualquier agente o desarrollador que cree o modifique un Skill (`_skills/`), un 
 
 ### 7.1. SSOT y Patrón Puntero (Anti-Prompt Drift)
 1. **Definición Canónica Única:** Todo subagente se define única y exclusivamente en `agents/<nombre>.md` o en subcarpetas especializadas por capa (`agents/db/<nombre>.md`, `agents/backend/`, etc.) con 3 secciones obligatorias: `1. Identidad y Misión`, `2. Invariantes y Guardrails Estrictos` y `3. Contratos de Ejecución (Inputs, Lógica, Formato de salida)`.
-2. **Espejo Puntero en `.claude/_agents/`:** Por cada archivo en `agents/`, debe existir `.claude/_agents/<nombre>.md` (o subcarpeta homóloga `.claude/_agents/db/<nombre>.md`) que contenga **únicamente** el frontmatter YAML (`name`, `description`, `tools`) y la instrucción de una línea: `Lee y adopta estrictamente la identidad, rol, guardrails y contratos de ejecución definidos en el archivo canónico del agente: agents/<capa>/<nombre>.md`. Prohibido duplicar el prompt.
+2. **Espejo Puntero en `.claude/_agents/`:** Por cada archivo en `agents/`, debe existir `.claude/_agents/<nombre>.md` (o subcarpeta homóloga `.claude/_agents/db/<nombre>.md`) que contenga **únicamente** el frontmatter YAML (`name`, `description`, `model`, `effort`, `tools`) y la instrucción de una línea: `Lee y adopta estrictamente la identidad, rol, guardrails y contratos de ejecución definidos en el archivo canónico del agente: agents/<capa>/<nombre>.md`. Prohibido duplicar el prompt. Los campos `model` (`opus` | `sonnet` | `haiku`) y `effort` (`high` | `medium` | `low`) deben corresponder al agente canónico según §7.4.4.
 3. **Desacoplamiento Skill ↔ Agente:** Los archivos `_skills/<skill>/SKILL.md` NO deben contener el prompt del sistema del subagente; solo especifican en qué paso se invoca, qué archivos/variables recibe como input y cómo se persiste o valida su salida.
 
 ### 7.2. Matriz de Autonomía y Mínimo Privilegio (Permisos y Herramientas)
@@ -226,12 +235,20 @@ Cualquier agente o desarrollador que cree o modifique un Skill (`_skills/`), un 
 3. **Límite de Granularidad:**
    - Un archivo `agents/<nombre>.md` no debe exceder ~150 líneas (mantener instrucciones densas, deterministas y sin relleno).
    - Un archivo `_skills/<nombre>/SKILL.md` debe contener entre 3 y 8 pasos interactivos como máximo. Si un flujo supera los 8 pasos, debe particionarse en 2 Skills secuenciales conectados por `ORCHESTRATOR.md` con un commit intermedio.
+4. **Asignación de Modelos y Esfuerzo por Tier (`model_tier` y `effort`):**
+   - Cada subagente canónico declara `model_tier` (`reasoning` | `balanced` | `fast`) y `effort` (`high` | `medium` | `low`) en su frontmatter; su espejo en `.claude/_agents/` fija `model` y `effort` para Claude Code, mientras los skills pasan el parámetro `Model` equivalente al invocar en Antigravity (`invoke_subagent` no expone parámetro `effort`):
+     - `reasoning` → Claude Code `opus` (`effort: high`) | Antigravity `pro`: `adversarial-reviewer`, `db-architect-agent`, `api-architect-agent`, `frontend-architect-agent`, `db-mutation-tester`, `backend-mutation-tester`, `frontend-mutation-tester`.
+     - `balanced` → Claude Code `sonnet` | Antigravity `inherit`:
+       - `effort: high` (QA, seguridad y auditoría): `db-qa-agent`, `backend-qa-agent`, `frontend-qa-agent`, `db-security-agent`, `frontend-auditor-agent`.
+       - `effort: medium` (implementación, discovery y backlog): `discovery-agent`, `backlog-enrich-agent`, `tickets-agent`, `db-developer-agent`, `backend-developer-agent`, `ux-designer-agent`, `frontend-ui-developer-agent`, `frontend-integrator-agent`.
+     - `fast` → Claude Code `haiku` (`effort: low`) | Antigravity `flash_lite`: `issue-materializer-agent`.
 
 ### 7.5. Protocolo HITL (Human-in-the-Loop) e Idempotencia
 1. **Plantilla Obligatoria de Fin de Turno:** Todo paso interactivo dentro de un `SKILL.md` debe cerrar con el bloque literal:
    `**🛑 FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:**` seguido de las instrucciones explícitas de detención.
-2. **Un Subagente por Turno Interactivo:** Prohibido encadenar dos subagentes en un mismo turno si el output del primero requiere validación humana o sirve de especificación (`spec.md` / `plan.md` / `PRD`) para el segundo.
+2. **Un Subagente por Turno Interactivo:** Prohibido encadenar dos subagentes en un mismo turno si el output del primero requiere validación humana o sirve de especificación (`spec.md` / `plan.md` / `PRD`) para el segundo. Tras aprobar el plan (`opsx:propose`), los subagentes de ejecución/verificación pueden encadenarse cuando cada gate determinista intermedio resulte en verde, deteniéndose ante cualquier fallo (escalada) y en el cierre.
 3. **Trazabilidad SDD 1:1 (Anti-Invención):** En flujos de desarrollo o base de datos (SDD), ningún agente de implementación puede agregar tablas, columnas, endpoints o lógica que no estén declarados en el `spec.md` aprobado. Cualquier omisión detectada durante la implementación o QA obliga a reportar el *drift* y actualizar el `spec.md` antes de regenerar código.
+4. **Memoria Híbrida ante Errores (`.sdd-state.json` + `known-gotchas.md`):** Ante fallos de Gates, tests o QA en un ciclo SDD, registrar el error con `node "<plugin-root>/scripts/sdd-error-memory.js" --action record`. Si la misma `error_signature` se repite 2 veces (`exit 2`), detener reintentos automáticos y escalar al usuario. Al archivar con `opsx:archive` / `opsx:bulk-archive`, si hubo errores estructurales, proponer (previa confirmación HITL) promover una regla breve a `openspec/specs/<capa>/known-gotchas.md` vía `--action promote`.
 
 ### 7.6. Scripts Deterministas y Validadores (Cross-Platform Node.js)
 1. **Runtime Universal en Node.js:** Todo script provisto en `scripts/` debe escribirse en Node.js (`.js`) usando módulos estándar (`fs`, `path`). Queda terminantemente prohibido utilizar scripts dependientes de sistemas operativos específicos (como PowerShell `.ps1` o scripts con sintaxis no portable de Bash).
@@ -240,7 +257,7 @@ Cualquier agente o desarrollador que cree o modifique un Skill (`_skills/`), un 
 
 ### 7.7. Checklist de No-Regresión al Agregar un Nuevo Componente
 Antes de dar por terminado un nuevo Skill o Subagente, verificar:
-- [ ] ¿Se creó `agents/<nombre>.md` y su puntero exacto en `.claude/_agents/<nombre>.md`?
+- [ ] ¿Se creó `agents/<nombre>.md` (con `model_tier` y `effort`) y su puntero exacto en `.claude/_agents/<nombre>.md` (con `model` y `effort`)?
 - [ ] ¿El frontmatter del `SKILL.md` declara `name`, `version`, `description`, `trigger`, `tools_required`, `subagents`, `inputs`, `outputs` y `commits`?
 - [ ] ¿El handoff hacia el subagente está libre de sesgos del orquestador (solo contexto del usuario + archivos en disco)?
 - [ ] ¿Respeta el modo dual (`tiene_repositorio = true` escribe a disco y resume en chat vs. `tiene_repositorio = false` vuelca en chat)?

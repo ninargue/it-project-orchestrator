@@ -17,6 +17,7 @@ subagents:
 inputs:
   - Ticket técnico de base de datos (US-XX-TN o issue de GitHub)
   - openspec/config.yaml (configuración SDD del proyecto)
+  - openspec/specs/db/known-gotchas.md (opcional, aprendizajes previos de la capa db)
   - .claude/commands/opsx/*.md (o .agent/workflows/opsx-*.md)
   - docs/prd/*.md (opcional, contexto de dominio existente)
   - docs/backlog/**/us-*.md (opcional, historias asociadas)
@@ -25,6 +26,7 @@ outputs:
   - openspec/changes/<change-name>/specs/<capability>/spec.md
   - openspec/changes/<change-name>/design.md
   - openspec/changes/<change-name>/tasks.md
+  - openspec/changes/<change-name>/.sdd-state.json
   - openspec/changes/<change-name>/verification-report.md
   - openspec/changes/<change-name>/mutation-report.md (si hay constraints o RLS a falsar)
   - <schemas_dir>/erd.md (actualizado si hay tablas nuevas o FKs alteradas)
@@ -76,6 +78,8 @@ Si alguna de estas variables no está en memoria de sesión (usuario invocó dir
 5. **Persistencia en Disco y Concisión en Chat (Repositorio Obligatorio):**
    - El ciclo SDD de base de datos **requiere obligatoriamente un repositorio o workspace local** (`tiene_repositorio = true`) para operar con OpenSpec, escribir migraciones/tests y ejecutar las validaciones mecánicas.
    - Los subagentes persisten directamente sus entregables en disco. En chat se muestra únicamente un resumen ejecutivo conciso con enlaces directos (`file:///...`).
+6. **Selección de Modelo por Tier (`AGENTS.md` §7.4.4):** Al invocar subagentes con `invoke_subagent`, pasar `Model: "pro"` para `db-architect-agent` y `db-mutation-tester`, y `Model: "inherit"` para `db-developer-agent`, `db-security-agent` y `db-qa-agent`. En Claude Code el campo `model:` de `.claude/_agents/` aplica automáticamente.
+7. **Memoria Híbrida ante Errores (`AGENTS.md` §7.5.4):** Si existe `openspec/specs/db/known-gotchas.md`, `db-architect-agent` debe leerlo en `opsx:explore`. Ante fallos de migración, RLS o tests, registrar en `openspec/changes/<change-name>/.sdd-state.json` con `scripts/sdd-error-memory.js --action record` (detener y escalar si devuelve `exit 2`).
 
 ---
 
@@ -118,6 +122,16 @@ Si alguna de estas variables no está en memoria de sesión (usuario invocó dir
        Por favor, indica el ID del ticket (ej. US-03-T1 o issue #17) o describe el requerimiento de base de datos a desarrollar.
        ```
        **🛑 FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:** Detén tu turno aquí y espera a que el usuario provea el requerimiento.
+   - **Pre-condición D (Separación de Ambientes, Healthcheck de Test y Rol RO):**
+     - Leer la sección `db.environments` de `openspec/config.yaml`.
+     - Comprobar que `DB_TEST_URL` esté definida, sea distinta de `DB_DEV_URL` (mismo host/puerto/base = bloqueo inmediato) y responda al `healthcheck` configurado.
+     - Si falta `DB_TEST_URL`, falla el `healthcheck` o `DB_TEST_URL == DB_DEV_URL`:
+       ```text
+       ❌ [INPUT GATE]: La base de pruebas efímera no está lista o coincide con la base de desarrollo.
+       Verifica DB_TEST_URL != DB_DEV_URL y el healthcheck declarado en openspec/config.yaml antes de continuar.
+       ```
+       **🛑 FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:** Detén tu turno aquí hasta que la base de pruebas efímera esté aislada y saludable.
+     - Verificar si `DB_DEV_RO_URL` (rol `agent_ro`) está disponible para exploración en vivo; en proyectos *brownfield* sin `DB_DEV_RO_URL`, advertir al usuario que puede crearlo con `<plugin-root>/templates/db/readonly-role.<engine>.sql`.
 
 2. **Handoff Inmediato al Paso 1:**
    - Cumplidas las pre-condiciones, definir el identificador del cambio `<change-name>` en `kebab-case` (ej. `0017-crear-esquema-usuarios` o `<ticket_id>-db`).
@@ -129,11 +143,11 @@ Si alguna de estas variables no está en memoria de sesión (usuario invocó dir
 
 1. Invocar a `db-architect-agent` entregando el `<change-name>`, el ticket técnico y la referencia al workflow **[`opsx:propose`](.claude/commands/opsx/propose.md)** (o `.agent/workflows/opsx-propose.md`).
 2. `db-architect-agent` ejecuta el flujo oficial de `opsx:propose`:
-   - **Exploración del Repositorio (`opsx:explore`):** Detecta y registra en `design.md` la infraestructura real del proyecto: `engine`, `migrations_dir`, `security_dir` (`dedicated` / `in-situ` / `none`), `seeds_dir`, `tests_dir` (y su convención modular por entidad/dominio), `migration_mode` (`symmetric` vs `forward-only`), `rls_mode` (`dedicated` / `in-situ` / `none`), `requires_seeds`, `test_cmd` y `validation_cmd`.
+   - **Exploración del Repositorio y Base Viva (`opsx:explore`):** Detecta y registra en `design.md` la infraestructura real del proyecto: `engine`, `migrations_dir`, `security_dir` (`dedicated` / `in-situ` / `none`), `seeds_dir`, `tests_dir` (y su convención modular por entidad/dominio), `migration_mode` (`symmetric` vs `forward-only`), `rls_mode` (`dedicated` / `in-situ` / `none`), `requires_seeds`, `test_cmd` y `validation_cmd`. Si `DB_DEV_RO_URL` está disponible, consulta el esquema real y valores existentes mediante `ro_cli` (o MCP opcional) y los registra en `design.md › ## Estado observado de la base`.
    - **Creación Guiada por el Grafo de OpenSpec:** Ejecuta `openspec new change "<change-name>"`, consulta `openspec status --change "<change-name>" --json` y para cada artefacto obtiene su `template`, `context`, `rules` y `outputPath` con `openspec instructions <artifact-id> --change "<change-name>" --json`:
      - `openspec/changes/<change-name>/proposal.md`: Why, What, Non-goals y compatibilidad.
      - `openspec/changes/<change-name>/specs/<capability>/spec.md`: Requisitos formales y escenarios Given/When/Then.
-     - `openspec/changes/<change-name>/design.md`: Convenciones de infraestructura detectadas, ERD Mermaid de alto contraste (`%%{init: ...}%%`), diccionario físico, constraints e índices.
+     - `openspec/changes/<change-name>/design.md`: Convenciones de infraestructura detectadas (`up_cmd`, `down_cmd`, `snapshot_cmd`, etc.), `## Estado observado de la base`, `## Reversibilidad` (conteo real de filas y clasificación `reversible` / `falla-en-alto` / `pierde-datos`, aplicando Expand/Contract en 2 cambios), `## Normalización` (si afecta datos existentes), ERD Mermaid y diccionario físico.
      - `openspec/changes/<change-name>/tasks.md`: Checklist (`- [ ]`) de tareas atómicas ordenadas topológicamente.
    - **ERD Consolidado (`<schemas_dir>/erd.md`):** Actualizado únicamente si el cambio crea tablas nuevas o altera FKs.
    - **Validación de Artefactos:** Verifica con `openspec status --change "<change-name>" --json` y `openspec validate "<change-name>"` que todos los `applyRequires` estén completos (`done`).
@@ -163,20 +177,15 @@ Si alguna de estas variables no está en memoria de sesión (usuario invocó dir
    - Mapeo 1:1 de los escenarios Given/When/Then de `specs/<capability>/spec.md`.
    - Casos negativos estructurados para constraints (`NOT NULL`, `CHECK`, `UNIQUE`, FKs).
    - Pruebas de aislamiento RLS y privilegios DCL (solo si `rls_mode != 'none'`).
-3. **Verificación en ROJO:**
+3. **Verificación en ROJO y Congelamiento de Huella:**
    - `db-qa-agent` ejecuta `test_cmd` mediante `Bash` y confirma que los nuevos casos de prueba fallen en **ROJO** (porque el DDL aún no existe).
-4. Notificar al usuario con enlace a los tests de dominio y confirmación del estado Rojo:
-
-```text
-🧪 Suite DB-TDD de dominio preparada y verificada en ROJO:
-- Archivos de prueba (por dominio/entidad): [<entidad>.test...](file:///<ruta>/<tests_dir>/<archivo_test_dominio>)
-- Estado inicial: 🔴 ROJO verificado (las aserciones fallan esperadamente antes del DDL).
-- Cobertura: 100% de escenarios Given/When/Then de spec.md.
-
-¿Procedemos al Paso 3 (opsx:apply — Implementación DDL y migraciones)?
-```
-
-**🛑 FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:** Detén tu turno aquí y espera la confirmación explícita del usuario.
+   - Congelar la huella `sha256` de los tests en `.sdd-state.json`:
+     ```bash
+     node "<plugin-root>/scripts/db-test-fingerprint.js" --action freeze --change-dir "openspec/changes/<change-name>" --tests-dir "<repo-destino>/<tests_dir>"
+     ```
+4. **Avance automático tras ROJO + Freeze:**
+   - Si los nuevos tests fallaron en **ROJO** como se esperaba y `db-test-fingerprint.js --action freeze` salió con `exit 0`, informa brevemente la ruta de los tests y **avanza directamente al Paso 3 (`opsx:apply` DDL)** sin pausa.
+   - Si los tests ya pasaron en verde antes de existir el DDL o falla el runner, **detente y escala al usuario** (`🛑 FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO`).
 
 ---
 
@@ -187,22 +196,9 @@ Si alguna de estas variables no está en memoria de sesión (usuario invocó dir
    - Consulta `openspec instructions apply --change "<change-name>" --json` y lee `contextFiles` (`proposal`, `specs`, `design`, `tasks`).
    - Escribe las migraciones en `<migrations_dir>` (`symmetric`: `.up.sql` y `.down.sql`; `forward-only`: `.sql`) y los seeds en `<seeds_dir>` (solo si `requires_seeds = true`).
    - **Actualiza `tasks.md`:** Marca cada tarea de DDL/seeds completada (`- [ ]` → `- [x]`) en `openspec/changes/<change-name>/tasks.md`.
-3. Presentar resumen ejecutivo en chat con **ruteo condicional anticipado** (según `rls_mode` leído de `design.md`):
-   - **Si `rls_mode != 'none'` y el cambio requiere políticas RLS/DCL:** solicitar paso al **Paso 4 (Seguridad y RLS)**.
-   - **Si `rls_mode = 'none'` (o tabla exenta de RLS):** informar que el Paso 4 se omite por arquitectura (`rls_mode = 'none'`) y solicitar paso directo al **Paso 5 (Validación Mecánica y `opsx:verify` en VERDE)**.
-
-```text
-🛠️ Scripts DDL y migraciones implementados vía opsx:apply:
-- Migración: [up.sql / migration.sql](file:///<ruta>/<migrations_dir>/<archivo_migracion>)
-- Rollback DOWN: [down.sql](file:///<ruta>/<migrations_dir>/<archivo_down>) (si aplica)
-- Datos sintéticos (seeds): [seeds.sql](file:///<ruta>/<seeds_dir>/<archivo_seeds>) (si aplica)
-- Progreso en tasks.md: <N>/<M> tareas completadas [x]
-
-<Si rls_mode != 'none': "¿Validás el DDL generado para proceder al Paso 4 (opsx:apply — Políticas de Seguridad y RLS)?">
-<Si rls_mode = 'none': "ℹ️ El proyecto tiene rls_mode = 'none' (seguridad en capa de aplicación), por lo que se omite el Paso 4. ¿Validás el DDL generado para avanzar directamente al Paso 5 (Validación Mecánica y opsx:verify en VERDE)?">
-```
-
-**🛑 FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:** Detén tu turno aquí y espera la confirmación explícita del usuario.
+3. **Avance automático:**
+   - Si `db-developer-agent` reporta drift o bloqueos en el diseño, **detente y escala al usuario** (`🛑 FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO`).
+   - De lo contrario, avanza directamente al **Paso 4** (si `rls_mode != 'none'`) o al **Paso 5** (si `rls_mode = 'none'`).
 
 ---
 
@@ -216,44 +212,39 @@ Si alguna de estas variables no está en memoria de sesión (usuario invocó dir
    - Consulta `openspec instructions apply --change "<change-name>" --json`, lee `contextFiles` e inspecciona el DDL del Paso 3.
    - Escribe en `<security_dir>` (o `<migrations_dir>` si `in-situ`) las políticas RLS para las 4 operaciones (`SELECT`, `INSERT`, `UPDATE` con `USING` + `WITH CHECK`, `DELETE`), índices de soporte, permisos DCL y el rollback simétrico (`*.down.sql`).
    - **Actualiza `tasks.md`:** Marca con `- [x]` las tareas de seguridad en `openspec/changes/<change-name>/tasks.md`.
-3. Presentar resumen ejecutivo en chat:
-
-```text
-🔒 Políticas de Seguridad y RLS implementadas vía opsx:apply:
-- Script RLS: [security_rls.sql](file:///<ruta>/<security_dir_o_migraciones>/<archivo_rls>)
-- Rollback RLS: [security_rls.down.sql](file:///<ruta>/<security_dir_o_migraciones>/<archivo_rls_down>) (si aplica)
-- Tablas protegidas: <lista_de_tablas_con_RLS> (cobertura SELECT, INSERT, UPDATE, DELETE)
-- Progreso en tasks.md: <M>/<M> tareas completadas [x]
-
-¿Procedemos al Paso 5 (Validación mecánica determinista y verificación en VERDE con opsx:verify)?
-```
-
-**🛑 FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:** Detén tu turno aquí y espera la confirmación explícita del usuario.
+3. **Avance automático:** Una vez completado sin bloqueos, avanza directamente al **Paso 5**.
 
 ---
 
 ### Paso 5 — Validación Mecánica y Verificación en VERDE vía `opsx:verify` (`db-qa-agent` Fase B)
 
 1. **Validación Mecánica Determinista Multiplataforma (Node.js):**
-   - Leer `migrations_dir`, `security_dir`, `engine` y `rls_mode` desde `openspec/changes/<change-name>/design.md` y ejecutar:
+   - Leer `migrations_dir`, `security_dir`, `engine`, `migration_mode`, `rls_mode` y (si el proyecto usa ORM/migraciones no-SQL) `sql_from_cmd` desde `openspec/changes/<change-name>/design.md` y ejecutar:
      - **Si `rls_mode` es `dedicated` o `in-situ`:**
        ```bash
-       node "<plugin-root>/scripts/validate-db-migrations.js" --migrations-dir "<repo-destino>/<migrations_dir>" --security-dir "<repo-destino>/<security_dir>" --engine "<engine>"
+       node "<plugin-root>/scripts/validate-db-migrations.js" --migrations-dir "<repo-destino>/<migrations_dir>" --security-dir "<repo-destino>/<security_dir>" --engine "<engine>" --migration-mode "<migration_mode>"
        ```
      - **Si `rls_mode = 'none'`:**
        ```bash
-       node "<plugin-root>/scripts/validate-db-migrations.js" --migrations-dir "<repo-destino>/<migrations_dir>" --no-rls --engine "<engine>"
+       node "<plugin-root>/scripts/validate-db-migrations.js" --migrations-dir "<repo-destino>/<migrations_dir>" --no-rls --engine "<engine>" --migration-mode "<migration_mode>"
        ```
-2. **Ejecución de Validadores Estándar del Proyecto (si existen):**
-   - Ejecutar `validation_cmd` (según `design.md`) si fue detectado.
-3. **Gate de Validación Mecánica:**
-   - Si el validador mecánico devuelve `exit 1` o falla `validation_cmd`, **NO se invoca a `db-qa-agent`**. Se informa el fallo en chat y se re-despacha al Paso 3 (DDL) o Paso 4 (RLS) para corregir el SQL.
-4. **Verificación en VERDE y Ejecución de `opsx:verify` con `db-qa-agent` (un solo subagente en este turno, §7.5.2):**
-   - Si la validación mecánica pasó en verde, invocar únicamente a `db-qa-agent` (Fase B) con la referencia al workflow **[`opsx:verify`](.claude/commands/opsx/verify.md)**:
-     - Ejecuta `test_cmd` mediante `Bash` y comprueba que **todos los tests del dominio en `<tests_dir>` pasen en VERDE**.
-     - Ejecuta `opsx:verify` evaluando sus 3 dimensiones oficiales (**Completeness**: todas las tareas `[x]` en `tasks.md` y requisitos de `specs/`; **Correctness**: cobertura de escenarios Given/When/Then en verde; **Coherence**: *Drift Check* 1:1 contra `design.md` y planes `EXPLAIN`).
-     - Escribe el reporte en `openspec/changes/<change-name>/verification-report.md`.
-5. **Evaluación del Dictamen de `opsx:verify` y Ruteo Condicional Anticipado:**
+     - Si el proyecto usa migraciones de ORM (no-SQL), agregar `--sql-from-cmd "<sql_from_cmd>"` (en lugar de esperar archivos `.sql` en disco).
+2. **Gate de Reversibilidad Real contra `DB_TEST_URL` (`db-roundtrip.js`):**
+   - Leer `migration_mode`, `up_cmd`, `down_cmd` y `snapshot_cmd` desde `design.md` y ejecutar contra la base de pruebas efímera:
+     ```bash
+     node "<plugin-root>/scripts/db-roundtrip.js" --mode "<migration_mode>" --up-cmd "<up_cmd>" --down-cmd "<down_cmd>" --snapshot-cmd "<snapshot_cmd>"
+     ```
+     *(En `forward-only` omitir `--down-cmd`; el script valida idempotencia ejecutando `up` dos veces).*
+3. **Gate de Huella, Suite en VERDE y Dictamen Independiente (`db-verify-gate.js`):**
+   - Ejecutar el dictamen determinista (verifica huella intacta respecto al ROJO, validador, roundtrip y `test_cmd`):
+     ```bash
+     node "<plugin-root>/scripts/db-verify-gate.js" --change-dir "openspec/changes/<change-name>" --tests-dir "<repo-destino>/<tests_dir>" --migrations-dir "<repo-destino>/<migrations_dir>" --engine "<engine>" --migration-mode "<migration_mode>" --test-cmd "<test_cmd>" --up-cmd "<up_cmd>" --down-cmd "<down_cmd>" --snapshot-cmd "<snapshot_cmd>"
+     ```
+     *(Agregar `--security-dir` o `--no-rls`, `--sql-from-cmd`, `--schema-codegen-cmd` y `--typecheck-cmd` según `design.md`).*
+   - Si falla cualquiera de los checks anteriores (`exit != 0`) o `validation_cmd`, **NO se emite `[APROBADO]`** ni se invoca a `db-qa-agent`. Registrar el fallo con `node "<plugin-root>/scripts/sdd-error-memory.js" --action record --change-dir "openspec/changes/<change-name>" --layer db --step "Paso 5" --message "<error>" --avoid "<restriccion>"`. Si devuelve `exit 2` (`loop_detected: true`), detener reintentos y escalar al usuario; de lo contrario, re-despachar al Paso 3 (DDL) o Paso 4 (RLS).
+4. **Auditoría Cualitativa `opsx:verify` con `db-qa-agent` (un solo subagente en este turno, §7.5.2):**
+   - Con `db-verify-gate.js` en verde (`[APROBADO]`), invocar únicamente a `db-qa-agent` (Fase B) con la referencia al workflow **[`opsx:verify`](.claude/commands/opsx/verify.md)** para evaluar drift 1:1 contra `design.md`, planes `EXPLAIN` y redactar `openspec/changes/<change-name>/verification-report.md` (adjuntando el dictamen del gate).
+5. **Evaluación del Dictamen y Ruteo Condicional Anticipado:**
 
    - **Escenario A — Dictamen `[OBSERVADO CON CORRECCIONES REQUERIDAS]` (Issues `CRITICAL`):**
      ```text
@@ -267,20 +258,18 @@ Si alguna de estas variables no está en memoria de sesión (usuario invocó dir
      ```
      **🛑 FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:** Detén tu turno aquí y espera la confirmación explícita del usuario.
 
-   - **Escenario B — Dictamen `[APROBADO]` en `opsx:verify`:**
-     - **Si el cambio NO incluye constraints (`UNIQUE`, `CHECK`, FKs) ni RLS falsables (exento de Mutation Testing):** ejecutar `openspec validate "<change-name>"` ahora mismo y pedir confirmación para pasar directamente al **Paso 7 (Archive y Commit)** sin detenerse en un Paso 6 vacío.
-     - **Si el cambio incluye constraints o políticas RLS:** solicitar confirmación para avanzar al **Paso 6 (Mutation Testing)**.
-     ```text
-     📊 Verificación opsx:verify y DB-TDD en VERDE completada:
-     - Reporte: [verification-report.md](file:///<ruta>/openspec/changes/<change-name>/verification-report.md)
-     - Veredicto: [APROBADO] (Completeness, Correctness y Coherence 100% verificadas)
-     - Suite DB-TDD en <tests_dir>: 🟢 100% en VERDE
-     - Validación mecánica universal: Superada
-     
-     <Si aplica Mutation Testing: "¿Procedemos al Paso 6 (Mutation Testing de falsabilidad sobre constraints y RLS)?">
-     <Si está exento de Mutation Testing: "ℹ️ Cambio exento de Mutation Testing (sin constraints ni RLS falsables) y validado con 'openspec validate'. ¿Confirmas la entrega para pasar directo al Paso 7 (opsx:archive y Commit por el Orquestador)?">
-     ```
-     **🛑 FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:** Detén tu turno aquí y espera la confirmación explícita del usuario.
+   - **Escenario B — Dictamen `[APROBADO]` y sin hallazgos `CRITICAL`:**
+     - **Si el cambio incluye constraints (`UNIQUE`, `CHECK`, FKs) o políticas RLS:** avanzar automáticamente al **Paso 6 (Mutation Testing)** sin pausa.
+     - **Si está exento de Mutation Testing:** ejecutar `openspec validate "<change-name>"` y presentar el cierre para confirmar entrega (`Paso 7`):
+       ```text
+       📊 Verificación y DB-TDD en VERDE completada (exento de Mutation Testing):
+       - Reporte: [verification-report.md](file:///<ruta>/openspec/changes/<change-name>/verification-report.md)
+       - Dictamen db-verify-gate: [APROBADO]
+       - Validación OpenSpec CLI: Superada (openspec validate "<change-name>")
+
+       ¿Confirmas la entrega para que el Orquestador ejecute el Paso 7 (opsx:archive y Commit en Git)?
+       ```
+       **🛑 FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:** Detén tu turno aquí y espera la confirmación explícita del usuario.
 
 ---
 
@@ -290,8 +279,9 @@ Si alguna de estas variables no está en memoria de sesión (usuario invocó dir
 > Este paso se ejecuta únicamente cuando el cambio introduce constraints (`UNIQUE`, `CHECK`, FKs) o políticas RLS. Si estuvo exento, fue ruteado directamente del Paso 5 al Paso 7.
 
 1. Invocar únicamente a `db-mutation-tester` (§7.5.2):
-   - Audita la falsabilidad de los archivos de prueba del dominio en `<tests_dir>/<modulo_o_entidad>...` frente al catálogo de mutantes canónicos (M1 a M5) en transacciones efímeras con `ROLLBACK` (sin dejar mutaciones en disco).
+   - Audita la falsabilidad de los archivos de prueba del dominio en `<tests_dir>/<modulo_o_entidad>...` frente al catálogo de mutantes canónicos (M1 a M5) en transacciones efímeras con `ROLLBACK` **exclusivamente contra `DB_TEST_URL` efímera** (especialmente M3 — RLS bypass; sin dejar mutaciones en disco).
    - Escribe directamente `openspec/changes/<change-name>/mutation-report.md`.
+   - *(Si se re-despacha a `db-qa-agent` para reforzar aserciones complacientes, ejecutar luego `db-test-fingerprint.js --action refreeze --reason "Refuerzo de aserciones tras Mutation Testing"`).*
 2. Ejecutar la validación formal del framework OpenSpec:
    ```bash
    openspec validate "<change-name>"
@@ -333,3 +323,4 @@ Si alguna de estas variables no está en memoria de sesión (usuario invocó dir
    - Sincroniza las delta specs hacia `openspec/specs/<capability>/spec.md` (vía `opsx:sync`).
    - Mueve la carpeta del cambio (incluyendo `verification-report.md` y `mutation-report.md`) a `openspec/changes/archive/YYYY-MM-DD-<change-name>/`.
    - Realiza el `git commit` atómico de la entrega tras confirmación del usuario.
+   - Recuerda el despliegue por ambiente: `test` ya fue validada, `dev` puede aplicarse tras el verde, y **producción la aplica únicamente una persona** (nunca el agente).

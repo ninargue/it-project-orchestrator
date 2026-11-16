@@ -12,11 +12,11 @@ Cuando **un solo agente hace todo a la vez** (diseña el contrato de la API, pro
 2. **Modificación accidental de la Base de Datos:** Si una consulta falla o le resulta incómoda, el agente tiende a alterar migraciones SQL o relajar políticas de seguridad (RLS) para que su código funcione.
 3. **Pruebas autocomplacientes:** Escribe tests diseñados a medida de lo que acaba de programar o modifica/debilita los tests cuando alguno falla, en lugar de corregir el bug en el código.
 
-Para evitar estos tres problemas, `backend-sdd` aplica **separación de responsabilidades** mediante **1 Orquestador + 3 Subagentes Especializados** y **4 Validaciones Mecánicas Deterministas (Gates CLI)** donde ningún modelo de lenguaje opina.
+Para evitar estos tres problemas, `backend-sdd` aplica **separación de responsabilidades** mediante **1 Orquestador + 4 Subagentes Especializados** y **4 Validaciones Mecánicas Deterministas (Gates CLI)** donde ningún modelo de lenguaje opina.
 
 ---
 
-## 🤖 Arquitectura de Agentes (`1 Orquestador + 3 Subagentes`)
+## 🤖 Arquitectura de Agentes (`1 Orquestador + 4 Subagentes`)
 
 | # | Componente | Ubicación | Qué hace | Qué tiene prohibido hacer |
 |---|---|---|---|---|
@@ -24,6 +24,7 @@ Para evitar estos tres problemas, `backend-sdd` aplica **separación de responsa
 | **1** | **`api-architect-agent`** | `agents/backend/api-architect-agent.md` | Explora el repositorio (`opsx:explore`) y ejecuta `opsx:propose` para crear la propuesta (`proposal.md`), los requisitos con escenarios Given/When/Then (`specs/<cap>/spec.md`), el diseño técnico (`design.md`), el contrato (`openapi.yaml` o esquemas tipados *Code-First* como FastAPI) y el plan de tareas (`tasks.md`). | Prohibido escribir código productivo en `<backend_dir>`, tocar la base de datos o hacer commits. |
 | **2** | **`backend-qa-agent`** | `agents/backend/backend-qa-agent.md` | **Fase A (Antes del código):** Escribe la suite de pruebas organizada por dominio/módulo en `<tests_dir>` y la ejecuta para comprobar que falle en **🔴 ROJO**.<br>**Fase B (Después del código):** Verifica que todos los tests pasen en **🟢 VERDE**, audita la seguridad (sin bypass de RLS ni brechas de permisos/multi-tenancy) y genera `verification-report.md` (`opsx:verify`). | Prohibido modificar el código productivo del backend y **prohibido relajar o borrar tests** si el código falla. |
 | **3** | **`backend-developer-agent`** | `agents/backend/backend-developer-agent.md` | Ejecuta `opsx:apply` e implementa las capas del backend (DTOs/Schemas, Repositorios, Servicios de Dominio y Controladores/Routers/Workers) hasta lograr que los tests escritos por QA pasen en verde, marcando el avance (`- [x]`) en `tasks.md`. | **Prohibido tocar directorios de Base de Datos** (`migrations/`, `security/`) y **prohibido modificar los archivos de `tests/`**. |
+| **4** | **`backend-mutation-tester`** | `agents/backend/backend-mutation-tester.md` | **Gate Condicional (Paso 5):** Audita la falsabilidad de la suite en `<tests_dir>` ejecutando mutaciones controladas sobre `<backend_dir>` (herramienta nativa o catálogo `M1–M5`) y genera `mutation-report.md` para detectar aserciones complacientes o mocks permisivos. | Prohibido dejar mutaciones o cachés temporales persistidos en disco, modificar `<tests_dir>` o ejecutar comandos `git`. |
 
 ---
 

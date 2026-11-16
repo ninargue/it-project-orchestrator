@@ -77,10 +77,11 @@ Inspeccionar el repositorio de desarrollo en busca de fuentes de contexto técni
    - `docs/tech-briefing.md` (stack, arquitectura, base de datos, convenciones).
    - `docs/prd/*.md` (dominio del problema, usuarios, reglas de negocio).
    - `docs/config-project-orchestrator/tool-config.md` (herramientas y metodología).
-2. **Manifiestos y configuración de código:**
+2. **Manifiestos, base de datos y configuración de código:**
    - `package.json`, `pnpm-lock.yaml`, `tsconfig.json` (Node / TypeScript / Frontend).
    - `pyproject.toml`, `requirements.txt`, `Pipfile` (Python).
    - `Cargo.toml` (Rust), `go.mod` (Go), `pom.xml` / `build.gradle` (Java/Kotlin), etc.
+   - **Capa de datos (si existe):** `database/`, `supabase/`, `prisma/`, `migrations/`, `alembic.ini`, `docker-compose*.yml` (para detectar `engine`, CLI de solo lectura y `healthcheck` de pruebas).
    - Linter/formateadores (`.eslintrc`, `biome.json`, `ruff.toml`).
    - `.github/workflows/` (pipelines CI/CD, convenciones de testing y ramas).
 
@@ -116,10 +117,30 @@ rules:
   design:
     - Diseñar contratos claros de interfaces, tipos y modelos de datos antes de codificar.
     - Evitar sobre-ingeniería; preferir soluciones simples y extensibles.
+    - Si existe `openspec/specs/db/conventions.md`, cumplir sus reglas de exploración RO, reversibilidad, normalización y ambientes.
   tasks:
     - Cada tarea debe representar una unidad atómica terminable en media jornada (máx. 2 a 4 horas).
     - Ordenar las tareas respetando estrictamente el grafo de dependencias técnicas.
     - Incluir checklist Definition of Done (DoD) con tests y manejo de errores.
+
+# Incluir esta sección SOLO si el proyecto tiene capa de base de datos (nunca credenciales reales, solo nombres de variables de entorno):
+db:
+  engine: <postgres | supabase | mysql | sqlite>
+  ro_cli: <"psql \"$DB_DEV_RO_URL\"" | "mysql ..." | "sqlite3 -readonly ...">
+  mcp_optional: false
+  environments:
+    test:
+      url_env: DB_TEST_URL
+      ephemeral: true
+      healthcheck: "<pg_isready -d \"$DB_TEST_URL\" | mysqladmin ping | test -f ...>"
+      applied_by: agent
+    dev:
+      url_env: DB_DEV_URL
+      ro_url_env: DB_DEV_RO_URL
+      applied_by: agent-after-green
+    prod:
+      applied_by: human
+      agent_access: none
 ```
 
 Presentar al usuario el resumen del archivo y pedir su visto bueno:
@@ -149,8 +170,9 @@ Tras recibir la confirmación del usuario:
      - `<repo>/openspec/changes/archive/`
      *(Sin crear archivos `.gitkeep`).*
 
-  2. **Crear archivo de configuración:**
+  2. **Crear archivo de configuración y convenciones BD:**
      - Escribir `<repo>/openspec/config.yaml` con el contenido aprobado.
+     - Si el proyecto tiene capa de base de datos (`db:` en `config.yaml`), copiar `<plugin-root>/templates/db/conventions.md` a `<repo>/openspec/specs/db/conventions.md` como fuente única de convenciones de BD.
 
   3. **Verificación:**
      - Confirmar que `openspec/config.yaml` existe y no tiene errores de sintaxis YAML.
@@ -175,3 +197,8 @@ Archivos y carpetas generados:
 🚀 Los comandos y skills de SDD se ejecutan directamente mediante este plugin (sin contaminar tu repo con configuraciones locales de agentes).
 Puedes comenzar el primer cambio solicitando: "proponer un nuevo cambio con SDD" o usando /opsx:propose.
 ```
+
+Si el proyecto incluye capa de base de datos (`db:` en `config.yaml`), recuerda indicar al usuario los pasos manuales de seguridad (ejecutados **por una persona**, nunca por el agente):
+1. Crear el rol de solo lectura en `dev` usando la plantilla del plugin `<plugin-root>/templates/db/readonly-role.<engine>.sql` (incluye `ALTER DEFAULT PRIVILEGES` para tablas futuras).
+2. Exportar en el entorno las variables `DB_DEV_RO_URL`, `DB_DEV_URL` y `DB_TEST_URL` (asegurando que `test` sea una base efímera distinta de `dev`).
+3. *(Opcional)* Si prefiere MCP sobre la CLI del motor (`ro_cli`), puede adaptar `<plugin-root>/templates/db/mcp-db.example.json` con `${DB_DEV_RO_URL}`.
