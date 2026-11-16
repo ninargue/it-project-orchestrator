@@ -109,4 +109,33 @@ describe('validate-frontend.js (Gates 1-4)', () => {
     const over = runValidator(`--gate 4 --repo-root "${tmp}" --change-dir openspec/changes/c1 --bundle-dir dist/assets --max-bundle-kb 5 --node auditor`);
     assert.notEqual(over.code, 0);
   });
+
+  it('Gate 3: valida inmutabilidad por instantánea inicial sin falso rojo por archivos sin commitear', () => {
+    fs.mkdirSync(path.join(tmp, 'backend'), { recursive: true });
+    fs.writeFileSync(path.join(tmp, 'backend/server.ts'), 'export const ok = true;');
+    fs.writeFileSync(path.join(tmp, 'src/tests/cart.test.tsx'), 'screen.getByRole("button");');
+
+    const g2 = runValidator(`--gate 2 --repo-root "${tmp}" --contract-mode contract-first --openapi-path openapi.yaml --change-dir openspec/changes/c1 --tests-dir src/tests --protected-dirs "src/tests,openapi.yaml,backend"`);
+    assert.equal(g2.code, 0);
+
+    const g3Ok = runValidator(`--gate 3 --repo-root "${tmp}" --change-dir openspec/changes/c1 --openapi-path openapi.yaml --tests-dir src/tests --protected-dirs "src/tests,openapi.yaml,backend" --node maquetador`);
+    assert.equal(g3Ok.code, 0);
+
+    // Modificar backend después de la instantánea inicial -> debe fallar Gate 3
+    fs.writeFileSync(path.join(tmp, 'backend/server.ts'), 'export const ok = false;');
+    const g3Fail = runValidator(`--gate 3 --repo-root "${tmp}" --change-dir openspec/changes/c1 --openapi-path openapi.yaml --tests-dir src/tests --protected-dirs "src/tests,openapi.yaml,backend" --node maquetador`);
+    assert.notEqual(g3Fail.code, 0);
+  });
+
+  it('Gate 3: advierte sin bloquear ante colores literales fuera del archivo de tokens', () => {
+    fs.mkdirSync(path.join(tmp, 'src/components'), { recursive: true });
+    fs.mkdirSync(path.join(tmp, 'src/styles'), { recursive: true });
+    fs.writeFileSync(path.join(tmp, 'src/styles/palette.css'), ':root { --brand: #1e293b; }');
+    fs.writeFileSync(path.join(tmp, 'src/components/Card.tsx'), 'export const Card = () => <div style={{ color: "#ff00aa", background: "rgb(10, 20, 30)" }} />;');
+
+    const res = runValidator(`--gate 3 --repo-root "${tmp}" --change-dir openspec/changes/c1 --frontend-dir src --tests-dir src/tests --tokens-path src/styles/palette.css --node maquetador`);
+    assert.equal(res.code, 0);
+    assert.match(res.out, /Valores visuales literales detectados fuera de tokens \(2 ocurrencia\(s\) en 1 archivo\(s\)\)/);
+    assert.doesNotMatch(res.out, /palette\.css/);
+  });
 });

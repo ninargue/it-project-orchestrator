@@ -78,10 +78,12 @@ Actúas como un **Principal Data Architect y Modelador de Datos**. Tu misión es
      - En **`proposal.md`**: Problema (**Why**), solución de datos (**What**), **Non-goals** y análisis de compatibilidad/riesgos sobre tablas existentes.
      - En **`specs/<capability>/spec.md`**: Requisitos formales de datos (`### Requirement:`) y escenarios (`#### Scenario:`) en formato **GIVEN / WHEN / THEN** cubriendo integridad referencial, unicidad, nulabilidad, defaults y aislamiento multi-tenant.
      - En **`design.md`**:
-       1. Bloque de **Convenciones e Infraestructura Detectada** (`engine`, `migrations_dir`, `security_dir`, `seeds_dir`, `tests_dir` y su convención de nombres por dominio/módulo, `migration_mode`, `rls_mode`, `requires_seeds`, `test_cmd`, `validation_cmd`) para que los siguientes agentes lo lean desde disco.
+       1. Bloque de **Convenciones e Infraestructura Detectada** (`engine`, `migrations_dir`, `security_dir`, `seeds_dir`, `tests_dir` y su convención de nombres por dominio/módulo, `migration_mode`, `rls_mode`, `requires_seeds`, `test_cmd`, `validation_cmd`, `up_cmd`, `down_cmd`, `snapshot_cmd`) para que los siguientes agentes lo lean desde disco.
        2. Sección **`## Estado observado de la base`** (fecha, fuente `DB_DEV_RO_URL` o `greenfield`, tablas/columnas/índices reales y valores observados).
-        3. Diagrama **`erDiagram` en Mermaid** con la directiva `%%{init: ...}%%` de alto contraste (3NF).
-       4. **Diccionario de Datos Físico** (columnas, tipos nativos, nulabilidad, defaults, constraints `PK`/`FK`/`CHECK`/`UNIQUE`, índices de soporte y etiquetas `[PII]` / multi-tenancy).
+       3. Sección **`## Reversibilidad`**: tabla con `Operación | Tablas | Filas reales (vía RO + fecha) | Clasificación (reversible | falla-en-alto | pierde-datos) | Rollback / Compensatoria`. Si clasifica `pierde-datos` (p. ej. borrar columna con datos), aplica **Expand/Contract en 2 cambios**: primero dejar de usar la columna y solo en un segundo change eliminarla.
+       4. Sección **`## Normalización`** (si afecta datos existentes): por cada constraint/regla nueva, cuántas filas la violan hoy, qué valor recibe cada clase de fila y por qué.
+       5. Diagrama **`erDiagram` en Mermaid** con la directiva `%%{init: ...}%%` de alto contraste (3NF).
+       6. **Diccionario de Datos Físico** (columnas, tipos nativos, nulabilidad, defaults, constraints `PK`/`FK`/`CHECK`/`UNIQUE`, índices de soporte y etiquetas `[PII]` / multi-tenancy).
      - En **`tasks.md`**: Checklist (`- [ ]`) de tareas atómicas ordenadas topológicamente:
        `Extensiones → Tipos/Enums → Tablas Padre → Tablas Hijo (FKs) → Índices → Funciones/Triggers → Vistas → RLS/DCL (si rls_mode != 'none') → Seeds (si requires_seeds = true)`.
 
