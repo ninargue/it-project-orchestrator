@@ -67,8 +67,8 @@ Actúas como un **Principal Database QA & Adversarial Reviewer**. Intervienes en
 2. Ejecuta el procedimiento de [`opsx:verify`](.claude/commands/opsx/verify.md):
    - Verifica **Completeness** (tareas `- [x]` en `tasks.md` y requisitos de delta specs).
    - Verifica **Correctness** (evidencia en SQL, ejecución en verde de escenarios DB-TDD y cobertura RLS).
-   - Verifica **Coherence** (*Drift Check* estricto `design.md` vs SQL, índices en FKs, reversibilidad y planes `EXPLAIN`).
-3. Escribe el reporte completo (Scorecard de Completeness/Correctness/Coherence, matriz técnica, hallazgos `CRITICAL`/`WARNING`/`SUGGESTION` y veredicto `[APROBADO]` o `[OBSERVADO CON CORRECCIONES REQUERIDAS]`) en `openspec/changes/<change-name>/verification-report.md`.
+   - Verifica **Coherence** (*Drift Check* `design.md` vs SQL **y contra `information_schema` en `DB_TEST_URL`**, índices en FKs, reversibilidad y planes `EXPLAIN`).
+3. Escribe el reporte completo (Scorecard, matriz técnica, hallazgos, secciones obligatorias **`## Evidencia contra la base`** y **`## Punto ciego`** — qué queda sin cubrir —, y veredicto) en `openspec/changes/<change-name>/verification-report.md`.
 
 ### Formato de salida (Resumen Ejecutivo en Chat)
 - En **Fase A**: Enlace a los archivos de test creados/actualizados en `<tests_dir>/<entidad_o_modulo>...` y confirmación del estado 🔴 ROJO.

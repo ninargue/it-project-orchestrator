@@ -240,7 +240,7 @@ Si alguna de estas variables no está en memoria de sesión (usuario invocó dir
      ```bash
      node "<plugin-root>/scripts/db-verify-gate.js" --change-dir "openspec/changes/<change-name>" --tests-dir "<repo-destino>/<tests_dir>" --migrations-dir "<repo-destino>/<migrations_dir>" --engine "<engine>" --migration-mode "<migration_mode>" --test-cmd "<test_cmd>" --up-cmd "<up_cmd>" --down-cmd "<down_cmd>" --snapshot-cmd "<snapshot_cmd>"
      ```
-     *(Agregar `--security-dir` o `--no-rls` y `--sql-from-cmd` según `design.md`).*
+     *(Agregar `--security-dir` o `--no-rls`, `--sql-from-cmd`, `--schema-codegen-cmd` y `--typecheck-cmd` según `design.md`).*
    - Si falla cualquiera de los checks anteriores (`exit != 0`) o `validation_cmd`, **NO se emite `[APROBADO]`** ni se invoca a `db-qa-agent`. Registrar el fallo con `node "<plugin-root>/scripts/sdd-error-memory.js" --action record --change-dir "openspec/changes/<change-name>" --layer db --step "Paso 5" --message "<error>" --avoid "<restriccion>"`. Si devuelve `exit 2` (`loop_detected: true`), detener reintentos y escalar al usuario; de lo contrario, re-despachar al Paso 3 (DDL) o Paso 4 (RLS).
 4. **Auditoría Cualitativa `opsx:verify` con `db-qa-agent` (un solo subagente en este turno, §7.5.2):**
    - Con `db-verify-gate.js` en verde (`[APROBADO]`), invocar únicamente a `db-qa-agent` (Fase B) con la referencia al workflow **[`opsx:verify`](.claude/commands/opsx/verify.md)** para evaluar drift 1:1 contra `design.md`, planes `EXPLAIN` y redactar `openspec/changes/<change-name>/verification-report.md` (adjuntando el dictamen del gate).
@@ -323,3 +323,4 @@ Si alguna de estas variables no está en memoria de sesión (usuario invocó dir
    - Sincroniza las delta specs hacia `openspec/specs/<capability>/spec.md` (vía `opsx:sync`).
    - Mueve la carpeta del cambio (incluyendo `verification-report.md` y `mutation-report.md`) a `openspec/changes/archive/YYYY-MM-DD-<change-name>/`.
    - Realiza el `git commit` atómico de la entrega tras confirmación del usuario.
+   - Recuerda el despliegue por ambiente: `test` ya fue validada, `dev` puede aplicarse tras el verde, y **producción la aplica únicamente una persona** (nunca el agente).

@@ -117,6 +117,7 @@ rules:
   design:
     - Diseñar contratos claros de interfaces, tipos y modelos de datos antes de codificar.
     - Evitar sobre-ingeniería; preferir soluciones simples y extensibles.
+    - Si existe `openspec/specs/db/conventions.md`, cumplir sus reglas de exploración RO, reversibilidad, normalización y ambientes.
   tasks:
     - Cada tarea debe representar una unidad atómica terminable en media jornada (máx. 2 a 4 horas).
     - Ordenar las tareas respetando estrictamente el grafo de dependencias técnicas.
@@ -169,8 +170,9 @@ Tras recibir la confirmación del usuario:
      - `<repo>/openspec/changes/archive/`
      *(Sin crear archivos `.gitkeep`).*
 
-  2. **Crear archivo de configuración:**
+  2. **Crear archivo de configuración y convenciones BD:**
      - Escribir `<repo>/openspec/config.yaml` con el contenido aprobado.
+     - Si el proyecto tiene capa de base de datos (`db:` en `config.yaml`), copiar `<plugin-root>/templates/db/conventions.md` a `<repo>/openspec/specs/db/conventions.md` como fuente única de convenciones de BD.
 
   3. **Verificación:**
      - Confirmar que `openspec/config.yaml` existe y no tiene errores de sintaxis YAML.
