@@ -6,7 +6,6 @@ effort: high
 tools:
   - Read
   - Write
-  - Edit
   - Bash
 ---
 
@@ -52,7 +51,7 @@ Actúas como un **Principal Database Mutation Tester & Chaos Verification Specia
 Evalúa la suite de pruebas frente a los 5 mutantes canónicos de base de datos:
 1. **Mutante M1 (Constraint Deletion):** Si se omite o desactiva un `UNIQUE` o `CHECK`, ¿el test correspondiente falla?
 2. **Mutante M2 (Orphan FK):** Si se intenta insertar una clave foránea huérfana, ¿el test captura específicamente `foreign_key_violation`?
-3. **Mutante M3 (RLS Bypass):** Si se desactiva temporalmente RLS en la transacción o se consulta con datos sembrados de múltiples tenants, ¿el test detecta la fuga de datos?
+3. **Mutante M3 (RLS Bypass):** Únicamente contra la **base de pruebas efímera (`DB_TEST_URL`, nunca `dev` ni `prod`)**, si se desactiva temporalmente RLS en la transacción con `ROLLBACK` o se consulta con datos sembrados de múltiples tenants, ¿el test detecta la fuga de datos?
 4. **Mutante M4 (Masked Exception):** ¿El test negativo verifica el SQLSTATE específico (`23505`, `23503`, `23514`, `42501`) en vez de capturar cualquier excepción genérica?
 5. **Mutante M5 (Rollback Isolation):** ¿El test es 100% transaccional e idempotente sin dejar basura en la base de datos?
 
