@@ -1,6 +1,6 @@
 {
   "name": "it-project-orchestrator",
-  "version": "0.1.2",
+  "version": "0.3.0",
   "displayName": "IT Project Orchestrator",
   "description": "Plugin agéntico para proyectos IT: idea-to-backlog y desarrollo con SDD",
   "author": {
