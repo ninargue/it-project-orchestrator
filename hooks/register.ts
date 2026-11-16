@@ -1,4 +1,5 @@
 import type { Register } from 'claude-code';
+import { classifyBashCommand, classifyFileAccess } from './guards/destructive.js';
 
 export const register: Register = (on) => {
   on('session.start', async ($) => {
@@ -8,11 +9,28 @@ export const register: Register = (on) => {
     });
   });
 
-  // Ningún subagente (issue-materializer-agent, db-qa-agent, db-mutation-tester, etc.) puede tocar git.
+  // Ningún subagente puede tocar git; y ni orquestador ni subagentes pueden ejecutar órdenes destructivas de BD o leer copias de prod.
   on('tool.call', { tool: 'Bash' }, async (_$, e, next) => {
-    if (e.tool !== 'Bash' || !e.agentId || !/\bgit\b/i.test(e.command)) return next(e);
-    return { deny: 'Ningún subagente puede ejecutar git: solo el orquestador opera git, tras confirmación del usuario.' };
-  }).catch(($, e, next) => (next.called ? next(e) : { deny: 'No se pudo verificar el permiso de git; comando bloqueado.' }));
+    if (e.tool !== 'Bash') return next(e);
+    if (e.agentId && /\bgit\b/i.test(e.command)) {
+      return { deny: 'Ningún subagente puede ejecutar git: solo el orquestador opera git, tras confirmación del usuario.' };
+    }
+    const check = classifyBashCommand(e.command, process.env);
+    if (check.deny) {
+      return { deny: check.reason || 'Comando destructivo de base de datos bloqueado.' };
+    }
+    return next(e);
+  }).catch(($, e, next) => (next.called ? next(e) : { deny: 'No se pudo verificar el permiso de Bash; comando bloqueado.' }));
+
+  // Bloquear lectura/edición de copias de producción (*.dump, *.bak, backups/)
+  on('tool.call', { tool: 'Read' }, async (_$, e, next) => {
+    const filePath = (e as { file_path?: string }).file_path;
+    const check = classifyFileAccess(filePath || '');
+    if (check.deny) {
+      return { deny: check.reason || 'Acceso a copia de producción bloqueado.' };
+    }
+    return next(e);
+  }).catch(($, e, next) => (next.called ? next(e) : { deny: 'No se pudo verificar el permiso de lectura; acceso bloqueado.' }));
 
   on('command.run', { command: 'it-project-orchestrator' }, async ($, _e, _next) => {
     const agentsContent = await $.fs.read($.plugin.root + '/AGENTS.md') as string;
