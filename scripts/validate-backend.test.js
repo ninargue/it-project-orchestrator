@@ -146,4 +146,21 @@ describe('validate-backend.js', () => {
     assert.equal(res.code, 1);
     assert.match(res.out, /Falta la huella de tests congelados/);
   });
+
+  it('verify-red falla si los tests nacen en VERDE o por SyntaxError/import roto, y pasa en ROJO válido', () => {
+    const greenCmd = `"${process.execPath}" -e "process.exit(0)"`;
+    const resGreen = runValidator(['--action', 'verify-red', '--repo-root', tmp, '--test-cmd', greenCmd], tmp);
+    assert.equal(resGreen.code, 1);
+    assert.match(resGreen.out, /nació en VERDE/);
+
+    const syntaxCmd = `"${process.execPath}" -e "console.error('SyntaxError: unexpected token'); process.exit(1)"`;
+    const resSyntax = runValidator(['--action', 'verify-red', '--repo-root', tmp, '--test-cmd', syntaxCmd], tmp);
+    assert.equal(resSyntax.code, 1);
+    assert.match(resSyntax.out, /ROJO INVÁLIDO/);
+
+    const validRedCmd = `"${process.execPath}" -e "console.error('AssertionError: expected 201 got 404'); process.exit(1)"`;
+    const resValid = runValidator(['--action', 'verify-red', '--repo-root', tmp, '--test-cmd', validRedCmd], tmp);
+    assert.equal(resValid.code, 0);
+    assert.match(resValid.out, /ROJO válido verificado/);
+  });
 });

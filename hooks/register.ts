@@ -1,5 +1,6 @@
 import type { Register } from 'claude-code';
 import { classifyBashCommand, classifyFileAccess } from './guards/destructive.js';
+import { classifyBackendRoleAccess } from './guards/backend-roles.js';
 import { classifyDbToolCall } from './policies/db.js';
 
 export const register: Register = (on) => {
@@ -30,17 +31,25 @@ export const register: Register = (on) => {
     return next(e);
   }).catch(($, e, next) => (next.called ? next(e) : { deny: 'No se pudo verificar el permiso de Bash; comando bloqueado.' }));
 
-  // Bloquear lectura/edición de copias de producción (*.dump, *.bak, backups/)
-  on('tool.call', { tool: 'Read' }, async (_$, e, next) => {
-    const filePath = (e as { file_path?: string }).file_path;
-    const check = classifyFileAccess(filePath || '');
+  // Bloquear lectura/edición de copias de producción (*.dump, *.bak, backups/) y fronteras de rol en backend
+  on('tool.call', { tool: 'Read' }, async ($, e, next) => {
+    const filePath = (e as { file_path?: string }).file_path || '';
+    const check = classifyFileAccess(filePath);
     if (check.deny) {
       return { deny: check.reason || 'Acceso a copia de producción bloqueado.' };
+    }
+    if (e.agentId) {
+      const agents = await $.agent.list();
+      const agentType = agents.find((a) => a.id === e.agentId)?.type || e.agentId;
+      const roleCheck = classifyBackendRoleAccess(agentType, 'Read', filePath);
+      if (roleCheck.deny) {
+        return { deny: roleCheck.reason || 'Acceso bloqueado por frontera de rol.' };
+      }
     }
     return next(e);
   }).catch(($, e, next) => (next.called ? next(e) : { deny: 'No se pudo verificar el permiso de lectura; acceso bloqueado.' }));
 
-  // Acotar rutas de escritura/edición por subagente DB
+  // Acotar rutas de escritura/edición por subagente DB y Backend
   for (const toolName of ['Write', 'Edit'] as const) {
     on('tool.call', { tool: toolName }, async ($, e, next) => {
       const filePath = (e as { file_path?: string }).file_path || '';
@@ -53,6 +62,8 @@ export const register: Register = (on) => {
         const agentType = agents.find((a) => a.id === e.agentId)?.type;
         const policy = classifyDbToolCall({ agentType, tool: toolName, filePath });
         if (policy.deny) return { deny: policy.reason || `Ruta no autorizada para ${agentType}.` };
+        const roleCheck = classifyBackendRoleAccess(agentType || e.agentId, toolName, filePath);
+        if (roleCheck.deny) return { deny: roleCheck.reason || `Escritura bloqueada para ${agentType || e.agentId}.` };
       }
       return next(e);
     }).catch(($, e, next) => (next.called ? next(e) : { deny: `No se pudo verificar permiso de ${toolName}; operación bloqueada.` }));
