@@ -134,7 +134,7 @@ Si alguna de estas variables no está en memoria de sesión (usuario invocó dir
      - Verificar si `DB_DEV_RO_URL` (rol `agent_ro`) está disponible para exploración en vivo; en proyectos *brownfield* sin `DB_DEV_RO_URL`, advertir al usuario que puede crearlo con `<plugin-root>/templates/db/readonly-role.<engine>.sql`.
 
 2. **Handoff Inmediato al Paso 1:**
-   - Cumplidas las pre-condiciones, definir el identificador del cambio `<change-name>` en `kebab-case` (ej. `0017-crear-esquema-usuarios` o `<ticket_id>-db`).
+   - Cumplidas las pre-condiciones, definir `<change-name>` en `kebab-case` minúsculas **empezando siempre con una letra** (`openspec new change` falla si empieza con número, ej. `0001-...`): usar `<ticket_id>-db` (ej. `e1-us03-t01-db`) o, si proviene de un issue numérico, `issue-<num>-<slug>-db` / `chg-<prefijo>-<sufijo>-db` (ej. `issue-39-auth-onboarding-rls-db`).
    - Avanzar inmediatamente al Paso 1 delegando la ejecución de `opsx:explore` y `opsx:propose` a `db-architect-agent`.
 
 ---
