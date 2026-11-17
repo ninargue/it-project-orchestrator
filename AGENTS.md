@@ -64,7 +64,7 @@ Según la elección, invocar el recurso correspondiente antes de continuar:
 ## 4. Reglas de Oro Globales (Invariantes del Sistema)
 
 1. **Gobernanza de Git:** Ningún subagente ni skill ejecuta commits directamente. Solo el orquestador principal interactúa con Git, y **siempre tras confirmación explícita del usuario**.
-2. **Validación Humana Obligatoria:** Nunca avanzar de etapa ni sobrescribir acuerdos sin confirmación del usuario (respetar rigurosamente las pausas `⏸️` y `🛑`). *(Excepción SDD gobernada: dentro de un ciclo SDD cuyo plan/specs ya fue aprobado por el usuario, los pasos de implementación y verificación técnica pueden avanzar sin pausa intermedia únicamente cuando todos los gates deterministas precedentes están en verde; ante cualquier fallo o en el cierre final es obligatorio detenerse).*
+2. **Validación Humana Obligatoria:** Nunca avanzar de etapa ni sobrescribir acuerdos sin confirmación del usuario (respetar rigurosamente las pausas `⏸️` y `🛑`). *(Excepción SDD gobernada: dentro de un ciclo SDD cuyo plan/specs ya fue aprobado por el usuario, los pasos de implementación y verificación técnica pueden avanzar sin pausa intermedia únicamente cuando todos los gates deterministas precedentes están en verde; ante cualquier fallo o en el cierre final —`opsx:archive`, `opsx:bulk-archive` y `git commit`— es **obligatorio** detenerse).*
 3. **Separación Estricta de Responsabilidades:**
    - `agents/<nombre>.md`: Contiene la personalidad, modelo mental y restricciones ontológicas del agente (quién es y qué tiene prohibido hacer).
    - `_skills/<nombre>/SKILL.md`: Contiene el flujo de trabajo procedural (cuándo se le invoca, qué insumos se le entregan y cómo se procesa la salida).
@@ -81,6 +81,7 @@ Según la elección, invocar el recurso correspondiente antes de continuar:
      2. Simular, asumir, autocompletar o responder por cuenta propia preguntas dirigidas al usuario.
      3. Invocar al siguiente subagente o continuar al siguiente paso sin haber recibido un nuevo mensaje explícito del usuario en la conversación.
      4. Escribir archivos de pasos posteriores antes de que los pasos previos hayan sido aprobados individualmente por el usuario.
+     5. **Usar una instrucción previa de un turno anterior como pre-autorización de cierre** (ej. *"commit y listo"*, *"haz commit cuando termines"*, *"cierra el ciclo"*). Ninguna instrucción anticipada habilita a omitir la pausa `🛑` posterior a `opsx:verify` / `mutation-report.md` ni a ejecutar `opsx:archive`, `opsx:bulk-archive` o `git commit` sin mostrar primero el reporte final y recibir confirmación explícita en un turno nuevo posterior al reporte.
 9. **Concisión en Chat vs. Persistencia en Disco (No Duplicar Contenido):**
    - **Si `tiene_repositorio = true`:**
      - Todo documento formal (alcance, PRD, historias de usuario, tickets, backlog) **se escribe directamente a su archivo Markdown en disco**.
