@@ -81,7 +81,7 @@ Skill especializado en el diseño e implementación de la **capa frontend** medi
      [3] none (UI pura sin endpoints ni contrato OpenAPI)
    ```
    *(Si se preguntó por ambigüedad, **🛑 FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO** hasta que confirme el modo).*
-3. Definir `<change-name>` (ej. `<ticket_id>-frontend` o `<prefijo_avance>-<sufijo>`) y ejecutar **Gate 1**:
+3. Definir `<change-name>` en `kebab-case` minúsculas **empezando siempre con una letra** (`openspec new change` falla si empieza con número, ej. `0001-...`): usar `<ticket_id>-frontend` (ej. `e1-us03-t01-frontend`) o, si proviene de un issue numérico, `issue-<num>-<slug>-frontend` / `chg-<prefijo>-<sufijo>-frontend` (ej. `issue-41-pos-carrito-frontend`), y ejecutar **Gate 1**:
    ```bash
    node "<plugin-root>/scripts/validate-frontend.js" --gate 1 --repo-root "<repo-destino>" --contract-mode "<contract_mode>" --openapi-path "<openapi_path>" --change-dir "openspec/changes/<change-name>"
    ```

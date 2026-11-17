@@ -167,10 +167,10 @@ Antes de iniciar la Fase 1 (o al retomar cualquier fase con `tiene_repositorio =
 #### 4.1. Gestión de Tickets Multi-Capa (Cross-Cutting / Fullstack)
 Si un ticket técnico impacta 2 o más capas (ej. Base de Datos + Backend + Frontend):
 1. **Nomenclatura Canónica en OpenSpec (`openspec/changes/`):**
-   El orquestador instruye generar una carpeta de cambio independiente por cada capa afectada, compartiendo el identificador único del ticket:
-   - `openspec/changes/<ticket_id>-db/` (ej. `E1-US03-T01-db/`)
-   - `openspec/changes/<ticket_id>-backend/` (ej. `E1-US03-T01-backend/`)
-   - `openspec/changes/<ticket_id>-frontend/` (ej. `E1-US03-T01-frontend/`)
+   El orquestador instruye generar una carpeta de cambio independiente por cada capa afectada, compartiendo el identificador único del ticket en `kebab-case` minúsculas y **empezando siempre con una letra** (requisito estricto de `openspec new change`, nunca `0001-...` ni `39-...`):
+   - `openspec/changes/<ticket_id>-db/` (ej. `e1-us03-t01-db/` o `issue-39-auth-onboarding-rls-db/`)
+   - `openspec/changes/<ticket_id>-backend/` (ej. `e1-us03-t01-backend/` o `issue-39-auth-onboarding-rls-backend/`)
+   - `openspec/changes/<ticket_id>-frontend/` (ej. `e1-us03-t01-frontend/` o `issue-39-auth-onboarding-rls-frontend/`)
 2. **Ejecución Secuencial Topológica:**
    - **Paso A (Datos):** Ejecuta `_skills/db-sdd/SKILL.md` para `<ticket_id>-db/`. La base de datos, migraciones, políticas RLS y tests DB-TDD se validan primero.
    - **Paso B (Backend):** Con el esquema de datos validado, ejecuta `_skills/backend-sdd/SKILL.md` para `<ticket_id>-backend/` (contratos de API, DTOs/Schemas, repositorios, servicios, controladores/workers, tests Backend-TDD y Gates 1–4 con `scripts/validate-backend.js`).
