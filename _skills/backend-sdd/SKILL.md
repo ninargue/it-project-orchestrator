@@ -132,7 +132,7 @@ Si alguna de estas variables no está en memoria de sesión (usuario invocó dir
    - Si el proyecto cuenta con comando de introspección/autogeneración de tipos desde la BD (`typegen_cmd`: ej. `supabase gen types`, `npx prisma generate`), ejecutarlo y verificar `exit 0`.
 
 3. **Handoff Inmediato al Paso 1:**
-   - Cumplido el Gate 1, definir el identificador del cambio `<change-name>` en `kebab-case` (ej. `0022-crear-endpoint-ventas` o `<ticket_id>-backend`) y avanzar inmediatamente al Paso 1 delegando la ejecución de `opsx:explore` y `opsx:propose` a `api-architect-agent`.
+   - Cumplido el Gate 1, definir `<change-name>` en `kebab-case` minúsculas **empezando siempre con una letra** (`openspec new change` falla si empieza con número, ej. `0022-...`): usar `<ticket_id>-backend` (ej. `e1-us03-t01-backend`) o, si proviene de un issue numérico, `issue-<num>-<slug>-backend` / `chg-<prefijo>-<sufijo>-backend` (ej. `issue-38-crear-endpoint-ventas-backend`). Avanzar inmediatamente al Paso 1 delegando la ejecución de `opsx:explore` y `opsx:propose` a `api-architect-agent`.
 
 ---
 

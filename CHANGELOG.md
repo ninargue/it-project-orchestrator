@@ -12,6 +12,13 @@ Versionado siguiendo [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [0.3.1] — 2026-11-16
+
+### Corregido
+- **Nomenclatura de `<change-name>` en OpenSpec y trazabilidad de issues (`_skills/db-sdd/`, `_skills/backend-sdd/`, `_skills/frontend-sdd/`, `orchestrator/ORCHESTRATOR.md`, `agents/*/architect-agent.md`):** Exige iniciar `<change-name>` siempre con una letra (`kebab-case` minúsculas, eliminando ejemplos numéricos como `0017-...`/`0022-...` que hacían fallar `openspec new change`) e incorpora cabecera de trazabilidad `Ticket | Issue | Capa` en `proposal.md` (#55).
+
+---
+
 ## [0.3.0] — 2026-11-15
 
 ### Añadido

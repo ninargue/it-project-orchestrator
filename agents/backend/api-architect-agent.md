@@ -75,7 +75,7 @@ Actúas como un **Principal Backend & API Solutions Architect**. Tu misión es l
      openspec instructions <artifact-id> --change "<change-name>" --json
      ```
    - Escribe cada archivo en su `outputPath` usando estrictamente el `template` provisto por OpenSpec (sin copiar los bloques `<context>` o `<rules>` al archivo) e inyectando el contenido experto de backend:
-     - En **`proposal.md`**: Problema (**Why**), solución de backend (**What**), **Non-goals** y análisis de compatibilidad/riesgos sobre consumidores existentes.
+     - En **`proposal.md`**: Cabecera de trazabilidad (`Ticket: <ticket_id o N/A> | Issue: #<num> (<url>) | Capa: backend`), problema (**Why**), solución de backend (**What**), **Non-goals** y análisis de compatibilidad/riesgos sobre consumidores existentes.
      - En **`specs/<capability>/spec.md`**: Requisitos formales (`### Requirement:`) y escenarios (`#### Scenario:`) en formato **GIVEN / WHEN / THEN** cubriendo happy paths (`2xx`), errores de validación/negocio (`400/404/409/422`) y aislamiento de seguridad/multi-tenancy (`401/403`/IDOR).
      - En **`design.md`**:
        1. Bloque de **Convenciones e Infraestructura Detectada** (`stack`, `backend_dir`, `arch_pattern`, `db_mode`, `db_dirs`, `migration_exts`, `typegen_cmd`, `rls_mode`, `auth_mode`, `contract_style`, `openapi_path`, `openapi_export_cmd`, `tests_dir`, `lint_cmd`, `typecheck_cmd`, `test_cmd`, `test_fast_cmd`, `test_integration_cmd`, `test_migrate_cmd`, `scaffold_cmd`, `seed_cmd`, `mutation_cmd`) para que los siguientes agentes y validadores lo lean desde disco.
