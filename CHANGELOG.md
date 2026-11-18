@@ -12,6 +12,16 @@ Versionado siguiendo [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [0.4.0] — 2026-11-18
+
+### Añadido
+- **Watchdog de Subagentes (180s), Checkpoint en Disco y Recuperación ante Caídas (`AGENTS.md`, `orchestrator/ORCHESTRATOR.md`, `scripts/sdd-error-memory.js`):** Timer one-shot de 3 minutos (`schedule` + `TimerCondition`) y verificación de estado (`manage_subagents`), nuevas acciones `--action dispatch`, `--action verify-handoff` y `--action pending` en `.sdd-state.json`, y política acotada de recuperación (reutilizar artefacto completo en disco o máx. 1 reintento automático antes de escalar con `🛑`) (#64, #65).
+
+### Corregido
+- **Parada HITL Obligatoria y Guardia Determinista antes de `opsx:archive` y `git commit` (`AGENTS.md`, `orchestrator/ORCHESTRATOR.md`, `_skills/frontend-sdd/SKILL.md`, `hooks/guards/archive-commit.js`, `hooks/register.ts`):** Prohíbe usar instrucciones previas (*"commit y listo"*) como pre-autorización de cierre, añade `🛑 FIN DE TURNO OBLIGATORIO` en `Bulk Archive` y Casos A/B/C/Frontend, e incorpora una guardia determinista que impide encadenar validación/tests con `openspec archive` o `git commit` y exige `verification-report.md` `[APROBADO]`, tareas completas y sin tests complacientes (#62, #63).
+
+---
+
 ## [0.3.1] — 2026-11-16
 
 ### Corregido
