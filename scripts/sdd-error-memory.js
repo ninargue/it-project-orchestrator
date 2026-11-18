@@ -4,10 +4,13 @@
  * Multiplataforma (Linux, macOS, Windows) en Node.js nativo sin dependencias externas.
  *
  * Acciones:
- *   init     Inicializa openspec/changes/<change>/.sdd-state.json si no existe
- *   record   Registra un fallo, calcula error_signature y detecta loops (exit 2 si repite >= max_repeat)
- *   summary  Imprime resumen compacto de errores y restricciones (avoid) para reintentos
- *   promote  Promueve una regla curada a openspec/specs/<capa>/known-gotchas.md (sin duplicados)
+ *   init            Inicializa openspec/changes/<change>/.sdd-state.json si no existe
+ *   record          Registra un fallo, calcula error_signature y detecta loops (exit 2 si repite >= max_repeat)
+ *   summary         Imprime resumen compacto de errores y restricciones (avoid) para reintentos
+ *   promote         Promueve una regla curada a openspec/specs/<capa>/known-gotchas.md (sin duplicados)
+ *   dispatch        Registra un despacho de subagente pendiente y su artefacto esperado (timeout default 180s)
+ *   verify-handoff  Verifica en disco el artefacto esperado tras respuesta/watchdog y limpia el despacho si es válido
+ *   pending         Lista despachos pendientes en .sdd-state.json (útil tras watchdog o reinicio de servidor)
  */
 
 const fs = require('fs');
@@ -36,7 +39,12 @@ const opts = {
   files: '',
   rule: '',
   context: '',
-  maxRepeat: 2
+  maxRepeat: 2,
+  agent: '',
+  conversationId: '',
+  expectedArtifact: '',
+  expectedMarkers: '',
+  timeoutSeconds: 180
 };
 
 function nextArgValue(flag, index) {
@@ -60,6 +68,15 @@ for (let i = 0; i < args.length; i++) {
   else if (a === '--files') { opts.files = nextArgValue(a, i); i++; }
   else if (a === '--rule') { opts.rule = nextArgValue(a, i); i++; }
   else if (a === '--context') { opts.context = nextArgValue(a, i); i++; }
+  else if (a === '--agent') { opts.agent = nextArgValue(a, i); i++; }
+  else if (a === '--conversation-id') { opts.conversationId = nextArgValue(a, i); i++; }
+  else if (a === '--expected-artifact') { opts.expectedArtifact = nextArgValue(a, i); i++; }
+  else if (a === '--expected-markers') { opts.expectedMarkers = nextArgValue(a, i); i++; }
+  else if (a === '--timeout-seconds') {
+    const raw = Number(nextArgValue(a, i));
+    i++;
+    opts.timeoutSeconds = Number.isFinite(raw) && raw > 0 ? Math.floor(raw) : 180;
+  }
   else if (a === '--max-repeat') {
     const raw = Number(nextArgValue(a, i));
     i++;
@@ -109,6 +126,7 @@ function loadOrCreateState(statePath, layer, maxRepeat) {
   if (fs.existsSync(statePath)) {
     const data = readStateSafe(statePath);
     if (!Array.isArray(data.errors)) data.errors = [];
+    if (!Array.isArray(data.pending_dispatches)) data.pending_dispatches = [];
     if (!data.max_repeat) data.max_repeat = maxRepeat;
     if (layer && (!data.layer || data.layer === 'unknown')) data.layer = layer;
     return data;
@@ -122,7 +140,8 @@ function loadOrCreateState(statePath, layer, maxRepeat) {
     last_signature: null,
     loop_detected: false,
     promoted: false,
-    errors: []
+    errors: [],
+    pending_dispatches: []
   };
 }
 
@@ -275,4 +294,128 @@ if (opts.action === 'promote') {
   process.exit(0);
 }
 
-fail('Acción inválida. Usa --action <init|record|summary|promote>');
+if (opts.action === 'dispatch') {
+  if (!opts.agent) fail('Se requiere --agent para dispatch');
+  if (!opts.step) fail('Se requiere --step para dispatch');
+  if (!opts.expectedArtifact) fail('Se requiere --expected-artifact para dispatch');
+
+  const statePath = getStatePath(opts.changeDir);
+  const state = loadOrCreateState(statePath, opts.layer, opts.maxRepeat);
+  const markers = opts.expectedMarkers
+    ? opts.expectedMarkers.split(',').map((m) => m.trim()).filter(Boolean)
+    : [];
+
+  const idx = state.pending_dispatches.findIndex(
+    (d) => d.agent === opts.agent && d.step === opts.step
+  );
+  const prevAttempt = idx >= 0 ? (state.pending_dispatches[idx].attempt || 1) : 0;
+  const entry = {
+    agent: opts.agent,
+    step: opts.step,
+    conversation_id: opts.conversationId || undefined,
+    expected_artifact: opts.expectedArtifact,
+    expected_markers: markers,
+    timeout_seconds: opts.timeoutSeconds,
+    started_at: new Date().toISOString(),
+    attempt: prevAttempt + 1
+  };
+  if (idx >= 0) state.pending_dispatches[idx] = entry;
+  else state.pending_dispatches.push(entry);
+
+  saveState(statePath, state);
+  console.log(JSON.stringify({
+    ok: true,
+    action: 'dispatch',
+    agent: entry.agent,
+    step: entry.step,
+    attempt: entry.attempt,
+    timeout_seconds: entry.timeout_seconds,
+    expected_artifact: entry.expected_artifact
+  }));
+  process.exit(0);
+}
+
+if (opts.action === 'verify-handoff') {
+  if (!opts.agent) fail('Se requiere --agent para verify-handoff');
+  if (!opts.step) fail('Se requiere --step para verify-handoff');
+
+  const statePath = getStatePath(opts.changeDir);
+  const state = loadOrCreateState(statePath, opts.layer, opts.maxRepeat);
+  const idx = state.pending_dispatches.findIndex(
+    (d) => d.agent === opts.agent && d.step === opts.step
+  );
+  const pending = idx >= 0 ? state.pending_dispatches[idx] : null;
+  const expectedArtifact = opts.expectedArtifact || (pending && pending.expected_artifact) || '';
+  if (!expectedArtifact) fail('Se requiere --expected-artifact (o un dispatch previo) para verify-handoff');
+
+  const markers = opts.expectedMarkers
+    ? opts.expectedMarkers.split(',').map((m) => m.trim()).filter(Boolean)
+    : (pending && Array.isArray(pending.expected_markers) ? pending.expected_markers : []);
+  const attempt = (pending && pending.attempt) || 1;
+  const artifactPath = path.isAbsolute(expectedArtifact)
+    ? expectedArtifact
+    : path.resolve(opts.changeDir, expectedArtifact);
+
+  const failHandoff = (reason) => {
+    console.log(JSON.stringify({
+      ok: false,
+      status: 'incomplete_handoff',
+      reason,
+      agent: opts.agent,
+      step: opts.step,
+      expected_artifact: expectedArtifact,
+      attempt,
+      retry_allowed: attempt < 2
+    }));
+    process.exit(1);
+  };
+
+  if (!fs.existsSync(artifactPath) || !fs.statSync(artifactPath).isFile()) {
+    failHandoff('missing_file');
+  }
+  const content = fs.readFileSync(artifactPath, 'utf8');
+  if (!content.trim()) {
+    failHandoff('empty_file');
+  }
+  if (markers.length > 0 && !markers.some((m) => content.includes(m))) {
+    failHandoff('missing_marker');
+  }
+
+  if (idx >= 0) {
+    state.pending_dispatches.splice(idx, 1);
+    saveState(statePath, state);
+  }
+  console.log(JSON.stringify({
+    ok: true,
+    status: 'verified',
+    agent: opts.agent,
+    step: opts.step,
+    expected_artifact: expectedArtifact,
+    attempt
+  }));
+  process.exit(0);
+}
+
+if (opts.action === 'pending') {
+  const statePath = getStatePath(opts.changeDir);
+  if (!fs.existsSync(statePath)) {
+    console.log(JSON.stringify({ count: 0, pending: [] }));
+    process.exit(0);
+  }
+  const state = readStateSafe(statePath);
+  const now = Date.now();
+  const pending = (state.pending_dispatches || []).map((d) => {
+    const startedMs = Date.parse(d.started_at || '');
+    const elapsedSeconds = Number.isFinite(startedMs) ? Math.max(0, Math.floor((now - startedMs) / 1000)) : 0;
+    const timeoutSeconds = d.timeout_seconds || 180;
+    return {
+      ...d,
+      elapsed_seconds: elapsedSeconds,
+      expired: elapsedSeconds >= timeoutSeconds
+    };
+  });
+  console.log(JSON.stringify({ count: pending.length, pending }, null, 2));
+  process.exit(0);
+}
+
+fail('Acción inválida. Usa --action <init|record|summary|promote|dispatch|verify-handoff|pending>');
