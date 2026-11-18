@@ -291,6 +291,31 @@ Para evitar loops de reintentos y preservar aprendizajes entre tickets sin infla
    - Al re-invocar un subagente tras un fallo no repetido, adjuntar únicamente la salida compacta de `--action summary` (sin volcar logs completos).
 2. **Promoción selectiva antes de archivar (`--action promote`):** En la pausa `⏸️` de confirmación de cierre (Casos A, B, C o Bulk Archive), si `openspec/changes/<change-name>/.sdd-state.json` registró fallos no triviales del repositorio, preguntar en esa misma pausa si desea promover una regla breve (1 línea, máx. 240 caracteres) a `openspec/specs/<capa>/known-gotchas.md`. Si el usuario lo aprueba, ejecutar `--action promote` **antes** de `opsx:archive` / `opsx:bulk-archive` (mientras `.sdd-state.json` aún reside en `openspec/changes/<change-name>/`) para que `known-gotchas.md` y el cambio archivado entren juntos en el mismo `git commit` atómico.
 
+### Resiliencia ante Caídas, Cancelaciones y Timeouts de Subagentes (Watchdog 180s)
+Para evitar que el orquestador quede bloqueado o avance en falso cuando un subagente se cae, es cancelado, se detiene por reinicio del servidor o termina sin responder/escribir su entregable:
+
+1. **Checkpoint previo al despacho (`--action dispatch`):**
+   Antes de invocar un subagente en Fase 3 (SDD), registrar el despacho esperado en `.sdd-state.json`:
+   ```bash
+   node "<plugin-root>/scripts/sdd-error-memory.js" --action dispatch --change-dir "<change-dir>" --layer "<db|backend|frontend>" --agent "<subagent>" --step "<paso>" --conversation-id "<id>" --expected-artifact "<ruta-relativa>" --expected-markers "<marcador1>,<marcador2>" --timeout-seconds 180
+   ```
+2. **Watchdog de 3 minutos (180s) cuando el runtime soporte `schedule`:**
+   - Tras `invoke_subagent`, programar inmediatamente un timer one-shot con `schedule`:
+     - `DurationSeconds: 180`
+     - `TimerCondition: "<conversationId>"` (o `'any'` si hay múltiples subagentes en paralelo bajo barrera Fork-Join).
+     - `Prompt`: `"Watchdog (180s): verificar estado de <subagent> (<conversationId>) y artefacto <expected_artifact>."`
+   - Si el subagente responde antes de los 180s, `TimerCondition` cancela el timer automáticamente (cero overhead).
+3. **Verificación de Post-condición en Disco (`--action verify-handoff`) y Recuperación:**
+   Al recibir respuesta del subagente, al despertar por el watchdog o al retomar tras un reinicio de servidor (`--action pending`):
+   - Inspeccionar el estado vivo si el runtime lo permite (`manage_subagents(Action='list')`) y ejecutar:
+     ```bash
+     node "<plugin-root>/scripts/sdd-error-memory.js" --action verify-handoff --change-dir "<change-dir>" --agent "<subagent>" --step "<paso>"
+     ```
+   - **Si `exit 0` (`status: "verified"`):** El artefacto existe en disco con su marcador válido (incluso si el subagente cayó después de escribirlo) → continuar el flujo normalmente.
+   - **Si `exit 1` (`retry_allowed: true`, intento 1):** Registrar el incidente (`--action record`) y ejecutar **1 único reintento automático**:
+     - Si el subagente figura `stopped` (ej. tras reinicio), reanimarlo con `send_message` indicando qué artefacto falta en disco; si no es recuperable o no respondió al watchdog, lanzar un nuevo `invoke_subagent` con `--action summary`.
+   - **Si `exit 1` (`retry_allowed: false`, 2º fallo consecutivo):** Detener todo reintento automático, **prohibido avanzar al siguiente paso**, y escalar al usuario con `🛑` mostrando el `conversationId`, el motivo (`missing_file` / `empty_file` / `missing_marker` / `timeout`) y el estado actual en disco.
+
 ### Rollback Post-Commit (cuando una fase posterior revela fallos en Fase 1 o Fase 2)
 Si el commit de Fase 1 o Fase 2 ya se realizó, pero la Fase 3 (SDD) detecta que las historias o tickets están mal diseñados o incompletos:
 1. **Congelar cambios SDD en curso:** No ejecutar `opsx:archive` sobre el cambio afectado; mantener o descartar `openspec/changes/<change-name>/` según indique el usuario.
