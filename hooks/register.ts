@@ -1,6 +1,7 @@
 import type { Register } from 'claude-code';
 import { classifyBashCommand, classifyFileAccess } from './guards/destructive.js';
 import { classifyBackendRoleAccess } from './guards/backend-roles.js';
+import { classifyArchiveOrCommitCommand } from './guards/archive-commit.js';
 import { classifyDbToolCall } from './policies/db.js';
 
 export const register: Register = (on) => {
@@ -21,6 +22,10 @@ export const register: Register = (on) => {
     const check = classifyBashCommand(e.command, process.env);
     if (check.deny) {
       return { deny: check.reason || 'Comando destructivo de base de datos bloqueado.' };
+    }
+    const archiveCommitCheck = classifyArchiveOrCommitCommand(e.command, { cwd: process.cwd() });
+    if (archiveCommitCheck.deny) {
+      return { deny: archiveCommitCheck.reason || 'Cierre SDD (archive/commit) bloqueado por pre-condiciones.' };
     }
     if (e.agentId) {
       const agents = await $.agent.list();
