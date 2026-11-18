@@ -170,7 +170,9 @@ Skill especializado en el diseño e implementación de la **capa frontend** medi
 2. **Bifurcación:**
    - Si el veredicto es `[TESTS COMPLACIENTES DETECTADOS]`: presentar las brechas de falsabilidad y preguntar si autoriza volver a `frontend-qa-agent` (Paso 2) para reforzar las aserciones antes de re-verificar.
      **🛑 FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:** Detén tu turno aquí y espera confirmación.
-   - Si el veredicto es `[TESTS BLINDADOS]` (o si es exento): emitir la señal hacia el orquestador principal:
+   - Si el veredicto es `[TESTS BLINDADOS]` (o si es exento): presentar el resumen de `verification-report.md` y `mutation-report.md` (si aplica) y preguntar si confirma el cierre antes de emitir la señal hacia el orquestador principal:
+     **🛑 FIN DE TURNO OBLIGATORIO — ESPERA AL USUARIO:** Detén tu turno aquí y espera confirmación explícita.
+     Tras confirmación explícita del usuario, emitir la señal:
      ```text
      [LISTO PARA COMMIT Y ARCHIVE] <frontend_dir> <tests_dir> openspec/changes/<change-name>/
      ```

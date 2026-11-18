@@ -174,4 +174,78 @@ test('sdd-error-memory.js (Opción 3: .sdd-state.json + known-gotchas.md)', asyn
     ]);
     assert.equal(missingVal.code, 1);
   });
+
+  await t.test('dispatch, pending y verify-handoff detectan caídas/silencio y limpian al completar artefacto', () => {
+    const d1 = runCli([
+      '--action', 'dispatch',
+      '--change-dir', changeDir,
+      '--layer', 'db',
+      '--agent', 'db-qa-agent',
+      '--step', 'opsx:verify',
+      '--conversation-id', 'conv-123',
+      '--expected-artifact', 'verification-report.md',
+      '--expected-markers', '[APROBADO],[OBSERVADO'
+    ]);
+    assert.equal(d1.code, 0);
+    const pd1 = JSON.parse(d1.stdout);
+    assert.equal(pd1.attempt, 1);
+    assert.equal(pd1.timeout_seconds, 180);
+
+    // pending lista el despacho activo
+    const pend1 = runCli(['--action', 'pending', '--change-dir', changeDir]);
+    assert.equal(pend1.code, 0);
+    const pp1 = JSON.parse(pend1.stdout);
+    assert.equal(pp1.count, 1);
+    assert.equal(pp1.pending[0].agent, 'db-qa-agent');
+
+    // Si el subagente cayó sin escribir verification-report.md -> exit 1 y retry_allowed=true
+    const vFailMissing = runCli([
+      '--action', 'verify-handoff',
+      '--change-dir', changeDir,
+      '--agent', 'db-qa-agent',
+      '--step', 'opsx:verify'
+    ]);
+    assert.equal(vFailMissing.code, 1);
+    const pFailMissing = JSON.parse(vFailMissing.stdout);
+    assert.equal(pFailMissing.reason, 'missing_file');
+    assert.equal(pFailMissing.retry_allowed, true);
+
+    // Re-despacho (intento 2): si vuelve a fallar (archivo sin marcador), retry_allowed=false -> escalar al usuario
+    const d2 = runCli([
+      '--action', 'dispatch',
+      '--change-dir', changeDir,
+      '--agent', 'db-qa-agent',
+      '--step', 'opsx:verify',
+      '--expected-artifact', 'verification-report.md',
+      '--expected-markers', '[APROBADO],[OBSERVADO'
+    ]);
+    assert.equal(d2.code, 0);
+    assert.equal(JSON.parse(d2.stdout).attempt, 2);
+
+    fs.writeFileSync(path.join(changeDir, 'verification-report.md'), 'Borrador incompleto sin veredicto\n', 'utf8');
+    const vFailMarker = runCli([
+      '--action', 'verify-handoff',
+      '--change-dir', changeDir,
+      '--agent', 'db-qa-agent',
+      '--step', 'opsx:verify'
+    ]);
+    assert.equal(vFailMarker.code, 1);
+    const pFailMarker = JSON.parse(vFailMarker.stdout);
+    assert.equal(pFailMarker.reason, 'missing_marker');
+    assert.equal(pFailMarker.retry_allowed, false);
+
+    // Cuando el artefacto tiene el marcador válido, verify-handoff pasa (exit 0) y limpia pending_dispatches
+    fs.writeFileSync(path.join(changeDir, 'verification-report.md'), 'Veredicto: [APROBADO]\n', 'utf8');
+    const vOk = runCli([
+      '--action', 'verify-handoff',
+      '--change-dir', changeDir,
+      '--agent', 'db-qa-agent',
+      '--step', 'opsx:verify'
+    ]);
+    assert.equal(vOk.code, 0);
+    assert.equal(JSON.parse(vOk.stdout).status, 'verified');
+
+    const pend2 = runCli(['--action', 'pending', '--change-dir', changeDir]);
+    assert.equal(JSON.parse(pend2.stdout).count, 0);
+  });
 });
