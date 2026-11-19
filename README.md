@@ -31,14 +31,30 @@ Funciona con Claude Code, Cursor, Antigravity, Codex, OpenCode, Windsurf y cualq
 
 ## Instalación
 
-### Usuarios técnicos — Claude Code
+### Usuarios técnicos — Claude Code y Claude Desktop / Cowork
 
-1. Tener [Claude Code](https://claude.ai/code) instalado.
-2. Desde el proyecto destino, ejecutar:
+1. Tener [Claude Code](https://claude.ai/code) (o Claude Desktop) instalado.
+2. Elegir el método de instalación según tu entorno:
 
-```bash
-claude plugin add https://github.com/tu-usuario/it-project-orchestrator
-```
+   - **Desde Claude Code (en 1 paso, v2.1.275+):**
+     ```text
+     /plugin install it-project-orchestrator --marketplace ninargue/it-project-orchestrator
+     ```
+   - **Desde la CLI de Claude Code:**
+     ```bash
+     claude plugin marketplace add ninargue/it-project-orchestrator
+     claude plugin install it-project-orchestrator@it-project-orchestrator
+     ```
+   - **Carga local directa sin instalar:**
+     ```bash
+     claude --plugin-dir /ruta/a/it-project-orchestrator
+     ```
+   - **Claude Desktop / Cowork (importar `.zip` o `.plugin`):**
+     Genera el paquete limpio para que `.claude-plugin/plugin.json` quede en la **raíz directa** del `.zip` (sin carpeta padre envolvente ni `.git/`):
+     ```bash
+     git archive --format=zip --output=it-project-orchestrator.zip HEAD
+     ```
+     Luego impórtalo desde *Añadir plugin desde un archivo `.zip` o `.plugin`*.
 
 3. Invocar con el slash command:
 
